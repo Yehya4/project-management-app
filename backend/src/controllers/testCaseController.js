@@ -69,7 +69,22 @@ class TestCaseController {
             const { id } = req.params;
             const { status, comment } = req.body;
             const testerId = req.user?.id || req.body.testerId;
-            const testerName = req.user ? `${req.user.prenom || ''} ${req.user.nom || ''}`.trim() : req.body.testerName;
+            let testerName = '';
+            if (req.user && (req.user.prenom || req.user.nom)) {
+                testerName = `${req.user.prenom || ''} ${req.user.nom || ''}`.trim();
+            } else if (req.body.testerName) {
+                testerName = req.body.testerName;
+            } else if (req.user?.id) {
+                try {
+                    const userService = require('../services/userService');
+                    const dbUser = await userService.getById(req.user.id);
+                    if (dbUser) {
+                        testerName = `${dbUser.prenom || ''} ${dbUser.nom || ''}`.trim();
+                    }
+                } catch (dbErr) {
+                    console.error('Error fetching user info for testerName:', dbErr);
+                }
+            }
 
             if (!status) {
                 return res.status(400).json({ message: 'Le statut est requis.' });

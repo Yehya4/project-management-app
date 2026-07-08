@@ -599,12 +599,12 @@ const ProjectTests = () => {
               {/* Comment text area */}
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
-                  Commentaires / Détails *
+                  Commentaires / Détails {runData.status === 'Non Réussite' ? '*' : '(Optionnel)'}
                 </label>
                 <textarea
-                  required
+                  required={runData.status === 'Non Réussite'}
                   rows={3}
-                  placeholder="Expliquez pourquoi le test a réussi ou échoué..."
+                  placeholder={runData.status === 'Non Réussite' ? "Expliquez obligatoirement pourquoi le test a échoué..." : "Expliquez pourquoi le test a réussi (optionnel)..."}
                   value={runData.comment}
                   onChange={(e) => setRunData(prev => ({ ...prev, comment: e.target.value }))}
                   className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-sans"

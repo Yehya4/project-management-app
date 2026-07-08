@@ -922,7 +922,10 @@ export const TestCaseProvider = ({ children }) => {
       });
       if (res.ok) {
         const newTestCase = await res.json();
-        setTestCases(prev => [newTestCase, ...prev]);
+        setTestCases(prev => {
+          if (prev.some(t => t.id === newTestCase.id)) return prev;
+          return [newTestCase, ...prev];
+        });
         return newTestCase;
       }
     } catch (err) {
