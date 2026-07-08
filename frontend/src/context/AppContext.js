@@ -868,6 +868,122 @@ export const MessageProvider = ({ children }) => {
 };
 
 
+const TestCaseContext = createContext();
+export const useTestCases = () => useContext(TestCaseContext);
+
+export const TestCaseProvider = ({ children }) => {
+  const [testCases, setTestCases] = useState([]);
+  const { token } = useAuth();
+
+  const API_URL = 'http://localhost:5000/api';
+
+  const getHeaders = () => ({
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  });
+
+  useEffect(() => {
+    if (token) {
+      const socketConnection = io('http://localhost:5000');
+      socketConnection.on('test_case_created', (newTestCase) => {
+        setTestCases(prev => {
+          if (prev.some(t => t.id === newTestCase.id)) return prev;
+          return [newTestCase, ...prev];
+        });
+      });
+      socketConnection.on('test_case_updated', (updatedTestCase) => {
+        setTestCases(prev => prev.map(t => t.id === updatedTestCase.id ? updatedTestCase : t));
+      });
+      socketConnection.on('test_case_deleted', ({ id }) => {
+        setTestCases(prev => prev.filter(t => t.id !== id));
+      });
+      return () => socketConnection.close();
+    }
+  }, [token]);
+
+  const fetchTestCases = async (projectId) => {
+    try {
+      const res = await fetch(`${API_URL}/projects/${projectId}/test-cases`, { headers: getHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setTestCases(data);
+      }
+    } catch (err) {
+      console.error('Erreur fetch test cases', err);
+    }
+  };
+
+  const addTestCase = async (testCase) => {
+    try {
+      const res = await fetch(`${API_URL}/test-cases`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(testCase)
+      });
+      if (res.ok) {
+        const newTestCase = await res.json();
+        setTestCases(prev => [newTestCase, ...prev]);
+        return newTestCase;
+      }
+    } catch (err) {
+      console.error('Erreur ajout cas de test', err);
+    }
+  };
+
+  const updateTestCase = async (id, updates) => {
+    try {
+      const res = await fetch(`${API_URL}/test-cases/${id}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(updates)
+      });
+      if (res.ok) {
+        const updatedTestCase = await res.json();
+        setTestCases(prev => prev.map(t => t.id === id ? updatedTestCase : t));
+        return updatedTestCase;
+      }
+    } catch (err) {
+      console.error('Erreur mise à jour cas de test', err);
+    }
+  };
+
+  const updateTestCaseStatus = async (id, status, comment, testerId, testerName) => {
+    try {
+      const res = await fetch(`${API_URL}/test-cases/${id}/status`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify({ status, comment, testerId, testerName })
+      });
+      if (res.ok) {
+        const updatedTestCase = await res.json();
+        setTestCases(prev => prev.map(t => t.id === id ? updatedTestCase : t));
+        return updatedTestCase;
+      }
+    } catch (err) {
+      console.error('Erreur mise à jour statut cas de test', err);
+    }
+  };
+
+  const deleteTestCase = async (id) => {
+    try {
+      const res = await fetch(`${API_URL}/test-cases/${id}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+      });
+      if (res.ok) {
+        setTestCases(prev => prev.filter(t => t.id !== id));
+      }
+    } catch (err) {
+      console.error('Erreur suppression cas de test', err);
+    }
+  };
+
+  return (
+    <TestCaseContext.Provider value={{ testCases, fetchTestCases, addTestCase, updateTestCase, updateTestCaseStatus, deleteTestCase }}>
+      {children}
+    </TestCaseContext.Provider>
+  );
+};
 
 
 export const AppProvider = ({ children }) => {
@@ -881,9 +997,11 @@ export const AppProvider = ({ children }) => {
                 <ProjectProvider>
                   <TaskProvider>
                     <TeamProvider>
-                      <MessageProvider>
-                        {children}
-                      </MessageProvider>
+                      <TestCaseProvider>
+                        <MessageProvider>
+                          {children}
+                        </MessageProvider>
+                      </TestCaseProvider>
                     </TeamProvider>
                   </TaskProvider>
                 </ProjectProvider>

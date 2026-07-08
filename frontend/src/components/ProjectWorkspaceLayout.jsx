@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { NavLink, Outlet, useParams, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, Users, ArrowLeft, FileText, ListTodo, Box, UserCircle, ScrollText, MessageSquare, Calendar } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Users, ArrowLeft, FileText, ListTodo, Box, UserCircle, ScrollText, MessageSquare, Calendar, FlaskConical } from 'lucide-react';
 import { useProjects, useDemandes, useAuth, useCharter, useUser, useTasks, useTeam } from '../context/AppContext';
 
 const ProjectWorkspaceLayout = () => {
@@ -96,6 +96,7 @@ const ProjectWorkspaceLayout = () => {
   const devLinks = [
     { path: `/projects/${id}/dashboard`, name: user?.role === 'Tester' ? 'Dashboard Testeur' : 'Dashboard Développeur', icon: <LayoutDashboard size={20} /> },
     { path: `/projects/${id}/tasks`, name: 'Tâches', icon: <CheckSquare size={20} />, badge: myTasksCount > 0 ? myTasksCount : null },
+    { path: `/projects/${id}/tests`, name: 'Tests', icon: <FlaskConical size={20} /> },
     { path: `/projects/${id}/chat`, name: 'Messagerie', icon: <MessageSquare size={20} /> },
     { path: `/projects/${id}/calendar`, name: 'Calendrier', icon: <Calendar size={20} /> },
     { path: `/projects/${id}/role`, name: 'Mon Rôle', icon: <UserCircle size={20} /> }
@@ -105,6 +106,7 @@ const ProjectWorkspaceLayout = () => {
     { path: `/projects/${id}/dashboard`, name: 'Vue d\'ensemble', icon: <LayoutDashboard size={20} /> },
     { path: `/projects/${id}/charter`, name: 'Fiche de Projet', icon: <ScrollText size={20} /> },
     { path: `/projects/${id}/tasks`, name: 'Tâches', icon: <CheckSquare size={20} />, badge: myTasksCount > 0 ? myTasksCount : null },
+    { path: `/projects/${id}/tests`, name: 'Tests', icon: <FlaskConical size={20} /> },
     { path: `/projects/${id}/chat`, name: 'Messagerie', icon: <MessageSquare size={20} /> },
     { path: `/projects/${id}/calendar`, name: 'Calendrier', icon: <Calendar size={20} /> },
     { path: `/projects/${id}/documents`, name: 'Documents', icon: <Box size={20} /> },

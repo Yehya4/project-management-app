@@ -1,0 +1,642 @@
+import React, { useState, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
+import { useTestCases, useTeam, useAuth } from '../../context/AppContext';
+import { 
+  Plus, 
+  FlaskConical, 
+  CheckCircle2, 
+  XCircle, 
+  HelpCircle, 
+  Search, 
+  Edit2, 
+  Trash2, 
+  Play, 
+  X, 
+  MessageSquare, 
+  User, 
+  Calendar 
+} from 'lucide-react';
+
+const ProjectTests = () => {
+  const { project, isPending } = useOutletContext();
+  const { user } = useAuth();
+  const { getTeamByProjectId } = useTeam();
+  const { 
+    testCases, 
+    fetchTestCases, 
+    addTestCase, 
+    updateTestCase, 
+    updateTestCaseStatus, 
+    deleteTestCase 
+  } = useTestCases();
+
+  const teamMembers = getTeamByProjectId(project?.id) || [];
+
+  // State
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('Tous');
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isRunOpen, setIsRunOpen] = useState(false);
+  
+  const [selectedTestCase, setSelectedTestCase] = useState(null);
+  const [formData, setFormData] = useState({
+    testCaseId: '',
+    testName: '',
+    description: '',
+    expectedResult: ''
+  });
+
+  const [runData, setRunData] = useState({
+    status: 'Réussite',
+    comment: ''
+  });
+
+  // Fetch test cases on mount or project change
+  useEffect(() => {
+    if (project?.id) {
+      fetchTestCases(project.id);
+    }
+  }, [project?.id]);
+
+  // Determine permissions
+  const isAdmin = user?.role === 'Admin';
+  const isPM = user?.role === 'Project Manager';
+  const isProjectChef = project?.chefProjet && (
+    user?.fullName === project.chefProjet || 
+    `${user?.prenom || ''} ${user?.nom || ''}`.trim() === project.chefProjet
+  );
+  
+  const isAssignedDev = teamMembers.some(
+    m => m.userId.toString() === user?.id?.toString() && 
+    (m.role === 'Développeur' || m.role === 'Tech Lead')
+  );
+
+  const isAssignedTester = teamMembers.some(
+    m => m.userId.toString() === user?.id?.toString() && 
+    m.role === 'QA / Testeur'
+  );
+
+  const canCreateTest = isAdmin || isPM || isProjectChef || isAssignedDev;
+  const canRunTest = isAssignedTester || isAdmin || isPM || isProjectChef;
+
+  // Filter test cases
+  const filteredTests = testCases.filter(t => {
+    const matchesSearch = 
+      t.testCaseId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (t.testName && t.testName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      t.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      t.expectedResult.toLowerCase().includes(searchTerm.toLowerCase());
+      
+    if (statusFilter === 'Tous') return matchesSearch;
+    return matchesSearch && t.status === statusFilter;
+  });
+
+  // Stats calculation
+  const totalCount = testCases.length;
+  const pendingCount = testCases.filter(t => t.status === 'En attente').length;
+  const successCount = testCases.filter(t => t.status === 'Réussite').length;
+  const failCount = testCases.filter(t => t.status === 'Non Réussite').length;
+  const executionRate = totalCount > 0 ? Math.round(((totalCount - pendingCount) / totalCount) * 100) : 0;
+  const successRate = (totalCount - pendingCount) > 0 ? Math.round((successCount / (totalCount - pendingCount)) * 100) : 0;
+
+  // Handlers
+  const handleOpenCreateForm = () => {
+    // Auto-generate test case ID suggestion
+    const nextNumber = testCases.length + 1;
+    const suggestedId = `TC-${String(nextNumber).padStart(3, '0')}`;
+    
+    setSelectedTestCase(null);
+    setFormData({
+      testCaseId: suggestedId,
+      testName: '',
+      description: '',
+      expectedResult: ''
+    });
+    setIsFormOpen(true);
+  };
+
+  const handleOpenEditForm = (tc) => {
+    setSelectedTestCase(tc);
+    setFormData({
+      testCaseId: tc.testCaseId,
+      testName: tc.testName || '',
+      description: tc.description,
+      expectedResult: tc.expectedResult
+    });
+    setIsFormOpen(true);
+  };
+
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.testCaseId || !formData.testName || !formData.description || !formData.expectedResult) return;
+
+    if (selectedTestCase) {
+      await updateTestCase(selectedTestCase.id, formData);
+    } else {
+      await addTestCase({
+        ...formData,
+        projectId: project.id
+      });
+    }
+    setIsFormOpen(false);
+  };
+
+  const handleOpenRunDialog = (tc) => {
+    setSelectedTestCase(tc);
+    setRunData({
+      status: tc.status === 'En attente' ? 'Réussite' : tc.status,
+      comment: tc.comment || ''
+    });
+    setIsRunOpen(true);
+  };
+
+  const handleRunSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedTestCase) return;
+
+    const testerId = user.id;
+    const testerName = `${user.prenom || ''} ${user.nom || ''}`.trim();
+
+    await updateTestCaseStatus(
+      selectedTestCase.id, 
+      runData.status, 
+      runData.comment, 
+      testerId, 
+      testerName
+    );
+    
+    setIsRunOpen(false);
+  };
+
+  const handleDeleteClick = async (id) => {
+    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce cas de test ?')) {
+      await deleteTestCase(id);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Title & Action */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+            <FlaskConical className="text-blue-600" size={24} />
+            Cas de Test du Projet
+          </h2>
+          <p className="text-slate-500">Définissez et validez la qualité technique de {project?.nom}.</p>
+        </div>
+        {!isPending && canCreateTest && (
+          <button 
+            onClick={handleOpenCreateForm}
+            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors shadow-sm"
+          >
+            <Plus size={20} />
+            Créer un cas de test
+          </button>
+        )}
+      </div>
+
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Total cas de test</span>
+          <div className="flex justify-between items-baseline mt-2">
+            <span className="text-3xl font-extrabold text-slate-800">{totalCount}</span>
+            <span className="text-slate-400 text-xs">sur le projet</span>
+          </div>
+          <div className="w-full bg-slate-100 h-1.5 rounded-full mt-4 overflow-hidden">
+            <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: '100%' }}></div>
+          </div>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">En Attente</span>
+          <div className="flex justify-between items-baseline mt-2">
+            <span className="text-3xl font-extrabold text-amber-500">{pendingCount}</span>
+            <span className="text-slate-400 text-xs">{totalCount > 0 ? Math.round((pendingCount/totalCount)*100) : 0}% du total</span>
+          </div>
+          <div className="w-full bg-slate-100 h-1.5 rounded-full mt-4 overflow-hidden">
+            <div 
+              className="bg-amber-500 h-1.5 rounded-full transition-all duration-500" 
+              style={{ width: `${totalCount > 0 ? (pendingCount/totalCount)*100 : 0}%` }}
+            ></div>
+          </div>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Réussite</span>
+          <div className="flex justify-between items-baseline mt-2">
+            <span className="text-3xl font-extrabold text-emerald-600">{successCount}</span>
+            <span className="text-slate-400 text-xs">{successRate}% de réussite</span>
+          </div>
+          <div className="w-full bg-slate-100 h-1.5 rounded-full mt-4 overflow-hidden">
+            <div 
+              className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500" 
+              style={{ width: `${successRate}%` }}
+            ></div>
+          </div>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <span className="text-slate-400 text-xs font-bold uppercase tracking-wider font-semibold">Non Réussite / Échecs</span>
+          <div className="flex justify-between items-baseline mt-2">
+            <span className="text-3xl font-extrabold text-rose-600">{failCount}</span>
+            <span className="text-slate-400 text-xs">Exécutés : {executionRate}%</span>
+          </div>
+          <div className="w-full bg-slate-100 h-1.5 rounded-full mt-4 overflow-hidden">
+            <div 
+              className="bg-rose-500 h-1.5 rounded-full transition-all duration-500" 
+              style={{ width: `${totalCount > 0 ? (failCount/totalCount)*100 : 0}%` }}
+            ></div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter / Search Bar */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div className="relative w-full md:w-96">
+          <Search className="absolute left-3 top-2.5 text-slate-400" size={18} />
+          <input
+            type="text"
+            placeholder="Rechercher par ID, description..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 focus:bg-white transition-all"
+          />
+        </div>
+
+        <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+          {['Tous', 'En attente', 'Réussite', 'Non Réussite'].map((filter) => {
+            const getButtonClass = (isActive) => {
+              if (isActive) {
+                switch (filter) {
+                  case 'Réussite': return 'bg-emerald-600 text-white shadow-sm';
+                  case 'Non Réussite': return 'bg-rose-600 text-white shadow-sm';
+                  case 'En attente': return 'bg-amber-500 text-white shadow-sm';
+                  default: return 'bg-blue-600 text-white shadow-sm';
+                }
+              }
+              return 'bg-slate-100 hover:bg-slate-200 text-slate-600';
+            };
+
+            return (
+              <button
+                key={filter}
+                onClick={() => setStatusFilter(filter)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${getButtonClass(statusFilter === filter)}`}
+              >
+                {filter}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Test Cases List */}
+      <div className="space-y-4">
+        {filteredTests.length === 0 ? (
+          <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center shadow-sm">
+            <FlaskConical className="mx-auto text-slate-300 mb-4" size={48} />
+            <h3 className="text-lg font-bold text-slate-700">Aucun cas de test trouvé</h3>
+            <p className="text-slate-400 mt-1">Modifiez les filtres de recherche ou créez un nouveau cas de test.</p>
+            {canCreateTest && (
+              <button 
+                onClick={handleOpenCreateForm}
+                className="mt-4 px-4 py-2 bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors font-bold rounded-xl text-sm"
+              >
+                Créer mon premier test
+              </button>
+            )}
+          </div>
+        ) : (
+          filteredTests.map((tc) => {
+            const getStatusStyle = (status) => {
+              switch (status) {
+                case 'Réussite': 
+                  return {
+                    badge: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
+                    cardBorder: 'border-l-4 border-l-emerald-500 border-y-slate-200 border-r-slate-200',
+                    icon: <CheckCircle2 size={16} className="text-emerald-500" />
+                  };
+                case 'Non Réussite':
+                  return {
+                    badge: 'bg-rose-100 text-rose-700 border border-rose-200',
+                    cardBorder: 'border-l-4 border-l-rose-500 border-y-slate-200 border-r-slate-200',
+                    icon: <XCircle size={16} className="text-rose-500" />
+                  };
+                default:
+                  return {
+                    badge: 'bg-slate-100 text-slate-600 border border-slate-200',
+                    cardBorder: 'border-l-4 border-l-slate-400 border-y-slate-200 border-r-slate-200',
+                    icon: <HelpCircle size={16} className="text-slate-500" />
+                  };
+              }
+            };
+
+            const styles = getStatusStyle(tc.status);
+
+            return (
+              <div 
+                key={tc.id}
+                className={`bg-white rounded-2xl border p-6 shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row justify-between gap-6 ${styles.cardBorder}`}
+              >
+                <div className="flex-1 space-y-4">
+                  {/* TC Header */}
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="px-3 py-1 bg-slate-900 text-white font-mono text-xs font-bold rounded-lg shadow-sm">
+                      {tc.testCaseId}
+                    </span>
+                    <span className="text-base font-bold text-slate-800">
+                      {tc.testName}
+                    </span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold flex items-center gap-1.5 ${styles.badge}`}>
+                      {styles.icon}
+                      {tc.status}
+                    </span>
+                  </div>
+
+                  {/* Description & Expected */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Description</h4>
+                      <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-line">{tc.description}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Résultat attendu</h4>
+                      <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-line">{tc.expectedResult}</p>
+                    </div>
+                  </div>
+
+                  {/* Execution Comment & Info */}
+                  {tc.status !== 'En attente' && (
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 mt-2 space-y-2">
+                      <div className="flex items-center gap-6 text-xs text-slate-500 flex-wrap">
+                        <span className="flex items-center gap-1.5">
+                          <User size={14} className="text-slate-400" />
+                          Testeur : <strong className="text-slate-700">{tc.testerName || 'Inconnu'}</strong>
+                        </span>
+                        {tc.updatedAt && (
+                          <span className="flex items-center gap-1.5">
+                            <Calendar size={14} className="text-slate-400" />
+                            Date : <strong className="text-slate-700">{new Date(tc.updatedAt).toLocaleDateString('fr-FR')} {new Date(tc.updatedAt).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})}</strong>
+                          </span>
+                        )}
+                      </div>
+                      {tc.comment && (
+                        <div className="text-xs text-slate-600 flex items-start gap-1.5 pt-1">
+                          <MessageSquare size={14} className="text-slate-400 mt-0.5 shrink-0" />
+                          <span>
+                            Commentaire : <span className="italic text-slate-700 font-medium">"{tc.comment}"</span>
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="flex md:flex-col justify-end items-center gap-2 border-t md:border-t-0 border-slate-100 pt-4 md:pt-0 shrink-0">
+                  {canRunTest && (
+                    <button
+                      onClick={() => handleOpenRunDialog(tc)}
+                      className="flex items-center justify-center gap-1.5 px-4 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 text-xs font-bold transition-colors shadow-sm w-full md:w-auto"
+                    >
+                      <Play size={12} fill="white" />
+                      Lancer le test
+                    </button>
+                  )}
+                  
+                  <div className="flex gap-1.5 w-full md:w-auto justify-end">
+                    {canCreateTest && (
+                      <>
+                        <button
+                          onClick={() => handleOpenEditForm(tc)}
+                          className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200"
+                          title="Modifier"
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteClick(tc.id)}
+                          className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors border border-slate-200"
+                          title="Supprimer"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* CREATE / EDIT MODAL */}
+      {isFormOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center px-6 py-5 border-b border-slate-100 bg-slate-50">
+              <h3 className="text-lg font-bold text-slate-800">
+                {selectedTestCase ? 'Modifier le cas de test' : 'Créer un cas de test'}
+              </h3>
+              <button 
+                onClick={() => setIsFormOpen(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleFormSubmit} className="p-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-1">
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                    ID du cas *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="ex: TC-001"
+                    value={formData.testCaseId}
+                    onChange={(e) => setFormData(prev => ({ ...prev, testCaseId: e.target.value }))}
+                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                    Nom du test *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="ex: Connexion OAuth2"
+                    value={formData.testName}
+                    onChange={(e) => setFormData(prev => ({ ...prev, testName: e.target.value }))}
+                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                  Description *
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  placeholder="Décrivez les étapes ou conditions du test..."
+                  value={formData.description}
+                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                  Résultat attendu *
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  placeholder="Quel est le comportement attendu en cas de succès ?"
+                  value={formData.expectedResult}
+                  onChange={(e) => setFormData(prev => ({ ...prev, expectedResult: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                />
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsFormOpen(false)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-bold transition-colors text-sm"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-colors text-sm shadow-sm"
+                >
+                  {selectedTestCase ? 'Mettre à jour' : 'Créer le test'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* RUN TEST EXECUTION DIALOG */}
+      {isRunOpen && selectedTestCase && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex justify-between items-center px-6 py-5 border-b border-slate-100 bg-slate-50">
+              <div>
+                <h3 className="text-lg font-bold text-slate-800">Exécuter le test</h3>
+                <p className="text-xs text-slate-500 font-bold mt-0.5">{selectedTestCase.testCaseId} - {selectedTestCase.testName}</p>
+              </div>
+              <button 
+                onClick={() => setIsRunOpen(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <form onSubmit={handleRunSubmit} className="p-6 space-y-5">
+              {/* Test summary info */}
+              <div className="bg-slate-50 p-4 rounded-xl text-xs space-y-2 border border-slate-100">
+                <p className="text-slate-700">
+                  <strong className="text-slate-500 font-bold uppercase tracking-wider block text-[10px] mb-0.5">Description</strong>
+                  {selectedTestCase.description}
+                </p>
+                <p className="text-slate-700">
+                  <strong className="text-slate-500 font-bold uppercase tracking-wider block text-[10px] mb-0.5">Résultat attendu</strong>
+                  {selectedTestCase.expectedResult}
+                </p>
+              </div>
+
+              {/* Status Radio buttons / Segmented control */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                  Résultat de l'exécution *
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setRunData(prev => ({ ...prev, status: 'Réussite' }))}
+                    className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-sm font-bold transition-all ${
+                      runData.status === 'Réussite' 
+                        ? 'border-emerald-500 bg-emerald-50 text-emerald-800 shadow-sm ring-1 ring-emerald-500' 
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <CheckCircle2 size={18} className={runData.status === 'Réussite' ? 'text-emerald-600' : 'text-slate-400'} />
+                    Réussite
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setRunData(prev => ({ ...prev, status: 'Non Réussite' }))}
+                    className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-sm font-bold transition-all ${
+                      runData.status === 'Non Réussite' 
+                        ? 'border-rose-500 bg-rose-50 text-rose-800 shadow-sm ring-1 ring-rose-500' 
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <XCircle size={18} className={runData.status === 'Non Réussite' ? 'text-rose-600' : 'text-slate-400'} />
+                    Non Réussite
+                  </button>
+                </div>
+              </div>
+
+              {/* Comment text area */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                  Commentaires / Détails *
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  placeholder="Expliquez pourquoi le test a réussi ou échoué..."
+                  value={runData.comment}
+                  onChange={(e) => setRunData(prev => ({ ...prev, comment: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-sans"
+                />
+              </div>
+
+              {/* Footer */}
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsRunOpen(false)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-bold transition-colors text-sm"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className={`px-5 py-2 text-white rounded-xl font-bold transition-colors text-sm shadow-sm ${
+                    runData.status === 'Réussite' 
+                      ? 'bg-emerald-600 hover:bg-emerald-700' 
+                      : 'bg-rose-600 hover:bg-rose-700'
+                  }`}
+                >
+                  Enregistrer
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ProjectTests;

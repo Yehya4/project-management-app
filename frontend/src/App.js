@@ -24,6 +24,7 @@ import ProjectInfo from './pages/project/ProjectInfo';
 import ProjectCharterView from './pages/project/ProjectCharterView';
 import ProjectMessages from './pages/project/ProjectMessages';
 import ProjectCalendar from './pages/project/ProjectCalendar';
+import ProjectTests from './pages/project/ProjectTests';
 import UsersPage from './pages/UsersPage';
 import Messages from './pages/Messages';
 import './App.css';
@@ -93,6 +94,7 @@ function App() {
                     <Route path="calendar" element={<ProjectCalendar />} />
                     <Route path="documents" element={<ProjectDocuments />} />
                     <Route path="backlog" element={<ProjectBacklog />} />
+                    <Route path="tests" element={<ProjectTests />} />
                     <Route path="role" element={<ProjectRole />} />
                     <Route path="project-info" element={<ProjectInfo />} />
                   </Route>
