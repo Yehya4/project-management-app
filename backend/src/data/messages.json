@@ -1,0 +1,72 @@
+[
+  {
+    "id": "1783419781653",
+    "content": "salut",
+    "senderId": "u1",
+    "senderName": "Yahya N1",
+    "senderRole": "User",
+    "mentions": [],
+    "createdAt": "2026-07-07T10:23:01.653Z"
+  },
+  {
+    "id": "1783419813173",
+    "content": "@Manager Project \naccepte la demande SI de @Yahya N1",
+    "senderId": "u4",
+    "senderName": "Admin Système",
+    "senderRole": "Admin",
+    "mentions": [
+      "u2",
+      "u1"
+    ],
+    "createdAt": "2026-07-07T10:23:33.173Z"
+  },
+  {
+    "id": "1783419849287",
+    "content": "@Admin Système d'accord ça marche",
+    "senderId": "u2",
+    "senderName": "Manager Project",
+    "senderRole": "Project Manager",
+    "mentions": [
+      "u4"
+    ],
+    "createdAt": "2026-07-07T10:24:09.287Z"
+  },
+  {
+    "id": "1783496728221",
+    "content": "@Project Manager",
+    "senderId": "u1783440604368",
+    "senderName": "testeur fonction",
+    "senderRole": "Tester",
+    "mentions": [
+      "u2"
+    ],
+    "projectId": "PRJ-2026-003",
+    "createdAt": "2026-07-08T07:45:28.222Z"
+  },
+  {
+    "id": "1783499899236",
+    "content": "@Project Manager donnez moi les taches",
+    "senderId": "u1783439827852",
+    "senderName": "developer UI/UX",
+    "senderRole": "Developer",
+    "mentions": [
+      "u3",
+      "u2"
+    ],
+    "projectId": "PRJ-2026-002",
+    "createdAt": "2026-07-08T08:38:19.236Z"
+  },
+  {
+    "id": "1783502783451",
+    "content": "@UI/UX developer fait la tache avant le 10/07",
+    "senderId": "u2",
+    "senderName": "Manager Project",
+    "senderRole": "Project Manager",
+    "mentions": [
+      "u1783439827852",
+      "u1783439827852"
+    ],
+    "projectId": "PRJ-2026-003",
+    "createdAt": "2026-07-08T09:26:23.451Z"
+  }
+]
