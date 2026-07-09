@@ -49,7 +49,6 @@ class TeamService {
             db.query(query, [projectId], (err, results) => {
                 if (err) return reject(err);
                 
-                
                 const members = results.map(row => ({
                     userId: row.userId,
                     role: row.role,
@@ -66,7 +65,7 @@ class TeamService {
         });
     }
 
-    addOrUpdateMember(projectId, userId, role) {
+    addOrUpdateMember(projectId, userId, role, io, reqUser) {
         return new Promise((resolve, reject) => {
             const query = `
                 INSERT INTO project_members (projectId, userId, role)
@@ -76,16 +75,56 @@ class TeamService {
             db.query(query, [projectId, userId, role, role], (err, results) => {
                 if (err) return reject(err);
                 
-                
                 const userQuery = 'SELECT nom, prenom, email, fonction FROM users WHERE id = ?';
-                db.query(userQuery, [userId], (err, userResults) => {
+                db.query(userQuery, [userId], async (err, userResults) => {
                     if (err || userResults.length === 0) return reject(err || new Error('User not found'));
                     
-                    resolve({
+                    const member = {
                         userId,
                         role,
                         user: userResults[0]
-                    });
+                    };
+
+                    if (io && reqUser) {
+                        try {
+                            const userService = require('./userService');
+                            const projectService = require('./projectService');
+
+                            const actingUser = await userService.getById(reqUser.id);
+                            const actingName = actingUser ? `${actingUser.prenom || ''} ${actingUser.nom || ''}`.trim() : 'Un administrateur';
+                            const actingRole = reqUser.role === 'Project Manager' ? 'Le PM' : (reqUser.role === 'Sponsor' ? 'Le Sponsor' : 'L\'Admin');
+                            
+                            const project = await projectService.getById(projectId);
+                            const projectName = project ? project.nom : 'un projet';
+                            
+                            const targetName = `${member.user.prenom || ''} ${member.user.nom || ''}`.trim();
+                            const targetRole = member.user.fonction || role;
+                            
+                            const notificationForAssigned = {
+                                id: Date.now(),
+                                title: 'Affectation à un projet',
+                                message: `${actingName} vous a ajouté au projet "${projectName}".`,
+                                date: 'À l\'instant',
+                                read: false,
+                                type: 'info'
+                            };
+                            io.to(`user_${userId}`).emit('new_notification', notificationForAssigned);
+                            
+                            const notificationForManagement = {
+                                id: Date.now() + 1,
+                                title: 'Nouveau membre de projet',
+                                message: `${actingRole} ${actingName} a ajouté ${targetName} (${targetRole}) au projet "${projectName}".`,
+                                date: 'À l\'instant',
+                                read: false,
+                                type: 'info'
+                            };
+                            io.to('role_Admin').to('role_Sponsor').to('role_Project Manager').emit('new_notification', notificationForManagement);
+                        } catch (notifErr) {
+                            console.error(notifErr);
+                        }
+                    }
+
+                    resolve(member);
                 });
             });
         });

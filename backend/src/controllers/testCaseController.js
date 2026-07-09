@@ -1,5 +1,4 @@
 const testCaseService = require('../services/testCaseService');
-const projectService  = require('../services/projectService');
 
 class TestCaseController {
     async getByProject(req, res) {
@@ -9,10 +8,10 @@ class TestCaseController {
                 return res.status(400).json({ message: 'L\'ID du projet est requis.' });
             }
             const testCases = await testCaseService.getByProjectId(projectId);
-            res.json(testCases);
+            return res.json(testCases);
         } catch (err) {
-            console.error('Error fetching test cases by project:', err);
-            res.status(500).json({ message: 'Erreur lors de la récupération des cas de test.' });
+            console.error(err);
+            return res.status(500).json({ message: 'Erreur lors de la récupération des cas de test.' });
         }
     }
 
@@ -20,27 +19,22 @@ class TestCaseController {
         try {
             const { projectId, testCaseId, testName, description, expectedResult } = req.body;
             if (!projectId || !testCaseId || !testName || !description || !expectedResult) {
-                return res.status(400).json({ message: 'Champs obligatoires manquants (projectId, testCaseId, testName, description, expectedResult).' });
+                return res.status(400).json({ message: 'Champs obligatoires manquants.' });
             }
 
+            const io = req.app.get('io');
             const testCase = await testCaseService.create({
                 projectId,
                 testCaseId,
                 testName,
                 description,
                 expectedResult
-            });
+            }, io);
 
-            const io = req.app.get('io');
-            if (io) {
-                io.emit('test_case_created', testCase);
-            }
-            await projectService.autoUpdateStatus(projectId, io);
-
-            res.status(201).json(testCase);
+            return res.status(201).json(testCase);
         } catch (err) {
-            console.error('Error creating test case:', err);
-            res.status(500).json({ message: 'Erreur lors de la création du cas de test.' });
+            console.error(err);
+            return res.status(500).json({ message: 'Erreur lors de la création du cas de test.' });
         }
     }
 
@@ -49,23 +43,15 @@ class TestCaseController {
             const { id } = req.params;
             const { testCaseId, testName, description, expectedResult } = req.body;
             if (!testCaseId || !testName || !description || !expectedResult) {
-                return res.status(400).json({ message: 'Champs obligatoires manquants (testCaseId, testName, description, expectedResult).' });
+                return res.status(400).json({ message: 'Champs obligatoires manquants.' });
             }
 
-            const testCase = await testCaseService.update(id, { testCaseId, testName, description, expectedResult });
-            
             const io = req.app.get('io');
-            if (io) {
-                io.emit('test_case_updated', testCase);
-            }
-            if (testCase && testCase.projectId) {
-                await projectService.autoUpdateStatus(testCase.projectId, io);
-            }
-
-            res.json(testCase);
+            const testCase = await testCaseService.update(id, { testCaseId, testName, description, expectedResult }, io);
+            return res.json(testCase);
         } catch (err) {
-            console.error('Error updating test case:', err);
-            res.status(500).json({ message: 'Erreur lors de la mise à jour du cas de test.' });
+            console.error(err);
+            return res.status(500).json({ message: 'Erreur lors de la mise à jour du cas de test.' });
         }
     }
 
@@ -75,6 +61,7 @@ class TestCaseController {
             const { status, comment } = req.body;
             const testerId = req.user?.id || req.body.testerId;
             let testerName = '';
+
             if (req.user && (req.user.prenom || req.user.nom)) {
                 testerName = `${req.user.prenom || ''} ${req.user.nom || ''}`.trim();
             } else if (req.body.testerName) {
@@ -87,7 +74,7 @@ class TestCaseController {
                         testerName = `${dbUser.prenom || ''} ${dbUser.nom || ''}`.trim();
                     }
                 } catch (dbErr) {
-                    console.error('Error fetching user info for testerName:', dbErr);
+                    console.error(dbErr);
                 }
             }
 
@@ -95,46 +82,24 @@ class TestCaseController {
                 return res.status(400).json({ message: 'Le statut est requis.' });
             }
 
-            const testCase = await testCaseService.updateStatus(id, status, comment, testerId, testerName);
-            
             const io = req.app.get('io');
-            if (io) {
-                io.emit('test_case_updated', testCase);
-            }
-
-            // Trigger Testing → Déploiement if all test cases passed
-            if (testCase && testCase.projectId) {
-                await projectService.autoUpdateStatus(testCase.projectId, io);
-            }
-
-            res.json(testCase);
+            const testCase = await testCaseService.updateStatus(id, status, comment, testerId, testerName, io);
+            return res.json(testCase);
         } catch (err) {
-            console.error('Error updating test case status:', err);
-            res.status(500).json({ message: 'Erreur lors de l\'enregistrement du résultat du test.' });
+            console.error(err);
+            return res.status(500).json({ message: 'Erreur lors de l\'enregistrement du résultat du test.' });
         }
     }
 
     async delete(req, res) {
         try {
             const { id } = req.params;
-            const testCase = await testCaseService.getById(id);
-            if (!testCase) {
-                return res.status(404).json({ message: 'Cas de test non trouvé.' });
-            }
-
-            await testCaseService.delete(id);
-            
             const io = req.app.get('io');
-            if (io) {
-                io.emit('test_case_deleted', { id: parseInt(id) || id });
-            }
-
-            await projectService.autoUpdateStatus(testCase.projectId, io);
-
-            res.json({ message: 'Cas de test supprimé avec succès.' });
+            await testCaseService.delete(id, io);
+            return res.json({ message: 'Cas de test supprimé avec succès.' });
         } catch (err) {
-            console.error('Error deleting test case:', err);
-            res.status(500).json({ message: 'Erreur lors de la suppression du cas de test.' });
+            console.error(err);
+            return res.status(500).json({ message: 'Erreur lors de la suppression du cas de test.' });
         }
     }
 }

@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const projectService = require('./projectService');
 
 class TestCaseService {
     getByProjectId(projectId) {
@@ -21,53 +22,90 @@ class TestCaseService {
         });
     }
 
-    create(testCaseData) {
+    create(testCaseData, io) {
         return new Promise((resolve, reject) => {
             const { projectId, testCaseId, testName, description, expectedResult } = testCaseData;
             const query = 'INSERT INTO test_cases (projectId, testCaseId, testName, description, expectedResult, status) VALUES (?, ?, ?, ?, ?, ?)';
-            db.query(query, [projectId, testCaseId, testName, description, expectedResult, 'En attente'], (err, results) => {
+            db.query(query, [projectId, testCaseId, testName, description, expectedResult, 'En attente'], async (err, results) => {
                 if (err) return reject(err);
                 
-                const insertedId = results.insertId;
-                this.getById(insertedId)
-                    .then(testCase => resolve(testCase))
-                    .catch(err => reject(err));
+                try {
+                    const insertedId = results.insertId;
+                    const testCase = await this.getById(insertedId);
+                    
+                    if (io) {
+                        io.emit('test_case_created', testCase);
+                    }
+                    await projectService.autoUpdateStatus(projectId, io);
+                    resolve(testCase);
+                } catch (e) {
+                    reject(e);
+                }
             });
         });
     }
 
-    update(id, data) {
+    update(id, data, io) {
         return new Promise((resolve, reject) => {
             const { testCaseId, testName, description, expectedResult } = data;
             const query = 'UPDATE test_cases SET testCaseId = ?, testName = ?, description = ?, expectedResult = ? WHERE id = ?';
-            db.query(query, [testCaseId, testName, description, expectedResult, id], (err) => {
+            db.query(query, [testCaseId, testName, description, expectedResult, id], async (err) => {
                 if (err) return reject(err);
-                this.getById(id)
-                    .then(testCase => resolve(testCase))
-                    .catch(err => reject(err));
+                
+                try {
+                    const testCase = await this.getById(id);
+                    if (io) {
+                        io.emit('test_case_updated', testCase);
+                    }
+                    if (testCase && testCase.projectId) {
+                        await projectService.autoUpdateStatus(testCase.projectId, io);
+                    }
+                    resolve(testCase);
+                } catch (e) {
+                    reject(e);
+                }
             });
         });
     }
 
-    updateStatus(id, status, comment, testerId, testerName) {
+    updateStatus(id, status, comment, testerId, testerName, io) {
         return new Promise((resolve, reject) => {
             const query = 'UPDATE test_cases SET status = ?, comment = ?, testerId = ?, testerName = ? WHERE id = ?';
-            db.query(query, [status, comment || null, testerId || null, testerName || null, id], (err) => {
+            db.query(query, [status, comment || null, testerId || null, testerName || null, id], async (err) => {
                 if (err) return reject(err);
-                this.getById(id)
-                    .then(testCase => resolve(testCase))
-                    .catch(err => reject(err));
+                
+                try {
+                    const testCase = await this.getById(id);
+                    if (io) {
+                        io.emit('test_case_updated', testCase);
+                    }
+                    if (testCase && testCase.projectId) {
+                        await projectService.autoUpdateStatus(testCase.projectId, io);
+                    }
+                    resolve(testCase);
+                } catch (e) {
+                    reject(e);
+                }
             });
         });
     }
 
-    delete(id) {
+    delete(id, io) {
         return new Promise((resolve, reject) => {
-            const query = 'DELETE FROM test_cases WHERE id = ?';
-            db.query(query, [id], (err) => {
-                if (err) return reject(err);
-                resolve({ id });
-            });
+            this.getById(id).then(testCase => {
+                if (!testCase) return resolve({ id });
+                
+                const query = 'DELETE FROM test_cases WHERE id = ?';
+                db.query(query, [id], async (err) => {
+                    if (err) return reject(err);
+                    
+                    if (io) {
+                        io.emit('test_case_deleted', { id: parseInt(id) || id });
+                    }
+                    await projectService.autoUpdateStatus(testCase.projectId, io);
+                    resolve({ id });
+                });
+            }).catch(reject);
         });
     }
 }

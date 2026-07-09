@@ -12,13 +12,11 @@ class AuthService {
                 
                 if (results.length > 0) {
                     const user = results[0];
-                    
                     let isMatch = false;
                     
                     if (user.password && (user.password.startsWith('$2b$') || user.password.startsWith('$2a$'))) {
                         isMatch = await bcrypt.compare(password, user.password);
                     } else {
-                        
                         isMatch = (password === user.password);
                     }
                     

@@ -14,24 +14,24 @@ class AuthController {
         try {
             const user = await authService.login(email, password);
 
-            if (user) {
-                const token = jwt.sign(
-                    { id: user.id, email: user.email, role: user.role, nom: user.nom, prenom: user.prenom },
-                    JWT_SECRET,
-                    { expiresIn: '24h' }
-                );
-
-                res.status(200).json({
-                    message: 'Connexion réussie',
-                    user: user,
-                    token: token
-                });
-            } else {
-                res.status(401).json({ message: 'Email ou mot de passe incorrect.' });
+            if (!user) {
+                return res.status(401).json({ message: 'Email ou mot de passe incorrect.' });
             }
+
+            const token = jwt.sign(
+                { id: user.id, email: user.email, role: user.role, nom: user.nom, prenom: user.prenom },
+                JWT_SECRET,
+                { expiresIn: '24h' }
+            );
+
+            return res.status(200).json({
+                message: 'Connexion réussie',
+                user,
+                token
+            });
         } catch (error) {
-            console.error('Erreur lors du login:', error);
-            res.status(500).json({ message: 'Erreur interne du serveur.' });
+            console.error(error);
+            return res.status(500).json({ message: 'Erreur interne du serveur.' });
         }
     }
 }

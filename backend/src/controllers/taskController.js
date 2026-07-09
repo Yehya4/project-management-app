@@ -1,14 +1,13 @@
 const taskService = require('../services/taskService');
-const projectService = require('../services/projectService');
 
 class TaskController {
     async getAll(req, res) {
         try {
             const tasks = await taskService.getAll();
-            res.json(tasks);
+            return res.json(tasks);
         } catch (err) {
-            console.error('Error fetching tasks:', err);
-            res.status(500).json({ message: 'Erreur lors de la récupération des tâches.' });
+            console.error(err);
+            return res.status(500).json({ message: 'Erreur lors de la récupération des tâches.' });
         }
     }
 
@@ -16,10 +15,10 @@ class TaskController {
         try {
             const { projectId } = req.params;
             const tasks = await taskService.getByProjectId(projectId);
-            res.json(tasks);
+            return res.json(tasks);
         } catch (err) {
-            console.error('Error fetching tasks by project:', err);
-            res.status(500).json({ message: 'Erreur lors de la récupération des tâches du projet.' });
+            console.error(err);
+            return res.status(500).json({ message: 'Erreur lors de la récupération des tâches du projet.' });
         }
     }
 
@@ -32,6 +31,7 @@ class TaskController {
             }
 
             const taskId = id || `TASK-${Date.now()}`;
+            const io = req.app.get('io');
             const task = await taskService.create({
                 id: taskId,
                 projectId,
@@ -40,18 +40,12 @@ class TaskController {
                 priority,
                 assigneeId,
                 status
-            });
+            }, io);
 
-            const io = req.app.get('io');
-            if (io) {
-                io.emit('task_created', task);
-            }
-            await projectService.autoUpdateStatus(projectId, io);
-
-            res.status(201).json(task);
+            return res.status(201).json(task);
         } catch (err) {
-            console.error('Error creating task:', err);
-            res.status(500).json({ message: 'Erreur lors de la création de la tâche.' });
+            console.error(err);
+            return res.status(500).json({ message: 'Erreur lors de la création de la tâche.' });
         }
     }
 
@@ -59,19 +53,12 @@ class TaskController {
         try {
             const { id } = req.params;
             const updates = req.body;
-            const task = await taskService.update(id, updates);
-            const taskData = await taskService.getById(id);
             const io = req.app.get('io');
-            if (io) {
-                io.emit('task_updated', taskData);
-            }
-            if (taskData) {
-                await projectService.autoUpdateStatus(taskData.projectId, io);
-            }
-            res.json(task);
+            const task = await taskService.update(id, updates, io);
+            return res.json(task);
         } catch (err) {
-            console.error('Error updating task:', err);
-            res.status(500).json({ message: 'Erreur lors de la mise à jour de la tâche.' });
+            console.error(err);
+            return res.status(500).json({ message: 'Erreur lors de la mise à jour de la tâche.' });
         }
     }
 
@@ -82,38 +69,24 @@ class TaskController {
             if (!status) {
                 return res.status(400).json({ message: 'Le statut est requis.' });
             }
-            const task = await taskService.updateStatus(id, status);
-            const taskData = await taskService.getById(id);
             const io = req.app.get('io');
-            if (io) {
-                io.emit('task_updated', taskData);
-            }
-            if (taskData) {
-                await projectService.autoUpdateStatus(taskData.projectId, io);
-            }
-            res.json(task);
+            const task = await taskService.updateStatus(id, status, io);
+            return res.json(task);
         } catch (err) {
-            console.error('Error updating task status:', err);
-            res.status(500).json({ message: 'Erreur lors de la mise à jour du statut de la tâche.' });
+            console.error(err);
+            return res.status(500).json({ message: 'Erreur lors de la mise à jour du statut de la tâche.' });
         }
     }
 
     async delete(req, res) {
         try {
             const { id } = req.params;
-            const taskData = await taskService.getById(id);
-            await taskService.delete(id);
             const io = req.app.get('io');
-            if (io) {
-                io.emit('task_deleted', { id });
-            }
-            if (taskData) {
-                await projectService.autoUpdateStatus(taskData.projectId, io);
-            }
-            res.json({ message: 'Tâche supprimée avec succès.' });
+            await taskService.delete(id, io);
+            return res.json({ message: 'Tâche supprimée avec succès.' });
         } catch (err) {
-            console.error('Error deleting task:', err);
-            res.status(500).json({ message: 'Erreur lors de la suppression de la tâche.' });
+            console.error(err);
+            return res.status(500).json({ message: 'Erreur lors de la suppression de la tâche.' });
         }
     }
 }

@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const projectService = require('./projectService');
 
 class TaskService {
     getAll() {
@@ -19,18 +20,28 @@ class TaskService {
         });
     }
 
-    create(taskData) {
+    create(taskData, io) {
         return new Promise((resolve, reject) => {
             const { id, projectId, title, description, priority, assigneeId, status } = taskData;
             const query = 'INSERT INTO tasks (id, projectId, title, description, priority, assigneeId, status) VALUES (?, ?, ?, ?, ?, ?, ?)';
-            db.query(query, [id, projectId, title, description || null, priority, assigneeId || null, status], (err) => {
+            db.query(query, [id, projectId, title, description || null, priority, assigneeId || null, status], async (err) => {
                 if (err) return reject(err);
-                resolve({ id, ...taskData, createdAt: new Date().toISOString() });
+                const task = { id, ...taskData, createdAt: new Date().toISOString() };
+                
+                if (io) {
+                    io.emit('task_created', task);
+                }
+                try {
+                    await projectService.autoUpdateStatus(projectId, io);
+                } catch (projectErr) {
+                    console.error(projectErr);
+                }
+                resolve(task);
             });
         });
     }
 
-    update(id, updates) {
+    update(id, updates, io) {
         return new Promise((resolve, reject) => {
             let query = 'UPDATE tasks SET ';
             const fields = [];
@@ -62,18 +73,43 @@ class TaskService {
             query += fields.join(', ') + ' WHERE id = ?';
             values.push(id);
 
-            db.query(query, values, (err) => {
+            db.query(query, values, async (err) => {
                 if (err) return reject(err);
-                resolve({ id, ...updates });
+                const task = { id, ...updates };
+                
+                try {
+                    const taskData = await this.getById(id);
+                    if (io) {
+                        io.emit('task_updated', taskData);
+                    }
+                    if (taskData) {
+                        await projectService.autoUpdateStatus(taskData.projectId, io);
+                    }
+                } catch (dataErr) {
+                    console.error(dataErr);
+                }
+                resolve(task);
             });
         });
     }
 
-    updateStatus(id, status) {
+    updateStatus(id, status, io) {
         return new Promise((resolve, reject) => {
             const query = 'UPDATE tasks SET status = ? WHERE id = ?';
-            db.query(query, [status, id], (err) => {
+            db.query(query, [status, id], async (err) => {
                 if (err) return reject(err);
+                
+                try {
+                    const taskData = await this.getById(id);
+                    if (io) {
+                        io.emit('task_updated', taskData);
+                    }
+                    if (taskData) {
+                        await projectService.autoUpdateStatus(taskData.projectId, io);
+                    }
+                } catch (dataErr) {
+                    console.error(dataErr);
+                }
                 resolve({ id, status });
             });
         });
@@ -88,12 +124,25 @@ class TaskService {
         });
     }
 
-    delete(id) {
+    delete(id, io) {
         return new Promise((resolve, reject) => {
-            db.query('DELETE FROM tasks WHERE id = ?', [id], (err) => {
-                if (err) return reject(err);
-                resolve({ id });
-            });
+            this.getById(id).then(taskData => {
+                db.query('DELETE FROM tasks WHERE id = ?', [id], async (err) => {
+                    if (err) return reject(err);
+                    
+                    if (io) {
+                        io.emit('task_deleted', { id });
+                    }
+                    if (taskData) {
+                        try {
+                            await projectService.autoUpdateStatus(taskData.projectId, io);
+                        } catch (projectErr) {
+                            console.error(projectErr);
+                        }
+                    }
+                    resolve({ id });
+                });
+            }).catch(reject);
         });
     }
 }

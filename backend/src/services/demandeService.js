@@ -30,7 +30,7 @@ class DemandeService {
         });
     }
 
-    create(demandeData) {
+    create(demandeData, io) {
         return new Promise((resolve, reject) => {
             db.query('SELECT COUNT(*) AS count FROM demandes', (err, results) => {
                 if (err) return reject(err);
@@ -59,7 +59,25 @@ class DemandeService {
 
                 db.query(query, values, (err) => {
                     if (err) return reject(err);
-                    resolve({ id: newId, ...demandeData, statut: initialStatut, dateCreation });
+                    const newDemande = { id: newId, ...demandeData, statut: initialStatut, dateCreation };
+                    
+                    if (io && initialStatut !== 'Brouillon') {
+                        const notification = {
+                            id: Date.now(),
+                            title: 'Nouvelle demande SI',
+                            message: `Une nouvelle demande (${newId}) a été soumise par ${nomDemandeur || 'un utilisateur'}.`,
+                            date: 'À l\'instant',
+                            read: false,
+                            type: 'info'
+                        };
+                        const target = io.to('role_Admin').to('role_Sponsor').to('role_Project Manager');
+                        if (nomDemandeur) {
+                            target.to(`name_${nomDemandeur}`);
+                        }
+                        target.emit('new_notification', notification);
+                    }
+                    
+                    resolve(newDemande);
                 });
             });
         });
@@ -91,11 +109,54 @@ class DemandeService {
         });
     }
 
-    updateStatus(id, statut) {
+    updateStatus(id, statut, io) {
         return new Promise((resolve, reject) => {
-            db.query('UPDATE demandes SET statut = ? WHERE id = ?', [statut, id], (err) => {
+            db.query('UPDATE demandes SET statut = ? WHERE id = ?', [statut, id], async (err) => {
                 if (err) return reject(err);
-                resolve({ id, statut });
+                const result = { id, statut };
+                
+                if (io) {
+                    let nomDemandeur = null;
+                    try {
+                        const demande = await this.getById(id);
+                        if (demande) {
+                            nomDemandeur = demande.nomDemandeur;
+                        }
+                    } catch (err) {
+                        console.error(err);
+                    }
+
+                    let notification = null;
+                    if (statut === 'En attente') {
+                        notification = {
+                            id: Date.now(),
+                            title: 'Demande soumise',
+                            message: `La demande (${id}) a été soumise et est en attente.`,
+                            date: 'À l\'instant',
+                            read: false,
+                            type: 'info'
+                        };
+                    } else if (statut === 'Acceptée' || statut === 'Refusée') {
+                        notification = {
+                            id: Date.now(),
+                            title: `Demande ${statut}`,
+                            message: `La demande (${id}) a été ${statut.toLowerCase()}.`,
+                            date: 'À l\'instant',
+                            read: false,
+                            type: statut === 'Acceptée' ? 'success' : 'warning'
+                        };
+                    }
+
+                    if (notification) {
+                        const target = io.to('role_Admin').to('role_Sponsor').to('role_Project Manager');
+                        if (nomDemandeur) {
+                            target.to(`name_${nomDemandeur}`);
+                        }
+                        target.emit('new_notification', notification);
+                    }
+                }
+                
+                resolve(result);
             });
         });
     }

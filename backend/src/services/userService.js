@@ -6,7 +6,7 @@ class UserService {
         return new Promise((resolve, reject) => {
             db.query('SELECT id, matricule, nom, prenom, fonction, telephone, emailPersonnelle, email, role, archived FROM users ORDER BY created_at DESC', (err, results) => {
                 if (err) return reject(err);
-                resolve(results);
+                resolve(results.map(u => ({ ...u, archived: u.archived === 1 })));
             });
         });
     }
@@ -55,7 +55,11 @@ class UserService {
         return new Promise((resolve, reject) => {
             db.query('SELECT id, matricule, nom, prenom, fonction, telephone, emailPersonnelle, email, role, archived FROM users WHERE id = ?', [id], (err, results) => {
                 if (err) return reject(err);
-                resolve(results[0] || null);
+                if (results[0]) {
+                    resolve({ ...results[0], archived: results[0].archived === 1 });
+                } else {
+                    resolve(null);
+                }
             });
         });
     }

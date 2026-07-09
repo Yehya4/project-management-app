@@ -37,17 +37,13 @@ io.on('connection', (socket) => {
     });
     
     socket.on('send_message', async (messageData) => {
-        
         const savedMessage = messageService.addMessage(messageData);
         
         if (messageData.recipientId) {
-            // Private message: only emit to sender and recipient rooms
             io.to(`user_${messageData.senderId}`).to(`user_${messageData.recipientId}`).emit('new_message', savedMessage);
         } else {
-            // Public message: emit to all connected clients
             io.emit('new_message', savedMessage);
         }
-        
         
         if (messageData.mentions && messageData.mentions.length > 0) {
             for (const mentionId of messageData.mentions) {
@@ -55,7 +51,6 @@ io.on('connection', (socket) => {
                     const mentionedUser = await userService.getById(mentionId);
                     if (mentionedUser) {
                         const mentionedName = `${mentionedUser.prenom || ''} ${mentionedUser.nom || ''}`.trim();
-                        
                         
                         const notificationForMentioned = {
                             id: Date.now().toString() + Math.random().toString(36).substring(7),
@@ -68,7 +63,6 @@ io.on('connection', (socket) => {
                             link: `/projects/${messageData.projectId}/messages`
                         };
                         io.to(`user_${mentionId}`).emit('new_notification', notificationForMentioned);
-
                         
                         const notificationForSponsorAdmin = {
                             id: Date.now().toString() + Math.random().toString(36).substring(7),

@@ -3,7 +3,6 @@ const path = require('path');
 
 const dataPath = path.join(__dirname, '../data/messages.json');
 
-
 if (!fs.existsSync(path.dirname(dataPath))) {
     fs.mkdirSync(path.dirname(dataPath), { recursive: true });
 }
@@ -22,6 +21,16 @@ const saveMessages = (messages) => {
 
 exports.getAllMessages = () => {
     return getMessages();
+};
+
+exports.getMessagesForUser = (userId) => {
+    const messages = getMessages();
+    return messages.filter(m => {
+        if (!m.recipientId) {
+            return true;
+        }
+        return m.recipientId === userId || m.senderId === userId;
+    });
 };
 
 exports.addMessage = (messageData) => {

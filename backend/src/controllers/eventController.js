@@ -5,10 +5,10 @@ class EventController {
         try {
             const { projectId } = req.params;
             const events = await eventService.getEventsByProjectId(projectId);
-            res.json(events);
+            return res.json(events);
         } catch (error) {
-            console.error('Error in getEventsByProject:', error);
-            res.status(500).json({ error: 'Internal Server Error' });
+            console.error(error);
+            return res.status(500).json({ error: 'Internal Server Error' });
         }
     }
 
@@ -17,10 +17,10 @@ class EventController {
             const { projectId } = req.params;
             const eventData = { ...req.body, projectId };
             const newEvent = await eventService.addEvent(eventData);
-            res.status(201).json(newEvent);
+            return res.status(201).json(newEvent);
         } catch (error) {
-            console.error('Error in createEvent:', error);
-            res.status(500).json({ error: 'Internal Server Error' });
+            console.error(error);
+            return res.status(500).json({ error: 'Internal Server Error' });
         }
     }
 
@@ -28,10 +28,10 @@ class EventController {
         try {
             const { id } = req.params;
             const updatedEvent = await eventService.updateEvent(id, req.body);
-            res.json(updatedEvent);
+            return res.json(updatedEvent);
         } catch (error) {
-            console.error('Error in updateEvent:', error);
-            res.status(500).json({ error: 'Internal Server Error' });
+            console.error(error);
+            return res.status(500).json({ error: 'Internal Server Error' });
         }
     }
 
@@ -39,10 +39,10 @@ class EventController {
         try {
             const { id } = req.params;
             await eventService.deleteEvent(id);
-            res.json({ message: 'Event deleted successfully' });
+            return res.json({ message: 'Event deleted successfully' });
         } catch (error) {
-            console.error('Error in deleteEvent:', error);
-            res.status(500).json({ error: 'Internal Server Error' });
+            console.error(error);
+            return res.status(500).json({ error: 'Internal Server Error' });
         }
     }
 }
