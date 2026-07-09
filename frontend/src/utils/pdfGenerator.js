@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 
-export const generateDemandePDF = (demande) => {
+export const generateDemandePDF = (demande, shouldSave = true) => {
   return new Promise((resolve, reject) => {
     try {
       const doc = new jsPDF({
@@ -184,8 +184,12 @@ export const generateDemandePDF = (demande) => {
       drawCheckbox('Non', isRefusee, validateX, y);
       
       
-      doc.save(`Demande_SI_${demande.id}.pdf`);
-      resolve();
+      if (shouldSave) {
+        doc.save(`Demande_SI_${demande.id}.pdf`);
+        resolve();
+      } else {
+        resolve(doc.output('bloburl'));
+      }
     } catch (error) {
       console.error('Erreur lors de la génération du PDF:', error);
       reject(error);
@@ -193,7 +197,7 @@ export const generateDemandePDF = (demande) => {
   });
 };
 
-export const generateCharterPDF = (charter, demande) => {
+export const generateCharterPDF = (charter, demande, shouldSave = true) => {
   return new Promise((resolve, reject) => {
     try {
       const doc = new jsPDF({
@@ -262,11 +266,40 @@ export const generateCharterPDF = (charter, demande) => {
       y += 6;
       doc.text(`Chef de Projet IT : ${charter.chefProjetIT || ''}`, startX + 5, y);
       
-      doc.save(`Project_Charter_${demande?.id || 'doc'}.pdf`);
-      resolve();
+      if (shouldSave) {
+        doc.save(`Project_Charter_${demande?.id || 'doc'}.pdf`);
+        resolve();
+      } else {
+        resolve(doc.output('bloburl'));
+      }
     } catch (error) {
       console.error('Erreur génération charte PDF:', error);
       reject(error);
     }
   });
+};
+
+export const generateFilePreviewPDF = (fileName, docType, projectName) => {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+  
+  doc.setFont('times', 'bold');
+  doc.setFontSize(16);
+  doc.text(`Aperçu : ${docType}`, 20, 20);
+  doc.setFontSize(12);
+  doc.text(`Projet : ${projectName}`, 20, 30);
+  doc.text(`Fichier d'origine : ${fileName}`, 20, 38);
+  doc.setLineWidth(0.5);
+  doc.line(20, 45, 190, 45);
+  
+  doc.setFont('times', 'normal');
+  doc.setFontSize(11);
+  doc.text(`Ceci est un aperçu généré du document "${fileName}".`, 20, 55);
+  doc.text(`Dans un environnement réel, ce document serait stocké de manière sécurisée`, 20, 62);
+  doc.text(`sur le serveur et son contenu réel serait affiché ici.`, 20, 69);
+  
+  return doc.output('bloburl');
 };

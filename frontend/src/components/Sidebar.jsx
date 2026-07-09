@@ -58,7 +58,6 @@ const Sidebar = () => {
           dashboardLink,
           { path: '/demande-si', name: 'Demandes SI', icon: <FileText size={20} /> },
           ...commonLinks,
-          { path: '/team', name: 'Mon Équipe', icon: <Users size={20} /> }
         ];
 
       case 'Sponsor':
@@ -74,7 +73,6 @@ const Sidebar = () => {
           dashboardLink,
           { path: '/demande-si', name: 'Demandes SI', icon: <FileText size={20} /> },
           ...commonLinks,
-          { path: '/team', name: 'Mon Équipe', icon: <Users size={20} /> },
           { path: '/reports', name: 'Rapports Stratégiques', icon: <PieChart size={20} /> },
           { path: '/users', name: 'Utilisateurs', icon: <Users size={20} /> },
           { path: '/workflow', name: 'Workflows', icon: <GitMerge size={20} /> },

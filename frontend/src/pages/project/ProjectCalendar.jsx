@@ -374,7 +374,7 @@ const ProjectCalendar = () => {
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Titre de l'événement</label>
                 <input 
                   type="text"
-                  placeholder="Ex: Réunion de Sprint, Livraison Prototype, etc."
+                  placeholder="Ex: Réunion de Sprint, Déploiement Prototype, etc."
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-slate-800 text-sm transition-all"

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { useTestCases, useTeam, useAuth } from '../../context/AppContext';
+import { useTestCases, useTeam, useAuth, useProjects } from '../../context/AppContext';
 import { 
   Plus, 
   FlaskConical, 
@@ -21,6 +21,7 @@ const ProjectTests = () => {
   const { project, isPending } = useOutletContext();
   const { user } = useAuth();
   const { getTeamByProjectId } = useTeam();
+  const { updateProject } = useProjects();
   const { 
     testCases, 
     fetchTestCases, 
@@ -59,12 +60,11 @@ const ProjectTests = () => {
   }, [project?.id]);
 
   // Determine permissions
-  const isAdmin = user?.role === 'Admin';
-  const isPM = user?.role === 'Project Manager';
-  const isProjectChef = project?.chefProjet && (
-    user?.fullName === project.chefProjet || 
-    `${user?.prenom || ''} ${user?.nom || ''}`.trim() === project.chefProjet
-  );
+  const isAdmin       = user?.role === 'Admin';
+  const isPM          = user?.role === 'Project Manager';
+  const isSponsor     = user?.role === 'Sponsor';
+  const isProjectChef = project?.chefProjet &&
+    (`${user?.prenom || ''} ${user?.nom || ''}`.trim() === project.chefProjet);
   
   const isAssignedDev = teamMembers.some(
     m => m.userId.toString() === user?.id?.toString() && 
@@ -76,8 +76,13 @@ const ProjectTests = () => {
     m.role === 'QA / Testeur'
   );
 
-  const canCreateTest = isAdmin || isPM || isProjectChef || isAssignedDev;
-  const canRunTest = isAssignedTester || isAdmin || isPM || isProjectChef;
+  // PM, Sponsor, Admin, Chef de projet, Dev can CREATE tests
+  const canCreateTest = isAdmin || isPM || isSponsor || isProjectChef || isAssignedDev;
+  // Testers, PM, Sponsor, Admin, Chef can RUN tests
+  const canRunTest    = isAssignedTester || isAdmin || isPM || isSponsor || isProjectChef;
+
+  // ── Auto-transition est géré par le backend en temps réel ─────────────────────────
+  const allTestsPassed = testCases.length > 0 && testCases.every(t => t.status === 'Réussite');
 
   // Filter test cases
   const filteredTests = testCases.filter(t => {
@@ -153,8 +158,13 @@ const ProjectTests = () => {
   const handleRunSubmit = async (e) => {
     e.preventDefault();
     if (!selectedTestCase) return;
+    // Mandatory comment on failure
+    if (runData.status === 'Non Réussite' && !runData.comment.trim()) {
+      alert('Un commentaire est obligatoire lorsque le test échoue.');
+      return;
+    }
 
-    const testerId = user.id;
+    const testerId   = user.id;
     const testerName = `${user.prenom || ''} ${user.nom || ''}`.trim();
 
     await updateTestCaseStatus(
@@ -198,6 +208,27 @@ const ProjectTests = () => {
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+
+      {/* Banner: all tests passed */}
+      {allTestsPassed && project?.status === 'Testing' && (
+        <div className="md:col-span-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 p-4 rounded-2xl flex items-center gap-3 shadow-sm">
+          <div className="p-2 bg-emerald-500 text-white rounded-xl"><CheckCircle2 size={20} /></div>
+          <div>
+            <p className="font-bold text-emerald-900">Tous les tests sont réussis !</p>
+            <p className="text-emerald-700 text-sm">Passage automatique à la phase <strong>Déploiement</strong> en cours…</p>
+          </div>
+        </div>
+      )}
+
+      {/* Banner: some tests failing */}
+      {failCount > 0 && (
+        <div className="md:col-span-4 bg-rose-50 border border-rose-200 p-4 rounded-2xl flex items-center gap-3">
+          <XCircle size={20} className="text-rose-600 shrink-0" />
+          <p className="text-rose-800 text-sm font-semibold">
+            {failCount} test(s) en échec — Les testeurs doivent corriger et relancer les tests.
+          </p>
+        </div>
+      )}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Total cas de test</span>
           <div className="flex justify-between items-baseline mt-2">

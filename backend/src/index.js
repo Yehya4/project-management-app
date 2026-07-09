@@ -40,8 +40,13 @@ io.on('connection', (socket) => {
         
         const savedMessage = messageService.addMessage(messageData);
         
-        
-        io.emit('new_message', savedMessage);
+        if (messageData.recipientId) {
+            // Private message: only emit to sender and recipient rooms
+            io.to(`user_${messageData.senderId}`).to(`user_${messageData.recipientId}`).emit('new_message', savedMessage);
+        } else {
+            // Public message: emit to all connected clients
+            io.emit('new_message', savedMessage);
+        }
         
         
         if (messageData.mentions && messageData.mentions.length > 0) {

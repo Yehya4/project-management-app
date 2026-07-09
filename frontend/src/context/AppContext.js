@@ -676,7 +676,10 @@ export const TaskProvider = ({ children }) => {
       });
       if (res.ok) {
         const newTask = await res.json();
-        setTasks(prev => [newTask, ...prev]);
+        setTasks(prev => {
+          if (prev.some(t => t.id === newTask.id)) return prev;
+          return [newTask, ...prev];
+        });
       }
     } catch (err) {
       console.error('Erreur ajout tâche', err);
@@ -846,7 +849,7 @@ export const MessageProvider = ({ children }) => {
     }
   };
 
-  const sendMessage = (content, mentions = [], projectId = null) => {
+  const sendMessage = (content, mentions = [], projectId = null, recipientId = null) => {
     if (socket && user) {
       const messageData = {
         content,
@@ -854,7 +857,8 @@ export const MessageProvider = ({ children }) => {
         senderName: user.name || `${user.nom} ${user.prenom}`,
         senderRole: user.role,
         mentions,
-        projectId
+        projectId,
+        recipientId
       };
       socket.emit('send_message', messageData);
     }

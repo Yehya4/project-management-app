@@ -7,12 +7,15 @@ import { generateDemandePDF } from '../../utils/pdfGenerator';
 import { useDemandes } from '../../context/AppContext';
 import { useProjects } from '../../context/AppContext';
 import { useUser } from '../../context/AppContext';
+import { useCharter } from '../../context/AppContext';
 
 const PMDashboard = () => {
   const { demandes, updateDemandeStatus } = useDemandes();
   const [popup, setPopup] = React.useState({ isOpen: false, title: '', message: '', type: 'success' });
   const { projects } = useProjects();
   const { users } = useUser();
+  const { charters } = useCharter();
+  const { user } = useAuth();
 
   const filteredDemandes = demandes.filter(d => d.statut !== 'Brouillon');
 
@@ -33,6 +36,17 @@ const PMDashboard = () => {
       setPopup({ isOpen: true, title: 'Erreur', message: 'Une erreur est survenue lors de l\'exportation du PDF.', type: 'error' });
     }
   };
+
+  const myChartersPendingAction = charters.filter(c => {
+    if (c.statut !== 'Envoyé au Demandeur') return false;
+    const relatedDemande = demandes.find(d => d.id === c.demandeId);
+    if (!relatedDemande) return false;
+    return (
+      relatedDemande.nomDemandeur === user?.name ||
+      relatedDemande.nomDemandeur === `${user?.prenom} ${user?.nom}`.trim() ||
+      relatedDemande.nomDemandeur === `${user?.nom} ${user?.prenom}`.trim()
+    );
+  });
 
   const activeProjects = projects.filter(p => p.status !== 'Utilisation').length;
 
@@ -86,6 +100,36 @@ const PMDashboard = () => {
         </div>
       </div>
 
+      {myChartersPendingAction.length > 0 && (
+        <div className="bg-white rounded-3xl shadow-sm border border-indigo-200 overflow-hidden">
+          <div className="px-6 py-5 border-b border-indigo-100 bg-indigo-50 flex items-center gap-3">
+            <div className="w-9 h-9 bg-indigo-600 text-white rounded-xl flex items-center justify-center shadow-sm">
+              <span className="font-bold">!</span>
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-indigo-900">Charte(s) en attente de votre validation (en tant que Demandeur)</h2>
+              <p className="text-xs text-indigo-600 mt-0.5">Veuillez lire et accepter vos propres chartes.</p>
+            </div>
+          </div>
+          <div className="p-5 space-y-3">
+            {myChartersPendingAction.map(charter => (
+              <div key={charter.demandeId} className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-indigo-50/50 border border-indigo-100 rounded-2xl">
+                <div>
+                  <p className="font-bold text-slate-800">{charter.titre || `Projet — ${charter.demandeId}`}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Demande : <span className="font-semibold">{charter.demandeId}</span></p>
+                </div>
+                <Link
+                  to={`/project-charter?demandeId=${charter.demandeId}`}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-colors shadow-sm"
+                >
+                  Accepter la charte
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/80">
           <h2 className="text-lg font-bold text-slate-800">Vue d'ensemble des Projets</h2>
@@ -118,7 +162,7 @@ const PMDashboard = () => {
                     project.status === 'Initiation' ? 'bg-blue-100 text-blue-700' :
                     project.status === 'Développement' || project.status === 'En cours' || project.status === 'In Progress' ? 'bg-indigo-100 text-indigo-700' :
                     project.status === 'Testing' || project.status === 'Fait' ? 'bg-purple-100 text-purple-700' :
-                    project.status === 'Livraison' || ['Clôture', 'Clôturée'].includes(project.status) ? 'bg-amber-100 text-amber-700' :
+                    project.status === 'Déploiement' || ['Clôture', 'Clôturée'].includes(project.status) ? 'bg-amber-100 text-amber-700' :
                     project.status === 'Utilisation' || ['Archive', 'Archivée'].includes(project.status) ? 'bg-emerald-100 text-emerald-700' :
                     'bg-slate-100 text-slate-700'
                   }`}
@@ -182,7 +226,7 @@ const PMDashboard = () => {
                       {demande.id}
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-500">
-                      {demande.demandeur} ({demande.fonction})
+                      {demande.nomDemandeur} ({demande.fonction})
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-500">
                       {demande.domaines.join(', ')}

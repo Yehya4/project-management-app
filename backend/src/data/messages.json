@@ -68,5 +68,38 @@
     ],
     "projectId": "PRJ-2026-003",
     "createdAt": "2026-07-08T09:26:23.451Z"
+  },
+  {
+    "id": "1783590902480",
+    "content": "bonjour",
+    "senderId": "u3",
+    "senderName": "Sponsor Directeur",
+    "senderRole": "Sponsor",
+    "mentions": [],
+    "projectId": "PRJ-2026-001",
+    "recipientId": "u1783437439512",
+    "createdAt": "2026-07-09T09:55:02.480Z"
+  },
+  {
+    "id": "1783590904112",
+    "content": "cv",
+    "senderId": "u3",
+    "senderName": "Sponsor Directeur",
+    "senderRole": "Sponsor",
+    "mentions": [],
+    "projectId": "PRJ-2026-001",
+    "recipientId": "u1783437439512",
+    "createdAt": "2026-07-09T09:55:04.112Z"
+  },
+  {
+    "id": "1783590934795",
+    "content": "salam",
+    "senderId": "u1783437439512",
+    "senderName": "developer fullstack",
+    "senderRole": "Developer",
+    "mentions": [],
+    "projectId": "PRJ-2026-001",
+    "recipientId": "u3",
+    "createdAt": "2026-07-09T09:55:34.795Z"
   }
 ]

@@ -1,81 +1,92 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { useTasks, useTeam, useAuth } from '../../context/AppContext';
-import { PlusCircle, MoreHorizontal, X, Clock, AlertTriangle, CheckCircle, Tag, User } from 'lucide-react';
+import { useTasks, useTeam, useAuth, useProjects } from '../../context/AppContext';
+import {
+  PlusCircle, MoreHorizontal, X, Clock, CheckCircle, CheckCheck,
+  Tag, User, AlertTriangle, FlaskConical, ArrowRight, Lock
+} from 'lucide-react';
+
+/* ─────────────────────────────────────────────────────────────────
+   HELPERS
+───────────────────────────────────────────────────────────────── */
+
+const COLUMNS = [
+  { id: 'En cours',  title: 'En cours',  color: 'border-blue-400',   dot: 'bg-blue-400'   },
+  { id: 'Fait',      title: 'Fait',      color: 'border-emerald-400', dot: 'bg-emerald-400' },
+  { id: 'Clôturée',  title: 'Clôturée',  color: 'border-purple-400',  dot: 'bg-purple-400'  },
+  { id: 'Archivée',  title: 'Archivée',  color: 'border-slate-300',   dot: 'bg-slate-300'   },
+];
+
+const getPriorityStyle = (p) => ({
+  Basse:    'bg-slate-100 text-slate-600',
+  Moyenne:  'bg-blue-100  text-blue-700',
+  Haute:    'bg-amber-100 text-amber-700',
+  Critique: 'bg-red-100   text-red-700',
+}[p] || 'bg-slate-100 text-slate-600');
+
+/* ─────────────────────────────────────────────────────────────────
+   MAIN COMPONENT
+───────────────────────────────────────────────────────────────── */
 
 const ProjectTasks = () => {
   const { project, isPending } = useOutletContext();
   const { tasks, addTask, updateTaskStatus } = useTasks();
   const { getTeamByProjectId } = useTeam();
+  const { updateProject } = useProjects();
   const { user } = useAuth();
 
   const projectTasks = tasks.filter(t => t.projectId === project.id);
-  const teamMembers = getTeamByProjectId(project.id) || [];
+  const teamMembers  = getTeamByProjectId(project.id) || [];
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen,  setIsModalOpen]  = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    priority: 'Moyenne',
-    assigneeId: '',
-    status: 'En cours'
+  const [formData,     setFormData]     = useState({
+    title: '', description: '', priority: 'Moyenne', assigneeId: '', status: 'En cours'
   });
 
-  const columns = [
-    { id: 'En cours', title: 'En cours' },
-    { id: 'Fait', title: 'Fait' },
-    { id: 'Clôturée', title: 'Clôturée' },
-    { id: 'Archivée', title: 'Archivée' }
-  ];
+  /* ── Permissions ────────────────────────────────────────────── */
+  const canManageTasks = ['Project Manager', 'Sponsor', 'Admin'].includes(user?.role);
 
+  const canMoveTask = (task) => {
+    if (canManageTasks) return true;
+    // Developer/Tester can only move their own assigned tasks
+    return task.assigneeId?.toString() === user?.id?.toString();
+  };
+
+  /* ── Progress stats ─────────────────────────────────────────── */
+  const doneTasks  = projectTasks.filter(t => ['Fait', 'Clôturée', 'Archivée'].includes(t.status));
+  const totalTasks = projectTasks.length;
+  const doneCount  = doneTasks.length;
+  const progress   = totalTasks > 0 ? Math.round((doneCount / totalTasks) * 100) : 0;
+  const allDone    = totalTasks > 0 && doneCount === totalTasks;
+
+  /* ── Auto-transition est géré par le backend en temps réel ────────────────── */
+
+  /* ── Handlers ───────────────────────────────────────────────── */
   const handleAddTask = (e) => {
     e.preventDefault();
-    addTask({
-      ...formData,
-      projectId: project.id
-    });
+    addTask({ ...formData, projectId: project.id });
     setIsModalOpen(false);
     setFormData({ title: '', description: '', priority: 'Moyenne', assigneeId: '', status: 'En cours' });
   };
 
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case 'Basse': return 'bg-slate-100 text-slate-700';
-      case 'Moyenne': return 'bg-blue-100 text-blue-700';
-      case 'Haute': return 'bg-amber-100 text-amber-700';
-      case 'Critique': return 'bg-red-100 text-red-700';
-      default: return 'bg-slate-100 text-slate-700';
-    }
-  };
-
   const getAssigneeName = (id) => {
     if (!id) return 'Non assigné';
-    const member = teamMembers.find(m => m.userId.toString() === id.toString());
+    const member = teamMembers.find(m => m.userId?.toString() === id?.toString());
     return member ? `${member.user.prenom} ${member.user.nom}` : 'Inconnu';
   };
 
   const handleDragStart = (e, taskId) => {
-    if (user?.role === 'Developer' || user?.role === 'Tester') {
-      const taskToDrag = projectTasks.find(t => t.id === taskId);
-      if (!taskToDrag || taskToDrag.assigneeId?.toString() !== user.id?.toString()) {
-        e.preventDefault();
-        return;
-      }
-    }
+    const task = projectTasks.find(t => t.id === taskId);
+    if (!task || !canMoveTask(task)) { e.preventDefault(); return; }
     e.dataTransfer.setData('taskId', taskId);
   };
 
   const handleDrop = (e, status) => {
     e.preventDefault();
     const taskId = e.dataTransfer.getData('taskId');
-    if (taskId) {
-      if (user?.role === 'Developer' || user?.role === 'Tester') {
-        const taskToDrag = projectTasks.find(t => t.id === taskId);
-        if (!taskToDrag || taskToDrag.assigneeId?.toString() !== user.id?.toString()) {
-          return;
-        }
-      }
+    const task   = projectTasks.find(t => t.id === taskId);
+    if (task && canMoveTask(task)) {
       updateTaskStatus(taskId, status);
     }
   };
@@ -85,98 +96,165 @@ const ProjectTasks = () => {
     setSelectedTask(prev => prev ? { ...prev, status: newStatus } : null);
   };
 
-  const handleDragOver = (e) => {
-    e.preventDefault();
-  };
+  const isDev = project.status === 'Développement';
+  const isTesting = project.status === 'Testing';
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col">
-      <div className="flex justify-between items-center mb-6">
+    <div className="h-[calc(100vh-8rem)] flex flex-col gap-4">
+      
+      {/* ── Header ─────────────────────────────────────────────── */}
+      <div className="flex justify-between items-center shrink-0">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Tâches de développement</h2>
           <p className="text-slate-500">Gérez les tâches de {project.nom}.</p>
         </div>
-        {!isPending && (user?.role === 'Project Manager' || user?.role === 'Admin') && (
-          <button 
+        {!isPending && canManageTasks && project.status !== 'Initiation' && (
+          <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-sm"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors shadow-sm"
           >
-            <PlusCircle size={20} />
-            Nouvelle tâche
+            <PlusCircle size={20} /> Nouvelle tâche
           </button>
         )}
       </div>
 
-      <div className="flex-1 flex gap-6 overflow-x-auto pb-4">
-        {columns.map(column => {
-          const colTasks = projectTasks.filter(t => t.status === column.id);
-          return (
-            <div 
-              key={column.id} 
-              className="flex flex-col bg-slate-100/80 rounded-2xl w-80 shrink-0 border border-slate-200"
-              onDrop={(e) => handleDrop(e, column.id)}
-              onDragOver={handleDragOver}
-            >
-              <div className="p-4 flex items-center justify-between border-b border-slate-200/50">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-slate-800">{column.title}</h3>
-                  <span className="px-2 py-0.5 rounded-full bg-slate-200 text-slate-600 text-xs font-bold">{colTasks.length}</span>
-                </div>
-                <button className="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-200 transition-colors">
-                  <MoreHorizontal size={20} />
-                </button>
-              </div>
-              
-              <div className="flex-1 p-3 flex flex-col gap-3 overflow-y-auto">
-                {colTasks.length > 0 ? (
-                  colTasks.map(task => (
-                    <div 
-                      key={task.id} 
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, task.id)}
-                      onClick={() => setSelectedTask(task)}
-                      className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow hover:border-blue-300 transition-all cursor-pointer group"
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-md ${getPriorityColor(task.priority)}`}>
-                          {task.priority}
-                        </span>
-                        <span className="text-xs font-mono text-slate-400">{task.id.split('-')[1].slice(-4)}</span>
-                      </div>
-                      <h4 className="font-bold text-slate-800 text-sm mb-1 leading-tight group-hover:text-blue-600 transition-colors">{task.title}</h4>
-                      <p className="text-xs text-slate-500 line-clamp-2 mb-3">{task.description}</p>
-                      
-                      <div className="flex justify-between items-center border-t border-slate-100 pt-3">
-                        <div className="flex -space-x-2">
-                          {task.assigneeId ? (
-                            <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold border-2 border-white shadow-sm" title={getAssigneeName(task.assigneeId)}>
-                              {getAssigneeName(task.assigneeId).charAt(0)}
-                            </div>
-                          ) : (
-                            <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-slate-400 border-2 border-white" title="Non assigné">
-                              <User size={12} />
-                            </div>
-                          )}
-                        </div>
-                         {column.id === 'En cours' && <Clock size={14} className="text-blue-500 animate-pulse" />}
-                         {column.id === 'Fait' && <CheckCircle size={14} className="text-emerald-500" />}
-                         {column.id === 'Clôturée' && <CheckCircle size={14} className="text-purple-500" />}
-                         {column.id === 'Archivée' && <Tag size={14} className="text-slate-500" />}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="flex-1 flex flex-col items-center justify-center text-slate-400 text-sm p-4 text-center border-2 border-dashed border-slate-200 rounded-xl m-1 opacity-50">
-                    <p>Déposez des tâches ici</p>
-                  </div>
-                )}
-              </div>
+      {/* ── Progress bar ────────────────────────────────────────── */}
+      {totalTasks > 0 && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm shrink-0">
+          <div className="flex justify-between items-center mb-2">
+            <div className="flex items-center gap-2">
+              <CheckCheck size={16} className="text-emerald-600" />
+              <span className="text-sm font-semibold text-slate-700">
+                {doneCount}/{totalTasks} tâches terminées
+              </span>
             </div>
-          );
-        })}
-      </div>
+            <span className="text-sm font-bold text-slate-700">{progress}%</span>
+          </div>
+          <div className="w-full bg-slate-100 rounded-full h-2">
+            <div
+              className="h-2 rounded-full transition-all duration-500"
+              style={{
+                width: `${progress}%`,
+                background: allDone ? '#10b981' : '#3b82f6'
+              }}
+            />
+          </div>
+          {allDone && isDev && (
+            <div className="mt-3 flex items-center gap-2 text-sm font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl">
+              <FlaskConical size={16} />
+              Toutes les tâches sont terminées — Passage automatique à la phase <strong>Testing</strong> en cours…
+            </div>
+          )}
+          {isTesting && (
+            <div className="mt-3 flex items-center gap-2 text-sm font-semibold text-violet-700 bg-violet-50 border border-violet-200 p-2.5 rounded-xl">
+              <FlaskConical size={16} />
+              Le projet est en phase <strong>Testing</strong>. Rendez-vous dans l'onglet Tests.
+            </div>
+          )}
+        </div>
+      )}
 
-      {}
+      {/* Phase guard — no tasks in Initiation */}
+      {project.status === 'Initiation' && (
+        <div className="flex-1 flex flex-col items-center justify-center bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl text-center p-8">
+          <Lock size={40} className="text-slate-300 mb-3" />
+          <h3 className="font-bold text-slate-600 text-lg mb-1">Phase d'Initiation en cours</h3>
+          <p className="text-slate-400 text-sm max-w-md">
+            Les tâches seront disponibles après la validation de l'Architecture et le passage en <strong>Développement</strong>.
+          </p>
+        </div>
+      )}
+
+      {/* ── Kanban Board ────────────────────────────────────────── */}
+      {project.status !== 'Initiation' && (
+        <div className="flex-1 flex gap-5 overflow-x-auto pb-4">
+          {COLUMNS.map(column => {
+            const colTasks = projectTasks.filter(t => t.status === column.id);
+            return (
+              <div
+                key={column.id}
+                className={`flex flex-col bg-slate-50 rounded-2xl w-72 shrink-0 border-t-4 border border-slate-200 ${column.color}`}
+                onDrop={(e) => handleDrop(e, column.id)}
+                onDragOver={(e) => e.preventDefault()}
+              >
+                {/* Column header */}
+                <div className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2.5 h-2.5 rounded-full ${column.dot}`} />
+                    <h3 className="font-bold text-slate-700 text-sm">{column.title}</h3>
+                    <span className="px-2 py-0.5 rounded-full bg-slate-200 text-slate-600 text-xs font-bold">{colTasks.length}</span>
+                  </div>
+                </div>
+
+                {/* Cards */}
+                <div className="flex-1 p-3 flex flex-col gap-3 overflow-y-auto">
+                  {colTasks.length > 0 ? (
+                    colTasks.map(task => (
+                      <div
+                        key={task.id}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, task.id)}
+                        onClick={() => setSelectedTask(task)}
+                        className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer group"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-md ${getPriorityStyle(task.priority)}`}>
+                            {task.priority}
+                          </span>
+                          <span className="text-xs font-mono text-slate-400">{task.id?.split('-')[1]?.slice(-4)}</span>
+                        </div>
+                        <h4 className="font-bold text-slate-800 text-sm mb-1 leading-tight group-hover:text-blue-600 transition-colors">
+                          {task.title}
+                        </h4>
+                        <p className="text-xs text-slate-500 line-clamp-2 mb-3">{task.description}</p>
+                        <div className="flex justify-between items-center border-t border-slate-100 pt-3">
+                          <div className="flex items-center gap-1.5">
+                            {task.assigneeId ? (
+                              <div
+                                className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold border-2 border-white shadow-sm"
+                                title={getAssigneeName(task.assigneeId)}
+                              >
+                                {getAssigneeName(task.assigneeId).charAt(0)}
+                              </div>
+                            ) : (
+                              <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-slate-400 border-2 border-white">
+                                <User size={12} />
+                              </div>
+                            )}
+                          </div>
+                          {column.id === 'En cours'  && <Clock       size={14} className="text-blue-500 animate-pulse" />}
+                          {column.id === 'Fait'      && <CheckCircle size={14} className="text-emerald-500" />}
+                          {column.id === 'Clôturée'  && <CheckCircle size={14} className="text-purple-500" />}
+                          {column.id === 'Archivée'  && <Tag         size={14} className="text-slate-400" />}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center text-slate-400 text-xs p-4 text-center border-2 border-dashed border-slate-200 rounded-xl opacity-60">
+                      <p>Déposez des tâches ici</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Empty state ─────────────────────────────────────────── */}
+      {project.status !== 'Initiation' && projectTasks.length === 0 && (
+        <div className="flex-1 flex flex-col items-center justify-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 text-center p-8">
+          <PlusCircle size={40} className="text-slate-300 mb-3" />
+          <h3 className="font-bold text-slate-600 text-lg mb-1">Aucune tâche</h3>
+          <p className="text-slate-400 text-sm">
+            {canManageTasks
+              ? 'Créez la première tâche de développement pour commencer.'
+              : 'Aucune tâche ne vous a encore été assignée.'}
+          </p>
+        </div>
+      )}
+
+      {/* ── Modal Créer Tâche ────────────────────────────────────── */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -188,40 +266,40 @@ const ProjectTasks = () => {
                 <X size={24} />
               </button>
             </div>
-            
+
             <div className="overflow-y-auto p-6 flex-1">
-              <form id="task-form" onSubmit={handleAddTask} className="space-y-6">
+              <form id="task-form" onSubmit={handleAddTask} className="space-y-5">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Résumé / Titre <span className="text-red-500">*</span></label>
-                  <input 
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Titre <span className="text-red-500">*</span></label>
+                  <input
                     type="text"
-                    className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
+                    className="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none font-medium"
                     placeholder="ex: Implémenter la page de connexion..."
                     value={formData.title}
-                    onChange={(e) => setFormData({...formData, title: e.target.value})}
+                    onChange={e => setFormData({ ...formData, title: e.target.value })}
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Description détaillée</label>
-                  <textarea 
-                    className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none transition-all min-h-[120px]"
-                    placeholder="Décrivez la tâche, les critères d'acceptation, etc."
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Description</label>
+                  <textarea
+                    className="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none min-h-[100px] text-sm"
+                    placeholder="Décrivez la tâche et les critères d'acceptation..."
                     value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    onChange={e => setFormData({ ...formData, description: e.target.value })}
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-1 flex items-center gap-1">
-                      <Tag size={16} /> Priorité
+                      <Tag size={15} /> Priorité
                     </label>
-                    <select 
-                      className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none"
+                    <select
+                      className="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none"
                       value={formData.priority}
-                      onChange={(e) => setFormData({...formData, priority: e.target.value})}
+                      onChange={e => setFormData({ ...formData, priority: e.target.value })}
                     >
                       <option value="Basse">⬇️ Basse</option>
                       <option value="Moyenne">⏺️ Moyenne</option>
@@ -232,18 +310,22 @@ const ProjectTasks = () => {
 
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-1">Assigner à</label>
-                    <select 
-                      className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none"
+                    <select
+                      className="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none"
                       value={formData.assigneeId}
-                      onChange={(e) => setFormData({...formData, assigneeId: e.target.value})}
+                      onChange={e => setFormData({ ...formData, assigneeId: e.target.value })}
                     >
                       <option value="">Non assigné</option>
                       {teamMembers.map(m => (
-                        <option key={m.userId} value={m.userId}>{m.user.prenom} {m.user.nom} ({m.role})</option>
+                        <option key={m.userId} value={m.userId}>
+                          {m.user.prenom} {m.user.nom} ({m.role})
+                        </option>
                       ))}
                     </select>
                     {teamMembers.length === 0 && (
-                      <p className="text-xs text-amber-600 mt-1">L'équipe est vide. Allez dans "Équipe" pour ajouter des membres.</p>
+                      <p className="text-xs text-amber-600 mt-1">
+                        L'équipe est vide. Allez dans "Équipe" pour ajouter des membres.
+                      </p>
                     )}
                   </div>
                 </div>
@@ -251,18 +333,18 @@ const ProjectTasks = () => {
             </div>
 
             <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="px-6 py-2.5 font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
+                className="px-6 py-2.5 font-semibold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors"
               >
                 Annuler
               </button>
-              <button 
+              <button
                 type="submit"
                 form="task-form"
                 disabled={!formData.title}
-                className="px-6 py-2.5 font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shadow-blue-500/30"
+                className="px-6 py-2.5 font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors disabled:opacity-50 shadow-sm"
               >
                 Créer la tâche
               </button>
@@ -271,61 +353,55 @@ const ProjectTasks = () => {
         </div>
       )}
 
-      {/* Modal Détails Tâche */}
+      {/* ── Modal Détail Tâche ───────────────────────────────────── */}
       {selectedTask && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fadeIn">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="flex justify-between items-center p-6 border-b border-slate-100 shrink-0 bg-slate-50">
               <div>
                 <span className="text-xs font-mono text-slate-400 block mb-1">{selectedTask.id}</span>
-                <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                  Détails de la tâche
-                </h3>
+                <h3 className="text-xl font-bold text-slate-800">Détails de la tâche</h3>
               </div>
-              <button onClick={() => setSelectedTask(null)} className="text-slate-400 hover:text-slate-600 p-1.5 hover:bg-slate-200/50 rounded-lg transition-colors">
+              <button onClick={() => setSelectedTask(null)} className="text-slate-400 hover:text-slate-600 p-1.5 hover:bg-slate-200 rounded-lg transition-colors">
                 <X size={20} />
               </button>
             </div>
-            
-            <div className="overflow-y-auto p-6 space-y-6 flex-1">
+
+            <div className="overflow-y-auto p-6 space-y-5 flex-1">
               <div>
-                <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Titre</h4>
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Titre</h4>
                 <p className="text-lg font-bold text-slate-800">{selectedTask.title}</p>
               </div>
 
               <div>
-                <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Description</h4>
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/60 text-slate-700 text-sm whitespace-pre-wrap min-h-[100px] leading-relaxed">
-                  {selectedTask.description || <em className="text-slate-400">Aucune description détaillée fournie.</em>}
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Description</h4>
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-slate-700 text-sm whitespace-pre-wrap min-h-[80px]">
+                  {selectedTask.description || <em className="text-slate-400">Aucune description.</em>}
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-6 pt-2">
+              <div className="grid grid-cols-2 gap-5">
                 <div>
-                  <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Priorité</h4>
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${getPriorityColor(selectedTask.priority)}`}>
-                    {selectedTask.priority === 'Basse' && '⬇️'}
-                    {selectedTask.priority === 'Moyenne' && '⏺️'}
-                    {selectedTask.priority === 'Haute' && '⬆️'}
-                    {selectedTask.priority === 'Critique' && '🔥'}
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Priorité</h4>
+                  <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold ${getPriorityStyle(selectedTask.priority)}`}>
                     {selectedTask.priority}
                   </span>
                 </div>
 
                 <div>
-                  <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Statut / Colonne</h4>
-                  {user?.role === 'Project Manager' || user?.role === 'Admin' || selectedTask.assigneeId?.toString() === user?.id?.toString() ? (
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Statut</h4>
+                  {canMoveTask(selectedTask) ? (
                     <select
                       className="border border-slate-300 rounded-lg p-1.5 text-xs font-bold bg-white text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
                       value={selectedTask.status}
-                      onChange={(e) => handleStatusChange(selectedTask.id, e.target.value)}
+                      onChange={e => handleStatusChange(selectedTask.id, e.target.value)}
                     >
-                      {columns.map(col => (
+                      {COLUMNS.map(col => (
                         <option key={col.id} value={col.id}>{col.title}</option>
                       ))}
                     </select>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
                       {selectedTask.status}
                     </span>
                   )}
@@ -333,8 +409,8 @@ const ProjectTasks = () => {
               </div>
 
               <div className="border-t border-slate-100 pt-4">
-                <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Assigné à</h4>
-                <div className="flex items-center gap-3 bg-slate-50/50 p-3 rounded-xl border border-slate-100">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Assigné à</h4>
+                <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
                   {selectedTask.assigneeId ? (
                     <>
                       <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold shadow-sm">
@@ -350,21 +426,17 @@ const ProjectTasks = () => {
                       <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-400">
                         <User size={18} />
                       </div>
-                      <div>
-                        <p className="font-semibold text-slate-500 text-sm">Non assigné</p>
-                        <p className="text-xs text-slate-400">Aucun collaborateur affecté</p>
-                      </div>
+                      <p className="font-semibold text-slate-500 text-sm">Non assigné</p>
                     </>
                   )}
                 </div>
               </div>
             </div>
 
-            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end shrink-0">
-              <button 
-                type="button" 
+            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end">
+              <button
                 onClick={() => setSelectedTask(null)}
-                className="px-6 py-2.5 font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm shadow-blue-500/20"
+                className="px-6 py-2.5 font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-sm"
               >
                 Fermer
               </button>

@@ -1,4 +1,5 @@
 const testCaseService = require('../services/testCaseService');
+const projectService  = require('../services/projectService');
 
 class TestCaseController {
     async getByProject(req, res) {
@@ -34,6 +35,7 @@ class TestCaseController {
             if (io) {
                 io.emit('test_case_created', testCase);
             }
+            await projectService.autoUpdateStatus(projectId, io);
 
             res.status(201).json(testCase);
         } catch (err) {
@@ -55,6 +57,9 @@ class TestCaseController {
             const io = req.app.get('io');
             if (io) {
                 io.emit('test_case_updated', testCase);
+            }
+            if (testCase && testCase.projectId) {
+                await projectService.autoUpdateStatus(testCase.projectId, io);
             }
 
             res.json(testCase);
@@ -97,6 +102,11 @@ class TestCaseController {
                 io.emit('test_case_updated', testCase);
             }
 
+            // Trigger Testing → Déploiement if all test cases passed
+            if (testCase && testCase.projectId) {
+                await projectService.autoUpdateStatus(testCase.projectId, io);
+            }
+
             res.json(testCase);
         } catch (err) {
             console.error('Error updating test case status:', err);
@@ -107,12 +117,19 @@ class TestCaseController {
     async delete(req, res) {
         try {
             const { id } = req.params;
+            const testCase = await testCaseService.getById(id);
+            if (!testCase) {
+                return res.status(404).json({ message: 'Cas de test non trouvé.' });
+            }
+
             await testCaseService.delete(id);
             
             const io = req.app.get('io');
             if (io) {
                 io.emit('test_case_deleted', { id: parseInt(id) || id });
             }
+
+            await projectService.autoUpdateStatus(testCase.projectId, io);
 
             res.json({ message: 'Cas de test supprimé avec succès.' });
         } catch (err) {

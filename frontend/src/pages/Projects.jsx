@@ -41,6 +41,13 @@ const Projects = () => {
     if (user?.role === 'Developer' || user?.role === 'Tester') {
       return teams.find(t => t.projectId === project.id)?.members.some(m => m.userId.toString() === user.id.toString());
     }
+    if (user?.role === 'User') {
+      const d = demandes.find(dem => dem.id === project.demandeId);
+      if (!d) return false;
+      return d.nomDemandeur === user?.name || 
+             d.nomDemandeur === `${user?.prenom} ${user?.nom}`.trim() || 
+             d.nomDemandeur === `${user?.nom} ${user?.prenom}`.trim();
+    }
     return true;
   });
 
@@ -53,7 +60,7 @@ const Projects = () => {
             <h1 className="text-3xl font-bold">Tous les Projets</h1>
           </div>
           <p className="text-blue-100 max-w-2xl mt-2">
-            Gérez l'ensemble de vos projets en un seul endroit. De la préparation initiale avec la charte projet jusqu'au développement et la livraison finale.
+            Gérez l'ensemble de vos projets en un seul endroit. De la préparation initiale avec la charte projet jusqu'au développement et le déploiement final.
           </p>
         </div>
 

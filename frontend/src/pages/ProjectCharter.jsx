@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { useDemandes, useCharter, useAuth, useProjects } from '../context/AppContext';
-import { FileText, Save, Send, Users, Activity, Flag, AlertTriangle, MessageSquare, Briefcase, CheckCircle, Trash2 } from 'lucide-react';
+import { useDemandes, useCharter, useAuth, useProjects, useUser } from '../context/AppContext';
+import { FileText, Save, Send, Users, Activity, Flag, AlertTriangle, MessageSquare, Briefcase, CheckCircle, Trash2, ClipboardList, Zap } from 'lucide-react';
 import Popup from '../components/Popup';
 
 const ProjectCharter = () => {
@@ -14,10 +14,13 @@ const ProjectCharter = () => {
   const { getCharterByDemandeId, saveCharter, deleteCharter } = useCharter();
   const { user } = useAuth();
   const { projects, updateProject, addProject } = useProjects();
+  const { users } = useUser();
   const [popupState, setPopupState] = useState({ isOpen: false, title: '', message: '' });
 
   const isPMOrAdmin = user?.role === 'Project Manager' || user?.role === 'Sponsor' || user?.role === 'Admin';
+  const isSponsor   = user?.role === 'Sponsor' || user?.role === 'Admin';
   const demande = demandes.find(d => d.id === demandeId);
+  const linkedProject = projects.find(p => p.demandeId === demandeId);
   
   const [formData, setFormData] = useState({
     titre: '',
@@ -41,8 +44,15 @@ const ProjectCharter = () => {
 
   const [nouveauCommentaire, setNouveauCommentaire] = useState('');
 
-  const isDemandeurActionable = !isPMOrAdmin && formData.statut === 'Envoyé au Demandeur';
-  const isSponsorActionable = user?.role === 'Sponsor' && formData.statut === 'Soumis au Sponsor';
+  const isDemandeur = demande?.nomDemandeur === user?.name ||
+                      demande?.nomDemandeur === `${user?.prenom || ''} ${user?.nom || ''}`.trim() ||
+                      demande?.nomDemandeur === `${user?.nom || ''} ${user?.prenom || ''}`.trim();
+
+  const isDemandeurActionable = isDemandeur && formData.statut === 'Envoyé au Demandeur';
+  const isSponsorActionable   = isSponsor && formData.statut === 'Soumis au Sponsor';
+  const isCharterValidated    = formData.statut === 'Validé';
+  const isStrictPM            = user?.role === 'Project Manager' || user?.role === 'Sponsor' || user?.role === 'Admin';
+  const canValidateAtelier    = isStrictPM && isCharterValidated && linkedProject && linkedProject.atelierCadrage !== 'Validé';
 
   useEffect(() => {
     if (!demande) {
@@ -59,10 +69,10 @@ const ProjectCharter = () => {
         titre: demande.titre || `Projet issu de la demande ${demande.id}`,
         contexte: demande.contexte || '',
         objectifs: demande.description || '',
-        chefProjetIT: user?.role === 'Project Manager' ? `${user.prenom || ''} ${user.nom || ''}`.trim() : ''
+        chefProjetIT: user?.role === 'Project Manager' ? `${user.prenom || ''} ${user.nom || ''}`.trim() : (users.find(u => u.role === 'Project Manager') ? `${users.find(u => u.role === 'Project Manager').prenom || ''} ${users.find(u => u.role === 'Project Manager').nom || ''}`.trim() : '')
       }));
     }
-  }, [demande, demandeId, getCharterByDemandeId, navigate, user]);
+  }, [demande, demandeId, getCharterByDemandeId, navigate, user, users]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -83,15 +93,15 @@ const ProjectCharter = () => {
     }
     if (action === 'acceptSponsor') {
       newStatut = 'Validé';
-      const linkedProject = projects.find(p => p.demandeId === demandeId);
+      // Create/update the project with Initiation status
       if (linkedProject) {
-        await updateProject(linkedProject.id, { status: 'Atelier de Cadrage' });
+        await updateProject(linkedProject.id, { status: 'Initiation', charterValidated: true });
       } else {
         await updateDemandeStatus(demandeId, 'En Développement');
         await addProject({
           nom: demande?.nomDemandeur ? `Projet ${demande.nomDemandeur}` : (demande?.titre || `Projet issu de la demande ${demandeId}`),
           chefProjet: formData.chefProjetIT || 'Non assigné',
-          status: 'Atelier de Cadrage',
+          status: 'Initiation',
           description: demande?.description || '',
           demandeId: demandeId,
           progress: 0
@@ -186,9 +196,46 @@ const ProjectCharter = () => {
     <Layout title="Charte de Projet">
       <div className="max-w-5xl mx-auto pb-24">
         
+        {/* ── Atelier de Cadrage banner (PM only, after Sponsor validation) ── */}
+        {canValidateAtelier && (
+          <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-2xl p-5 mb-6 mt-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-indigo-600 text-white rounded-xl shadow-sm shadow-indigo-300">
+                <ClipboardList size={22} />
+              </div>
+              <div>
+                <p className="font-bold text-indigo-900">La charte est validée par le Sponsor ✓</p>
+                <p className="text-sm text-indigo-700 mt-0.5">
+                  Vous devez maintenant valider l'<strong>Atelier de Cadrage</strong> pour débloquer l'import du Backlog.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                updateProject(linkedProject.id, { atelierCadrage: 'Validé' });
+                setPopupState({ isOpen: true, title: 'Atelier de Cadrage Validé', message: 'L\'atelier de cadrage a été validé. Le Backlog peut maintenant être importé.' });
+              }}
+              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-sm shrink-0"
+            >
+              <Zap size={18} /> Valider l'Atelier de Cadrage
+            </button>
+          </div>
+        )}
+
+        {/* Atelier already validated banner */}
+        {isCharterValidated && linkedProject?.atelierCadrage === 'Validé' && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-6 mt-4 flex items-center gap-3">
+            <CheckCircle size={20} className="text-emerald-600 shrink-0" />
+            <p className="text-emerald-800 font-semibold text-sm">
+              Charte validée ✓ · Atelier de Cadrage validé ✓ — Le Backlog peut être importé dans la section Documents.
+            </p>
+          </div>
+        )}
+
         
         <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 mb-8 mt-4 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
+
             <div className="flex items-center gap-3 mb-3">
               <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
                 <FileText size={14} /> Project Charter
@@ -205,7 +252,7 @@ const ProjectCharter = () => {
               Charte de Projet
             </h1>
             <p className="text-slate-500 mt-2 font-medium">
-              Réf Demande : <span className="text-slate-700 font-bold">{demande.id}</span> - Demandeur : {demande.demandeur}
+              Réf Demande : <span className="text-slate-700 font-bold">{demande?.id}</span> - Demandeur : {demande?.nomDemandeur}
             </p>
           </div>
           <div className="flex items-center gap-3 shrink-0">

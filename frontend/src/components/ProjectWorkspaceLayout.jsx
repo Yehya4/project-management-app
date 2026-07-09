@@ -12,7 +12,7 @@ const ProjectWorkspaceLayout = () => {
   const { charters } = useCharter();
   const { users } = useUser();
   const { tasks } = useTasks();
-  const { teams } = useTeam();
+  const { teams, addMemberToProject, getTeamByProjectId } = useTeam();
 
   useEffect(() => {
     const linkedProject = projects.find(p => p.id === id || p.demandeId === id);
@@ -46,6 +46,35 @@ const ProjectWorkspaceLayout = () => {
     }
   }, [id, projects, users, user, updateProject]);
 
+  // ── Auto-assign PM / Sponsor / Admin to project team ─────────────────────
+  useEffect(() => {
+    const linkedProject = projects.find(p => p.id === id || p.demandeId === id);
+    if (!linkedProject) return;
+
+    const teamMembers = getTeamByProjectId(linkedProject.id) || [];
+    const teamUserIds = teamMembers.map(m => m.userId?.toString());
+
+    // All users with PM, Sponsor, Admin role
+    const privilegedUsers = users.filter(u =>
+      ['Project Manager', 'Sponsor', 'Admin'].includes(u.role)
+    );
+
+    privilegedUsers.forEach(u => {
+      const uid = u.id?.toString();
+      if (!teamUserIds.includes(uid)) {
+        const roleInProject =
+          u.role === 'Project Manager' ? 'Chef de Projet' :
+          u.role === 'Sponsor'         ? 'Sponsor'        : 'Admin';
+        addMemberToProject(linkedProject.id, {
+          userId: u.id,
+          user: u,
+          role: roleInProject
+        });
+      }
+    });
+  }, [id, projects, users, getTeamByProjectId, addMemberToProject]);
+
+
   let project = projects.find(p => p.id === id || p.demandeId === id);
   let isPending = false;
 
@@ -71,7 +100,17 @@ const ProjectWorkspaceLayout = () => {
     ? teams.find(t => t.projectId === project?.id)?.members.some(m => m.userId.toString() === user.id.toString())
     : true;
 
-  if (!project || !isAssignedDev) {
+  const isRequestOwner = user?.role === 'User'
+    ? (() => {
+        const d = demandes.find(dem => dem.id === project?.demandeId);
+        if (!d) return false;
+        return d.nomDemandeur === user?.name || 
+               d.nomDemandeur === `${user?.prenom} ${user?.nom}`.trim() || 
+               d.nomDemandeur === `${user?.nom} ${user?.prenom}`.trim();
+      })()
+    : true;
+
+  if (!project || !isAssignedDev || !isRequestOwner) {
     return (
       <div className="h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
@@ -172,8 +211,8 @@ const ProjectWorkspaceLayout = () => {
               {project.chefProjet?.charAt(0) || 'CP'}
             </div>
             <div>
-              <p className="text-sm font-bold text-white line-clamp-1">{project.chefProjet}</p>
               <p className="text-xs text-slate-500">Chef de Projet</p>
+              <p className="text-sm font-semibold text-white">Project Manager</p>
             </div>
           </div>
         </div>

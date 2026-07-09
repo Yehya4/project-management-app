@@ -1,11 +1,25 @@
 const db = require('../config/db');
 
 class ProjectService {
+    formatProject(project) {
+        if (!project) return null;
+        const status = project.statut || 'Initiation';
+        let progress = 0;
+        switch (status) {
+            case 'Initiation':    progress = 20; break;
+            case 'Développement': progress = 40; break;
+            case 'Testing':       progress = 60; break;
+            case 'Déploiement':     progress = 80; break;
+            case 'Utilisation':   progress = 100; break;
+        }
+        return { ...project, status, progress };
+    }
+
     getAll() {
         return new Promise((resolve, reject) => {
             db.query('SELECT * FROM projects ORDER BY created_at DESC', (err, results) => {
                 if (err) return reject(err);
-                resolve(results);
+                resolve(results.map(p => this.formatProject(p)));
             });
         });
     }
@@ -16,15 +30,15 @@ class ProjectService {
                 if (err) return reject(err);
                 const count = results[0].count + 1;
                 const newId = `PRJ-${new Date().getFullYear()}-${String(count).padStart(3, '0')}`;
-                
+
                 const { nom, chefProjet, description, demandeId } = projectData;
                 const dateCreation = new Date().toLocaleDateString('fr-FR');
                 const statut = projectData.status || 'Initiation';
-                
+
                 const query = 'INSERT INTO projects (id, nom, chefProjet, statut, description, dateCreation, demandeId) VALUES (?, ?, ?, ?, ?, ?, ?)';
                 db.query(query, [newId, nom, chefProjet, statut, description, dateCreation, demandeId], (err) => {
                     if (err) return reject(err);
-                    resolve({ id: newId, ...projectData, status: statut, dateCreation });
+                    resolve(this.formatProject({ id: newId, ...projectData, statut, dateCreation }));
                 });
             });
         });
@@ -34,7 +48,7 @@ class ProjectService {
         return new Promise((resolve, reject) => {
             db.query('UPDATE projects SET statut = ? WHERE id = ?', [statut, id], (err) => {
                 if (err) return reject(err);
-                resolve({ id, status: statut });
+                this.getById(id).then(resolve).catch(reject);
             });
         });
     }
@@ -77,6 +91,16 @@ class ProjectService {
                 updates.push('architectureFile = ?');
                 values.push(data.architectureFile);
             }
+            // atelierCadrage field support
+            if (data.atelierCadrage !== undefined) {
+                updates.push('atelierCadrage = ?');
+                values.push(data.atelierCadrage);
+            }
+            // charterValidated flag
+            if (data.charterValidated !== undefined) {
+                updates.push('charterValidated = ?');
+                values.push(data.charterValidated ? 1 : 0);
+            }
 
             if (updates.length === 0) return resolve({ id });
 
@@ -85,7 +109,7 @@ class ProjectService {
 
             db.query(query, values, (err) => {
                 if (err) return reject(err);
-                resolve({ id, ...data });
+                this.getById(id).then(resolve).catch(reject);
             });
         });
     }
@@ -103,62 +127,95 @@ class ProjectService {
         return new Promise((resolve, reject) => {
             db.query('SELECT * FROM projects WHERE id = ?', [id], (err, results) => {
                 if (err) return reject(err);
-                resolve(results[0] || null);
+                resolve(this.formatProject(results[0]) || null);
             });
         });
     }
 
+    /**
+     * Auto-update project status based on:
+     * - Initiation → Développement  : architecture + backlog validated (already done in update)
+     * - Développement → Testing     : ALL tasks are Fait/Clôturée/Archivée (at least 1 task)
+     * - Testing → Livraison         : ALL test cases are Réussite (at least 1 test case)
+     */
     autoUpdateStatus(projectId, io) {
         return new Promise((resolve, reject) => {
-            db.query('SELECT * FROM tasks WHERE projectId = ?', [projectId], (err, tasks) => {
+            // Fetch project
+            db.query('SELECT * FROM projects WHERE id = ?', [projectId], (err, pResults) => {
                 if (err) return reject(err);
-                
-                db.query('SELECT * FROM projects WHERE id = ?', [projectId], (err, pResults) => {
-                    if (err) return reject(err);
-                    if (pResults.length === 0) return resolve();
-                    
-                    const project = pResults[0];
-                    let newStatus = 'Initiation';
-                    
-                    if (tasks.length > 0) {
-                        const hasEnCours = tasks.some(t => t.status === 'En cours');
-                        const hasFait = tasks.some(t => t.status === 'Fait');
-                        const allCloturee = tasks.every(t => t.status === 'Clôturée');
-                        const allArchivee = tasks.every(t => t.status === 'Archivée');
-                        
-                        if (hasEnCours) {
-                            newStatus = 'Développement';
-                        } else if (hasFait) {
-                            newStatus = 'Testing';
-                        } else if (allArchivee) {
-                            newStatus = 'Utilisation';
-                        } else if (allCloturee) {
-                            newStatus = 'Livraison';
-                        } else {
-                            
-                            const hasCloturee = tasks.some(t => t.status === 'Clôturée');
-                            if (hasCloturee) {
-                                newStatus = 'Livraison';
-                            } else {
-                                newStatus = 'Utilisation';
-                            }
+                if (pResults.length === 0) return resolve(null);
+
+                const project = pResults[0];
+                const currentStatus = project.statut || 'Initiation';
+
+                // Helper to persist status change
+                const applyStatus = (newStatus) => {
+                    db.query('UPDATE projects SET statut = ? WHERE id = ?', [newStatus, projectId], (err) => {
+                        if (err) return reject(err);
+                        this.getById(projectId).then(updatedProject => {
+                            if (io && updatedProject) io.emit('project_updated', updatedProject);
+                            resolve(updatedProject);
+                        }).catch(reject);
+                    });
+                };
+
+                // Fetch tasks and test cases in parallel
+                const getTasks = new Promise((resTasks, rejTasks) => {
+                    db.query('SELECT * FROM tasks WHERE projectId = ?', [projectId], (err, results) => {
+                        if (err) return rejTasks(err);
+                        resTasks(results);
+                    });
+                });
+
+                const getTestCases = new Promise((resTests, rejTests) => {
+                    db.query('SELECT * FROM test_cases WHERE projectId = ?', [projectId], (err, results) => {
+                        if (err) return rejTests(err);
+                        resTests(results);
+                    });
+                });
+
+                Promise.all([getTasks, getTestCases]).then(([tasks, testCases]) => {
+                    const totalTasks = tasks.length;
+                    const doneTasks = tasks.filter(t => ['Fait', 'Clôturée', 'Archivée'].includes(t.status));
+                    const hasUnfinishedTasks = tasks.some(t => !['Fait', 'Clôturée', 'Archivée'].includes(t.status));
+
+                    const totalTests = testCases.length;
+                    const allTestsPassed = totalTests > 0 && testCases.every(t => t.status === 'Réussite');
+
+                    // Determine target status based on current states
+                    let targetStatus = currentStatus;
+
+                    // 1. If there are tasks, and some are unfinished, the project CANNOT be past Développement.
+                    if (totalTasks > 0 && hasUnfinishedTasks) {
+                        if (['Testing', 'Déploiement', 'Utilisation'].includes(currentStatus)) {
+                            targetStatus = 'Développement';
+                            console.log(`[AutoStatus] ${projectId}: ${currentStatus} → Développement (tâches non terminées)`);
                         }
                     }
-                    
-                    if (project.statut !== newStatus) {
-                        db.query('UPDATE projects SET statut = ? WHERE id = ?', [newStatus, projectId], (err) => {
-                            if (err) return reject(err);
-                            
-                            const updatedProject = { ...project, status: newStatus, statut: newStatus };
-                            if (io) {
-                                io.emit('project_updated', updatedProject);
-                            }
-                            resolve(updatedProject);
-                        });
+                    // 2. If all tasks are finished, and we have tests but they are not all passed, the project CANNOT be past Testing.
+                    else if (!hasUnfinishedTasks && totalTests > 0 && !allTestsPassed) {
+                        if (['Déploiement', 'Utilisation'].includes(currentStatus)) {
+                            targetStatus = 'Testing';
+                            console.log(`[AutoStatus] ${projectId}: ${currentStatus} → Testing (tests non réussis)`);
+                        }
+                    }
+                    // 3. Forward: If in Développement and all tasks are finished
+                    else if (currentStatus === 'Développement' && totalTasks > 0 && !hasUnfinishedTasks) {
+                        targetStatus = 'Testing';
+                        console.log(`[AutoStatus] ${projectId}: Développement → Testing (toutes les tâches terminées)`);
+                    }
+                    // 4. Forward: If in Testing and all tests are passed
+                    else if (currentStatus === 'Testing' && allTestsPassed) {
+                        targetStatus = 'Déploiement';
+                        console.log(`[AutoStatus] ${projectId}: Testing → Déploiement (tous les cas de test réussis)`);
+                    }
+
+                    if (targetStatus !== currentStatus) {
+                        applyStatus(targetStatus);
                     } else {
                         resolve(null);
                     }
-                });
+                }).catch(reject);
             });
         });
     }
@@ -174,7 +231,7 @@ class ProjectService {
             `;
             db.query(query, [userId], (err, results) => {
                 if (err) return reject(err);
-                resolve(results);
+                resolve(results.map(p => this.formatProject(p)));
             });
         });
     }
