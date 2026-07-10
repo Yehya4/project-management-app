@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AppContext';
 import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, AlignLeft, X, Trash2 } from 'lucide-react';
 
 const PRESETS_COLORS = [
-  { value: '#3b82f6', name: 'Bleu', bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', bullet: 'bg-blue-500' },
+  { value: '#3480fa', name: 'Bleu', bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', bullet: 'bg-blue-500' },
   { value: '#10b981', name: 'Vert', bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', bullet: 'bg-emerald-500' },
   { value: '#f59e0b', name: 'Orange', bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', bullet: 'bg-amber-500' },
   { value: '#ef4444', name: 'Rouge', bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700', bullet: 'bg-rose-500' },

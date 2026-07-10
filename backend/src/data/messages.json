@@ -101,5 +101,38 @@
     "projectId": "PRJ-2026-001",
     "recipientId": "u3",
     "createdAt": "2026-07-09T09:55:34.795Z"
+  },
+  {
+    "id": "1783612317521",
+    "content": "ihu",
+    "senderId": "u3",
+    "senderName": "Sponsor Directeur",
+    "senderRole": "Sponsor",
+    "mentions": [],
+    "projectId": "PRJ-2026-002",
+    "recipientId": "u2",
+    "createdAt": "2026-07-09T15:51:57.521Z"
+  },
+  {
+    "id": "1783612322416",
+    "content": "uh",
+    "senderId": "u3",
+    "senderName": "Sponsor Directeur",
+    "senderRole": "Sponsor",
+    "mentions": [],
+    "projectId": "PRJ-2026-002",
+    "recipientId": "u2",
+    "createdAt": "2026-07-09T15:52:02.416Z"
+  },
+  {
+    "id": "1783612862031",
+    "content": "oui",
+    "senderId": "u2",
+    "senderName": "Manager Project",
+    "senderRole": "Project Manager",
+    "mentions": [],
+    "projectId": "PRJ-2026-002",
+    "recipientId": "u3",
+    "createdAt": "2026-07-09T16:01:02.031Z"
   }
 ]
