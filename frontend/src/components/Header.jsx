@@ -8,7 +8,7 @@ const Header = ({ title }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const dropdownRef = useRef(null);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter(n => !n.isRead).length;
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -76,13 +76,13 @@ const Header = ({ title }) => {
                   notifications.map((notif) => (
                     <div 
                       key={notif.id} 
-                      className={`p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors relative group ${!notif.read ? 'bg-indigo-50/30' : ''}`}
+                      className={`p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors relative group ${!notif.isRead ? 'bg-indigo-50/30' : ''}`}
                     >
                       <div className="flex gap-3">
-                        <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${!notif.read ? 'bg-indigo-500' : 'bg-transparent'}`}></div>
+                        <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${!notif.isRead ? 'bg-indigo-500' : 'bg-transparent'}`}></div>
                         <div className="flex-1">
                           <div className="flex justify-between items-start mb-1">
-                            <h4 className={`text-sm font-semibold ${!notif.read ? 'text-slate-800' : 'text-slate-600'}`}>
+                            <h4 className={`text-sm font-semibold ${!notif.isRead ? 'text-slate-800' : 'text-slate-600'}`}>
                               {notif.title}
                             </h4>
                             <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap ml-2">
@@ -92,7 +92,7 @@ const Header = ({ title }) => {
                           <p className="text-xs text-slate-500 mb-2 leading-relaxed">
                             {notif.message}
                           </p>
-                          {!notif.read && (
+                          {!notif.isRead && (
                             <button 
                               onClick={() => markAsRead(notif.id)}
                               className="text-[10px] font-semibold text-indigo-600 hover:text-indigo-800"

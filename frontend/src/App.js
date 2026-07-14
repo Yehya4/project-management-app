@@ -9,6 +9,7 @@ import SponsorDashboard from './components/dashboards/SponsorDashboard';
 import AdminDashboard from './components/dashboards/AdminDashboard';
 import DeveloperDashboard from './components/dashboards/DeveloperDashboard';
 import TesterDashboard from './components/dashboards/TesterDashboard';
+import ChefTesteurDashboard from './components/dashboards/ChefTesteurDashboard';
 import NouvelleDemandeSI from './pages/NouvelleDemandeSI';
 import ListeDemandesSI from './pages/ListeDemandesSI';
 import ProjectCharter from './pages/ProjectCharter';
@@ -56,6 +57,8 @@ const DashboardRouter = () => {
         return <DeveloperDashboard />;
       case 'Tester':
         return <TesterDashboard />;
+      case 'Chef Testeur':
+        return <ChefTesteurDashboard />;
       default:
         return <div>Rôle non reconnu</div>;
     }

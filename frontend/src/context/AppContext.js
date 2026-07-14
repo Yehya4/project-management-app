@@ -452,7 +452,7 @@ export const ProjectProvider = ({ children }) => {
   useEffect(() => {
     if (token) {
       fetchProjects();
-      const socket = io('http://localhost:5000');
+      const socket = io('http://localhost:5000', { auth: { token } });
       socket.on('project_updated', (updatedProject) => {
         setProjects(prev => prev.map(p => p.id === updatedProject.id ? { ...p, ...updatedProject } : p));
       });
@@ -552,7 +552,14 @@ export const useNotifications = () => useContext(NotificationContext);
 export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const [socket, setSocket] = useState(null);
-  const { user } = useAuth();
+  const { user, token } = useAuth();
+
+  const API_URL = 'http://localhost:5000/api/notifications';
+
+  const getHeaders = () => ({
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  });
 
   const playNotificationSound = () => {
     try {
@@ -579,31 +586,56 @@ export const NotificationProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    const newSocket = io('http://localhost:5000');
-    setSocket(newSocket);
+    if (token) {
+      fetchNotifications();
+      const newSocket = io('http://localhost:5000', { auth: { token } });
+      setSocket(newSocket);
 
-    if (user) {
-      newSocket.emit('register_user', {
-        userId: user.id,
-        role: user.role,
-        fullName: `${user.prenom || ''} ${user.nom || ''}`.trim()
+      if (user) {
+        newSocket.emit('register_user', {
+          userId: user.id,
+          role: user.role,
+          fullName: `${user.prenom || ''} ${user.nom || ''}`.trim()
+        });
+      }
+
+      newSocket.on('new_notification', (data) => {
+        setNotifications(prev => [data, ...prev]);
+        playNotificationSound();
       });
+
+      return () => newSocket.close();
     }
+  }, [token, user]);
 
-    newSocket.on('new_notification', (data) => {
-      setNotifications(prev => [data, ...prev]);
-      playNotificationSound();
-    });
-
-    return () => newSocket.close();
-  }, [user]);
-
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetch(API_URL, { headers: getHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data);
+      }
+    } catch (err) {
+      console.error('Erreur fetch notifications', err);
+    }
   };
 
-  const markAsRead = (id) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  const markAllAsRead = async () => {
+    try {
+      await fetch(`${API_URL}/mark-all`, { method: 'PUT', headers: getHeaders() });
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch (err) {
+      console.error('Erreur mark all as read', err);
+    }
+  };
+
+  const markAsRead = async (id) => {
+    try {
+      await fetch(`${API_URL}/${id}/read`, { method: 'PUT', headers: getHeaders() });
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    } catch (err) {
+      console.error('Erreur mark as read', err);
+    }
   };
 
   const deleteNotification = (id) => {
@@ -637,7 +669,7 @@ export const TaskProvider = ({ children }) => {
   useEffect(() => {
     if (token) {
       fetchTasks();
-      const socket = io('http://localhost:5000');
+      const socket = io('http://localhost:5000', { auth: { token } });
       socket.on('task_updated', (updatedTask) => {
         setTasks(prev => prev.map(t => t.id === updatedTask.id ? { ...t, ...updatedTask } : t));
       });
@@ -826,7 +858,7 @@ export const MessageProvider = ({ children }) => {
     if (token) {
       fetchMessages();
       
-      const newSocket = io('http://localhost:5000');
+      const newSocket = io('http://localhost:5000', { auth: { token } });
       setSocket(newSocket);
 
       newSocket.on('new_message', (message) => {
@@ -888,7 +920,7 @@ export const TestCaseProvider = ({ children }) => {
 
   useEffect(() => {
     if (token) {
-      const socketConnection = io('http://localhost:5000');
+      const socketConnection = io('http://localhost:5000', { auth: { token } });
       socketConnection.on('test_case_created', (newTestCase) => {
         setTestCases(prev => {
           if (prev.some(t => t.id === newTestCase.id)) return prev;

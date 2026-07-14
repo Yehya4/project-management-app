@@ -12,6 +12,7 @@ const teamController = require('../controllers/teamController');
 const taskController = require('../controllers/taskController');
 const eventController = require('../controllers/eventController');
 const testCaseController = require('../controllers/testCaseController');
+const notificationController = require('../controllers/notificationController');
 
 const authenticateToken = require('../middleware/authMiddleware');
 const requireAdmin = require('../middleware/roleMiddleware');
@@ -60,6 +61,10 @@ router.post('/charters/', charterController.save);
 router.delete('/charters/:demandeId', charterController.delete);
 
 router.get('/messages/', messageController.getAll);
+
+router.get('/notifications/', notificationController.getAll);
+router.put('/notifications/mark-all', notificationController.markAllAsRead);
+router.put('/notifications/:id/read', notificationController.markAsRead);
 
 router.use('/config', requireAdmin);
 router.get('/config/', configController.getAll);

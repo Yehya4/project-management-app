@@ -19,6 +19,20 @@ app.set('io', io);
 
 const messageService = require('./services/messageService');
 const userService = require('./services/userService');
+const notificationService = require('./services/notificationService');
+const jwt = require('jsonwebtoken');
+
+io.use((socket, next) => {
+    const token = socket.handshake.auth.token;
+    if (!token) {
+        return next(new Error('Authentication error'));
+    }
+    jwt.verify(token, process.env.JWT_SECRET || 'votre_secret_jwt_super_securise', (err, decoded) => {
+        if (err) return next(new Error('Authentication error'));
+        socket.user = decoded;
+        next();
+    });
+});
 
 io.on('connection', (socket) => {
     console.log('Un client est connecté :', socket.id);
@@ -37,48 +51,55 @@ io.on('connection', (socket) => {
     });
     
     socket.on('send_message', async (messageData) => {
-        const savedMessage = messageService.addMessage(messageData);
-        
-        if (messageData.recipientId) {
-            io.to(`user_${messageData.senderId}`).to(`user_${messageData.recipientId}`).emit('new_message', savedMessage);
-        } else {
-            io.emit('new_message', savedMessage);
-        }
-        
-        if (messageData.mentions && messageData.mentions.length > 0) {
-            for (const mentionId of messageData.mentions) {
-                try {
-                    const mentionedUser = await userService.getById(mentionId);
-                    if (mentionedUser) {
-                        const mentionedName = `${mentionedUser.prenom || ''} ${mentionedUser.nom || ''}`.trim();
-                        
-                        const notificationForMentioned = {
-                            id: Date.now().toString() + Math.random().toString(36).substring(7),
-                            type: 'mention',
-                            title: 'Mention dans le chat',
-                            message: `${messageData.senderName} vous a mentionné dans le chat`,
-                            createdAt: new Date().toISOString(),
-                            read: false,
-                            userId: mentionId,
-                            link: `/projects/${messageData.projectId}/messages`
-                        };
-                        io.to(`user_${mentionId}`).emit('new_notification', notificationForMentioned);
-                        
-                        const notificationForSponsorAdmin = {
-                            id: Date.now().toString() + Math.random().toString(36).substring(7),
-                            type: 'mention',
-                            title: 'Mention dans le chat',
-                            message: `${messageData.senderName} a mentionné ${mentionedName} dans le chat`,
-                            createdAt: new Date().toISOString(),
-                            read: false,
-                            link: `/projects/${messageData.projectId}/messages`
-                        };
-                        io.to('role_Sponsor').to('role_Admin').emit('new_notification', notificationForSponsorAdmin);
+        try {
+            const savedMessage = await messageService.addMessage(messageData);
+            
+            if (messageData.recipientId) {
+                io.to(`user_${messageData.senderId}`).to(`user_${messageData.recipientId}`).emit('new_message', savedMessage);
+            } else {
+                io.emit('new_message', savedMessage);
+            }
+            
+            if (messageData.mentions && messageData.mentions.length > 0) {
+                for (const mentionId of messageData.mentions) {
+                    try {
+                        const mentionedUser = await userService.getById(mentionId);
+                        if (mentionedUser) {
+                            const mentionedName = `${mentionedUser.prenom || ''} ${mentionedUser.nom || ''}`.trim();
+                            
+                            const notificationForMentionedData = {
+                                id: Date.now().toString() + Math.random().toString(36).substring(7),
+                                type: 'mention',
+                                title: 'Mention dans le chat',
+                                message: `${messageData.senderName} vous a mentionné dans le chat`,
+                                userId: mentionId,
+                                link: `/projects/${messageData.projectId}/messages`
+                            };
+                            const savedNotifForMentioned = await notificationService.addNotification(notificationForMentionedData);
+                            io.to(`user_${mentionId}`).emit('new_notification', savedNotifForMentioned);
+                            
+                            const notificationForSponsorAdminData = {
+                                id: Date.now().toString() + Math.random().toString(36).substring(7),
+                                type: 'mention',
+                                title: 'Mention dans le chat',
+                                message: `${messageData.senderName} a mentionné ${mentionedName} dans le chat`,
+                                role: 'Admin', // Example, this would be better to send separately for Admin and Sponsor
+                                link: `/projects/${messageData.projectId}/messages`
+                            };
+                            const savedNotifForAdmin = await notificationService.addNotification(notificationForSponsorAdminData);
+                            io.to('role_Admin').emit('new_notification', savedNotifForAdmin);
+                            
+                            const notificationForSponsorData = { ...notificationForSponsorAdminData, role: 'Sponsor', id: Date.now().toString() + Math.random().toString(36).substring(7) };
+                            const savedNotifForSponsor = await notificationService.addNotification(notificationForSponsorData);
+                            io.to('role_Sponsor').emit('new_notification', savedNotifForSponsor);
+                        }
+                    } catch (error) {
+                        console.error('Erreur lors du traitement de la mention :', error);
                     }
-                } catch (error) {
-                    console.error('Erreur lors du traitement de la mention :', error);
                 }
             }
+        } catch (error) {
+            console.error('Error sending message:', error);
         }
     });
 

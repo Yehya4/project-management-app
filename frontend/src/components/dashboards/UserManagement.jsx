@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useUser } from '../../context/AppContext';
 import { Plus, Trash2, Edit2, Users, Check, X } from 'lucide-react';
 
-const ROLES = ['User', 'Developer', 'Tester', 'Project Manager', 'Sponsor'];
+const ROLES = ['User', 'Developer', 'Tester', 'Chef Testeur', 'Project Manager', 'Sponsor'];
 
 const UserManagement = ({ isModal = true, onClose }) => {
   const { users, addUser, updateUser, archiveUser } = useUser();

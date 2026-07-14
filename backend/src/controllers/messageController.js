@@ -1,9 +1,9 @@
 const messageService = require('../services/messageService');
 
-exports.getAll = (req, res) => {
+exports.getAll = async (req, res) => {
     try {
         const userId = req.user.id;
-        const messages = messageService.getMessagesForUser(userId);
+        const messages = await messageService.getMessagesForUser(userId);
         return res.json(messages);
     } catch (err) {
         console.error(err);

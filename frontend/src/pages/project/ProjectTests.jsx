@@ -76,10 +76,14 @@ const ProjectTests = () => {
     m.role === 'QA / Testeur'
   );
 
-  // PM, Sponsor, Admin, Chef de projet, Dev can CREATE tests
-  const canCreateTest = isAdmin || isPM || isSponsor || isProjectChef || isAssignedDev;
-  // Testers, PM, Sponsor, Admin, Chef can RUN tests
-  const canRunTest    = isAssignedTester || isAdmin || isPM || isSponsor || isProjectChef;
+  const isChefTesteur = user?.role === 'Chef Testeur' || teamMembers.some(
+    m => m.userId.toString() === user?.id?.toString() && m.role === 'Chef Testeur'
+  );
+
+  // PM, Sponsor, Admin, Chef de projet, Dev, Chef Testeur can CREATE tests
+  const canCreateTest = isAdmin || isPM || isSponsor || isProjectChef || isAssignedDev || isChefTesteur;
+  // Testers, PM, Sponsor, Admin, Chef, Chef Testeur can RUN tests
+  const canRunTest    = isAssignedTester || isAdmin || isPM || isSponsor || isProjectChef || isChefTesteur;
 
   // ── Auto-transition est géré par le backend en temps réel ─────────────────────────
   const allTestsPassed = testCases.length > 0 && testCases.every(t => t.status === 'Réussite');
@@ -211,12 +215,22 @@ const ProjectTests = () => {
 
       {/* Banner: all tests passed */}
       {allTestsPassed && project?.status === 'Testing' && (
-        <div className="md:col-span-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 p-4 rounded-2xl flex items-center gap-3 shadow-sm">
-          <div className="p-2 bg-emerald-500 text-white rounded-xl"><CheckCircle2 size={20} /></div>
-          <div>
-            <p className="font-bold text-emerald-900">Tous les tests sont réussis !</p>
-            <p className="text-emerald-700 text-sm">Passage automatique à la phase <strong>Déploiement</strong> en cours…</p>
+        <div className="md:col-span-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <div className="p-2 bg-emerald-500 text-white rounded-xl shrink-0"><CheckCircle2 size={20} /></div>
+            <div>
+              <p className="font-bold text-emerald-900">Tous les tests sont réussis !</p>
+              <p className="text-emerald-700 text-sm">En attente de la validation du Chef Testeur pour passer au Déploiement.</p>
+            </div>
           </div>
+          {isChefTesteur && (
+            <button 
+              onClick={() => updateProject(project.id, { status: 'Déploiement' })}
+              className="w-full md:w-auto px-5 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-bold shadow-sm whitespace-nowrap"
+            >
+              Valider pour Déploiement
+            </button>
+          )}
         </div>
       )}
 

@@ -41,6 +41,7 @@ const Sidebar = () => {
     switch (user?.role) {
       case 'Developer':
       case 'Tester':
+      case 'Chef Testeur':
         return [
           dashboardLink,
           ...commonLinks

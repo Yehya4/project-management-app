@@ -1,46 +1,61 @@
-const fs = require('fs');
-const path = require('path');
+const db = require('../config/db');
+const { encrypt, decrypt } = require('../utils/cryptoUtil');
 
-const dataPath = path.join(__dirname, '../data/messages.json');
+class MessageService {
+    addMessage(messageData) {
+        return new Promise((resolve, reject) => {
+            const { id, senderId, senderName, senderRole, recipientId, projectId, content, mentions } = messageData;
+            
+            const encryptedContent = encrypt(content);
+            const mentionsStr = mentions ? JSON.stringify(mentions) : null;
+            const messageId = id || Date.now().toString() + Math.random().toString(36).substring(7);
 
-if (!fs.existsSync(path.dirname(dataPath))) {
-    fs.mkdirSync(path.dirname(dataPath), { recursive: true });
+            const query = `INSERT INTO messages (id, senderId, senderName, senderRole, recipientId, projectId, content, mentions) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+            
+            db.query(query, [messageId, senderId, senderName, senderRole, recipientId || null, projectId || null, encryptedContent, mentionsStr], (err) => {
+                if (err) return reject(err);
+                
+                resolve({
+                    ...messageData,
+                    id: messageId,
+                    content: content,
+                    createdAt: new Date().toISOString()
+                });
+            });
+        });
+    }
+
+    getMessagesForUser(userId) {
+        return new Promise((resolve, reject) => {
+            const query = `SELECT * FROM messages WHERE recipientId IS NULL OR recipientId = ? OR senderId = ? ORDER BY createdAt ASC`;
+            db.query(query, [userId, userId], (err, results) => {
+                if (err) return reject(err);
+                
+                const decryptedResults = results.map(row => ({
+                    ...row,
+                    content: decrypt(row.content),
+                    mentions: row.mentions ? JSON.parse(row.mentions) : []
+                }));
+                resolve(decryptedResults);
+            });
+        });
+    }
+
+    getAllMessages() {
+        return new Promise((resolve, reject) => {
+            const query = `SELECT * FROM messages ORDER BY createdAt ASC`;
+            db.query(query, (err, results) => {
+                if (err) return reject(err);
+                
+                const decryptedResults = results.map(row => ({
+                    ...row,
+                    content: decrypt(row.content),
+                    mentions: row.mentions ? JSON.parse(row.mentions) : []
+                }));
+                resolve(decryptedResults);
+            });
+        });
+    }
 }
-if (!fs.existsSync(dataPath)) {
-    fs.writeFileSync(dataPath, JSON.stringify([]));
-}
 
-const getMessages = () => {
-    const data = fs.readFileSync(dataPath);
-    return JSON.parse(data);
-};
-
-const saveMessages = (messages) => {
-    fs.writeFileSync(dataPath, JSON.stringify(messages, null, 2));
-};
-
-exports.getAllMessages = () => {
-    return getMessages();
-};
-
-exports.getMessagesForUser = (userId) => {
-    const messages = getMessages();
-    return messages.filter(m => {
-        if (!m.recipientId) {
-            return true;
-        }
-        return m.recipientId === userId || m.senderId === userId;
-    });
-};
-
-exports.addMessage = (messageData) => {
-    const messages = getMessages();
-    const newMessage = {
-        id: Date.now().toString(),
-        ...messageData,
-        createdAt: new Date().toISOString()
-    };
-    messages.push(newMessage);
-    saveMessages(messages);
-    return newMessage;
-};
+module.exports = new MessageService();

@@ -5,7 +5,8 @@ import {
   Rocket, Code2, PackageCheck, Server, Users2,
   Clock, Zap, CheckCircle2, ChevronRight, Lock,
   CheckCheck, ArrowRight, User, Shield, Briefcase,
-  Upload, ClipboardList, Box, FileSpreadsheet
+  Upload, ClipboardList, Box, FileSpreadsheet,
+  ChevronDown, ChevronUp
 } from 'lucide-react';
 import { useCharter, useDemandes, useProjects, useAuth, useTasks } from '../../context/AppContext';
 
@@ -100,6 +101,67 @@ const getInitiationSubSteps = (charter, project) => {
       locked: !backlogValidated,
     },
   ];
+};
+
+const getPhaseSubSteps = (phaseId, project, charter, currentIdx) => {
+  const isPast = LIFECYCLE.indexOf(phaseId) < currentIdx;
+  const isCurrent = LIFECYCLE.indexOf(phaseId) === currentIdx;
+
+  if (phaseId === 'Initiation') {
+    return getInitiationSubSteps(charter, project);
+  }
+
+  const createStep = (key, label, icon, actor, order) => {
+    let done = isPast;
+    let active = false;
+    let locked = false;
+
+    if (isCurrent) {
+      if (order === 1) {
+        done = project.progress >= 20;
+        active = project.progress < 20;
+      } else if (order === 2) {
+        done = project.progress >= 60;
+        active = project.progress >= 20 && project.progress < 60;
+        locked = project.progress < 20;
+      } else {
+        done = project.progress >= 90;
+        active = project.progress >= 60 && project.progress < 90;
+        locked = project.progress < 60;
+      }
+    } else if (!isPast) {
+      locked = true;
+    }
+    return { key, label, icon, actor, done, active, locked };
+  };
+
+  switch(phaseId) {
+    case 'Développement':
+      return [
+        createStep('dev-1', 'Affectation des ressources', Users2, 'PM', 1),
+        createStep('dev-2', 'Sprint Planning', Clock, 'Équipe', 2),
+        createStep('dev-3', 'Développement des tâches', Code2, 'Développeurs', 3),
+      ];
+    case 'Testing':
+      return [
+        createStep('test-1', 'Création du plan de tests', FileText, 'QA', 1),
+        createStep('test-2', 'Exécution des tests', Activity, 'QA', 2),
+        createStep('test-3', 'Validation des tests', CheckCheck, 'Chef Testeur', 3),
+      ];
+    case 'Déploiement':
+      return [
+        createStep('dep-1', 'Préparation de l\'environnement', Server, 'DevOps', 1),
+        createStep('dep-2', 'Déploiement en production', Rocket, 'DevOps', 2),
+        createStep('dep-3', 'Signature du PV de recette', FileText, 'Sponsor', 3),
+      ];
+    case 'Utilisation':
+      return [
+        createStep('use-1', 'Suivi post-déploiement', Activity, 'Support', 1),
+        createStep('use-2', 'Clôture du projet', Briefcase, 'PM', 2),
+      ];
+    default:
+      return [];
+  }
 };
 
 /* ─────────────────────────────────────────────────────────────────
@@ -218,7 +280,7 @@ const SubStepRow = ({ step, isLast }) => {
               color:      step.done ? '#059669' : step.active ? '#4338ca' : '#9ca3af',
             }}
           >
-            {step.actor}
+            {step.done ? 'Terminé' : step.active ? 'En cours' : 'À venir'}
           </span>
         </div>
         {step.active && (
@@ -236,6 +298,7 @@ const SubStepRow = ({ step, isLast }) => {
 ───────────────────────────────────────────────────────────────── */
 
 const ProjectOverview = () => {
+  const [expandedPhase, setExpandedPhase] = React.useState('Initiation');
   const { project, isPending } = useOutletContext();
   const { getCharterByDemandeId } = useCharter();
   const { demandes, updateDemandeStatus } = useDemandes();
@@ -438,30 +501,7 @@ const ProjectOverview = () => {
           </div>
         </div>
 
-        {/* Statut actuel */}
-        <div
-          className="p-6 rounded-2xl border shadow-sm"
-          style={{ background: currentPhase.bg, borderColor: currentPhase.border }}
-        >
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 rounded-xl text-white" style={{ background: currentPhase.color }}>
-              <Target size={20} />
-            </div>
-            <h3 className="font-semibold" style={{ color: currentPhase.color }}>Phase actuelle</h3>
-          </div>
-          <p className="text-xl font-black leading-tight" style={{ color: currentPhase.color }}>
-            {project.status}
-          </p>
-          <div className="flex items-center gap-1.5 mt-3">
-            <span
-              className="w-2 h-2 rounded-full animate-pulse"
-              style={{ background: currentPhase.color }}
-            />
-            <span className="text-xs font-bold opacity-70" style={{ color: currentPhase.color }}>
-              Mis à jour en temps réel
-            </span>
-          </div>
-        </div>
+
 
         {/* Tâches */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
@@ -520,14 +560,7 @@ const ProjectOverview = () => {
             </p>
           </div>
 
-          <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
-            <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-2">
-              <Clock size={18} className="text-slate-500" /> État du projet
-            </h3>
-            <p className="text-sm text-slate-600">
-              Statut actuel : <span className="font-bold text-indigo-700">{project.status}</span>
-            </p>
-          </div>
+
         </div>
 
         {isPending && (
