@@ -1,14 +1,31 @@
 const db = require('../config/db');
 
 class DemandeService {
+    // Parse sécurisé : si un champ JSON est corrompu, on retourne [] au lieu de crasher
+    parseJSONField(value, defaultValue = []) {
+        if (!value) return defaultValue;
+        if (Array.isArray(value)) return value; // Déjà parsé (cas MySQL2 auto-parse)
+        try {
+            const parsed = JSON.parse(value);
+            return Array.isArray(parsed) ? parsed : defaultValue;
+        } catch {
+            // Si la valeur est une string simple (pas du JSON), la retourner comme tableau
+            if (typeof value === 'string' && value.trim()) {
+                return [value.trim()];
+            }
+            return defaultValue;
+        }
+    }
+
     parseJSONFields(row) {
         if (!row) return row;
         return {
             ...row,
-            domaines: JSON.parse(row.domaines || '[]'),
-            categoriesProjet: JSON.parse(row.categoriesProjet || '[]'),
-            natureBesoin: JSON.parse(row.natureBesoin || '[]'),
-            benefices: JSON.parse(row.benefices || '[]')
+            domaines:          this.parseJSONField(row.domaines),
+            categoriesProjet:  this.parseJSONField(row.categoriesProjet),
+            natureBesoin:      this.parseJSONField(row.natureBesoin),
+            benefices:         this.parseJSONField(row.benefices),
+            valideeResponsable: !!row.valideeResponsable
         };
     }
 
@@ -39,22 +56,22 @@ class DemandeService {
                 
                 const { 
                     nomDemandeur, fonction, domaines, categoriesProjet, 
-                    contexte, description, natureBesoin, benefices, delaiSouhaite, statut 
+                    contexte, description, natureBesoin, benefices, delaiSouhaite, statut, valideeResponsable 
                 } = demandeData;
                 
                 const dateCreation = new Date().toLocaleDateString('fr-FR');
                 const initialStatut = statut || 'En attente';
                 
                 const query = `INSERT INTO demandes 
-                    (id, nomDemandeur, fonction, domaines, categoriesProjet, contexte, description, natureBesoin, benefices, delaiSouhaite, dateCreation, statut) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+                    (id, nomDemandeur, fonction, domaines, categoriesProjet, contexte, description, natureBesoin, benefices, delaiSouhaite, dateCreation, statut, valideeResponsable) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
                 
                 const values = [
                     newId, nomDemandeur, fonction, 
                     JSON.stringify(domaines || []), JSON.stringify(categoriesProjet || []), 
                     contexte, description, 
                     JSON.stringify(natureBesoin || []), JSON.stringify(benefices || []), 
-                    delaiSouhaite, dateCreation, initialStatut
+                    delaiSouhaite, dateCreation, initialStatut, valideeResponsable || false
                 ];
 
                 db.query(query, values, (err) => {
@@ -87,11 +104,11 @@ class DemandeService {
         return new Promise((resolve, reject) => {
             const { 
                 nomDemandeur, fonction, domaines, categoriesProjet, 
-                contexte, description, natureBesoin, benefices, delaiSouhaite 
+                contexte, description, natureBesoin, benefices, delaiSouhaite, valideeResponsable
             } = demandeData;
             
             const query = `UPDATE demandes 
-                SET nomDemandeur=?, fonction=?, domaines=?, categoriesProjet=?, contexte=?, description=?, natureBesoin=?, benefices=?, delaiSouhaite=?
+                SET nomDemandeur=?, fonction=?, domaines=?, categoriesProjet=?, contexte=?, description=?, natureBesoin=?, benefices=?, delaiSouhaite=?, valideeResponsable=?
                 WHERE id=?`;
             
             const values = [
@@ -99,7 +116,7 @@ class DemandeService {
                 JSON.stringify(domaines || []), JSON.stringify(categoriesProjet || []), 
                 contexte, description, 
                 JSON.stringify(natureBesoin || []), JSON.stringify(benefices || []), 
-                delaiSouhaite, id
+                delaiSouhaite, valideeResponsable || false, id
             ];
 
             db.query(query, values, (err) => {

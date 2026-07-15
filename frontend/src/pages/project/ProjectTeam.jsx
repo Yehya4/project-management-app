@@ -44,7 +44,9 @@ const ProjectTeam = () => {
     'Tech Lead': 'bg-purple-100 text-purple-700',
     'QA / Testeur': 'bg-emerald-100 text-emerald-700',
     'Designer UI/UX': 'bg-pink-100 text-pink-700',
-    'Scrum Master': 'bg-amber-100 text-amber-700'
+    'Scrum Master': 'bg-amber-100 text-amber-700',
+    'Chef de Projet': 'bg-slate-800 text-slate-100',
+    'Admin': 'bg-slate-200 text-slate-800'
   };
 
   return (
@@ -66,46 +68,7 @@ const ProjectTeam = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center text-center relative">
-          <div className="w-20 h-20 rounded-full bg-slate-900 text-white flex items-center justify-center text-3xl font-bold uppercase mb-4 shadow-sm">
-            {(project.chefProjet !== 'Non assigné' && project.chefProjet) ? project.chefProjet.charAt(0) : (charter?.chefProjetIT ? charter.chefProjetIT.charAt(0) : 'C')}
-          </div>
-          <h3 className="text-lg font-bold text-slate-800">
-            {(project.chefProjet !== 'Non assigné' && project.chefProjet) ? project.chefProjet : (charter?.chefProjetIT || 'Non assigné')}
-          </h3>
-          <span className="mt-2 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 flex items-center gap-1">
-            <Shield size={14} /> Chef de Projet
-          </span>
-        </div>
 
-        {}
-        {charter?.sponsorMetier && (
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center text-center">
-            <div className="w-20 h-20 rounded-full bg-emerald-900 text-white flex items-center justify-center text-3xl font-bold uppercase mb-4 shadow-sm">
-              {charter.sponsorMetier.charAt(0) || 'S'}
-            </div>
-            <h3 className="text-lg font-bold text-slate-800">{charter.sponsorMetier}</h3>
-            <span className="mt-2 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 flex items-center gap-1">
-              <Shield size={14} /> Sponsor Métier
-            </span>
-          </div>
-        )}
-
-        {}
-        {charter?.sponsorIT && (
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center text-center">
-            <div className="w-20 h-20 rounded-full bg-emerald-900 text-white flex items-center justify-center text-3xl font-bold uppercase mb-4 shadow-sm">
-              {charter.sponsorIT.charAt(0) || 'S'}
-            </div>
-            <h3 className="text-lg font-bold text-slate-800">{charter.sponsorIT}</h3>
-            <span className="mt-2 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 flex items-center gap-1">
-              <Shield size={14} /> Sponsor IT
-            </span>
-          </div>
-        )}
-
-        {}
         {teamMembers.map((member, index) => (
           <div key={index} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center text-center">
             <div className={`w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold uppercase mb-4 shadow-sm ${roleColors[member.role] || 'bg-slate-100 text-slate-600'}`}>

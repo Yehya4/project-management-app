@@ -41,10 +41,11 @@ const PMDashboard = () => {
     if (c.statut !== 'Envoyé au Demandeur') return false;
     const relatedDemande = demandes.find(d => d.id === c.demandeId);
     if (!relatedDemande) return false;
+    const fn = `${user?.prenom || ''} ${user?.nom || ''}`.trim();
+    const fnAlt = `${user?.nom || ''} ${user?.prenom || ''}`.trim();
     return (
-      relatedDemande.nomDemandeur === user?.name ||
-      relatedDemande.nomDemandeur === `${user?.prenom} ${user?.nom}`.trim() ||
-      relatedDemande.nomDemandeur === `${user?.nom} ${user?.prenom}`.trim()
+      relatedDemande.nomDemandeur === fn ||
+      relatedDemande.nomDemandeur === fnAlt
     );
   });
 

@@ -22,9 +22,9 @@ class TaskService {
 
     create(taskData, io) {
         return new Promise((resolve, reject) => {
-            const { id, projectId, title, description, priority, assigneeId, status } = taskData;
-            const query = 'INSERT INTO tasks (id, projectId, title, description, priority, assigneeId, status) VALUES (?, ?, ?, ?, ?, ?, ?)';
-            db.query(query, [id, projectId, title, description || null, priority, assigneeId || null, status], async (err) => {
+            const { id, projectId, title, description, priority, assigneeId, status, reference, objet, dateDebutReel, dateFinReel, dateFin } = taskData;
+            const query = 'INSERT INTO tasks (id, projectId, title, description, priority, assigneeId, status, reference, objet, dateDebutReel, dateFinReel, dateFin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+            db.query(query, [id, projectId, title, description || null, priority, assigneeId || null, status, reference || null, objet || null, dateDebutReel || null, dateFinReel || null, dateFin || null], async (err) => {
                 if (err) return reject(err);
                 const task = { id, ...taskData, createdAt: new Date().toISOString() };
                 
@@ -66,6 +66,26 @@ class TaskService {
             if (updates.status !== undefined) {
                 fields.push('status = ?');
                 values.push(updates.status);
+            }
+            if (updates.reference !== undefined) {
+                fields.push('reference = ?');
+                values.push(updates.reference || null);
+            }
+            if (updates.objet !== undefined) {
+                fields.push('objet = ?');
+                values.push(updates.objet || null);
+            }
+            if (updates.dateDebutReel !== undefined) {
+                fields.push('dateDebutReel = ?');
+                values.push(updates.dateDebutReel || null);
+            }
+            if (updates.dateFinReel !== undefined) {
+                fields.push('dateFinReel = ?');
+                values.push(updates.dateFinReel || null);
+            }
+            if (updates.dateFin !== undefined) {
+                fields.push('dateFin = ?');
+                values.push(updates.dateFin || null);
             }
 
             if (fields.length === 0) return resolve({ id });

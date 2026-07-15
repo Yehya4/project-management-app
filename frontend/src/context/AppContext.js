@@ -286,12 +286,16 @@ export const DemandeProvider = ({ children }) => {
         headers: getHeaders(),
         body: JSON.stringify(nouvelleDemande)
       });
-      if (res.ok) {
-        const data = await res.json();
-        setDemandes(prev => [data, ...prev]);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || `Erreur serveur (${res.status})`);
       }
+      const data = await res.json();
+      setDemandes(prev => [data, ...prev]);
+      return data;
     } catch (err) {
       console.error('Erreur ajout demande', err);
+      throw err; // Repropage pour que l'UI puisse afficher l'erreur
     }
   };
 
@@ -302,13 +306,16 @@ export const DemandeProvider = ({ children }) => {
         headers: getHeaders(),
         body: JSON.stringify(updatedData)
       });
-      if (res.ok) {
-        const data = await res.json();
-        setDemandes(prev => prev.map(d => d.id === id ? { ...d, ...data } : d));
-        return data;
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || `Erreur serveur (${res.status})`);
       }
+      const data = await res.json();
+      setDemandes(prev => prev.map(d => d.id === id ? { ...d, ...data } : d));
+      return data;
     } catch (err) {
       console.error('Erreur mise à jour demande', err);
+      throw err;
     }
   };
 
@@ -768,7 +775,7 @@ export const useTeam = () => useContext(TeamContext);
 export const TeamProvider = ({ children }) => {
   const [teams, setTeams] = useState([]); 
   const { token } = useAuth();
-
+  const { users } = useUser();
   const API_URL = 'http://localhost:5000/api/projects';
 
   const getHeaders = () => ({
@@ -826,7 +833,22 @@ export const TeamProvider = ({ children }) => {
 
   const getTeamByProjectId = (projectId) => {
     const projectTeam = teams.find(t => t.projectId === projectId);
-    return projectTeam ? projectTeam.members : [];
+    const manualMembers = projectTeam ? projectTeam.members : [];
+
+    if (!users || users.length === 0) return manualMembers;
+
+    const autoMembers = users
+      .filter(u => ['Project Manager', 'Sponsor', 'Admin'].includes(u.role))
+      .map(u => ({
+        userId: u.id,
+        user: u,
+        role: u.role === 'Project Manager' ? 'Chef de Projet' : u.role === 'Admin' ? 'Admin' : 'Sponsor',
+        isAuto: true
+      }));
+
+    const finalManualMembers = manualMembers.filter(mm => !autoMembers.some(am => am.userId === mm.userId));
+
+    return [...autoMembers, ...finalManualMembers];
   };
 
   return (
@@ -886,7 +908,8 @@ export const MessageProvider = ({ children }) => {
       const messageData = {
         content,
         senderId: user.id,
-        senderName: user.name || `${user.nom} ${user.prenom}`,
+        // Utilise nom + prenom (champs réels), pas user.name qui n'existe pas
+        senderName: `${user.prenom || ''} ${user.nom || ''}`.trim() || user.email,
         senderRole: user.role,
         mentions,
         projectId,

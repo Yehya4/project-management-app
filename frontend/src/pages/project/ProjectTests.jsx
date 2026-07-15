@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 import { useTestCases, useTeam, useAuth, useProjects } from '../../context/AppContext';
 import { 
   Plus, 
@@ -14,7 +15,9 @@ import {
   X, 
   MessageSquare, 
   User, 
-  Calendar 
+  Calendar,
+  Download,
+  Upload
 } from 'lucide-react';
 
 const ProjectTests = () => {
@@ -39,12 +42,15 @@ const ProjectTests = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isRunOpen, setIsRunOpen] = useState(false);
   
+  const fileInputRef = useRef(null);
+
   const [selectedTestCase, setSelectedTestCase] = useState(null);
   const [formData, setFormData] = useState({
     testCaseId: '',
     testName: '',
     description: '',
-    expectedResult: ''
+    expectedResult: '',
+    actualResult: ''
   });
 
   const [runData, setRunData] = useState({
@@ -119,9 +125,52 @@ const ProjectTests = () => {
       testCaseId: suggestedId,
       testName: '',
       description: '',
-      expectedResult: ''
+      expectedResult: '',
+      actualResult: ''
     });
     setIsFormOpen(true);
+  };
+
+  const handleExportExcel = () => {
+    const ws = XLSX.utils.json_to_sheet(testCases.map(tc => ({
+      "ID du cas": tc.testCaseId,
+      "Nom du test": tc.testName,
+      "Description": tc.description,
+      "Résultat attendu": tc.expectedResult,
+      "Résultat Réel": tc.actualResult || '',
+      "Statut": tc.status,
+      "Testeur": tc.testerName || '',
+      "Commentaire": tc.comment || ''
+    })));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Cas de Test");
+    XLSX.writeFile(wb, `Tests_${project?.nom || 'Projet'}.xlsx`);
+  };
+
+  const handleImportExcel = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      const bstr = evt.target.result;
+      const wb = XLSX.read(bstr, { type: 'binary' });
+      const wsname = wb.SheetNames[0];
+      const ws = wb.Sheets[wsname];
+      const data = XLSX.utils.sheet_to_json(ws);
+      
+      for (const row of data) {
+        await addTestCase({
+          projectId: project.id,
+          testCaseId: row["ID du cas"] || `TC-${Date.now()}`,
+          testName: row["Nom du test"] || 'Test importé',
+          description: row["Description"] || '',
+          expectedResult: row["Résultat attendu"] || '',
+          actualResult: row["Résultat Réel"] || ''
+        });
+      }
+      e.target.value = null; // reset
+    };
+    reader.readAsBinaryString(file);
   };
 
   const handleOpenEditForm = (tc) => {
@@ -130,7 +179,8 @@ const ProjectTests = () => {
       testCaseId: tc.testCaseId,
       testName: tc.testName || '',
       description: tc.description,
-      expectedResult: tc.expectedResult
+      expectedResult: tc.expectedResult,
+      actualResult: tc.actualResult || ''
     });
     setIsFormOpen(true);
   };
@@ -199,15 +249,38 @@ const ProjectTests = () => {
           </h2>
           <p className="text-slate-500">Définissez et validez la qualité technique de {project?.nom}.</p>
         </div>
-        {!isPending && canCreateTest && (
+        <div className="flex items-center gap-3">
+          <input 
+            type="file" 
+            accept=".xlsx, .xls" 
+            ref={fileInputRef} 
+            onChange={handleImportExcel} 
+            className="hidden" 
+          />
           <button 
-            onClick={handleOpenCreateForm}
-            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors shadow-sm"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-semibold hover:bg-slate-200 transition-colors shadow-sm border border-slate-200"
           >
-            <Plus size={20} />
-            Créer un cas de test
+            <Upload size={18} />
+            <span className="hidden md:inline">Importer</span>
           </button>
-        )}
+          <button 
+            onClick={handleExportExcel}
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-semibold hover:bg-slate-200 transition-colors shadow-sm border border-slate-200"
+          >
+            <Download size={18} />
+            <span className="hidden md:inline">Exporter</span>
+          </button>
+          {!isPending && canCreateTest && (
+            <button 
+              onClick={handleOpenCreateForm}
+              className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors shadow-sm"
+            >
+              <Plus size={20} />
+              <span className="hidden md:inline">Créer</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Statistics Cards */}
@@ -401,7 +474,7 @@ const ProjectTests = () => {
                   </div>
 
                   {/* Description & Expected */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Description</h4>
                       <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-line">{tc.description}</p>
@@ -409,6 +482,10 @@ const ProjectTests = () => {
                     <div>
                       <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Résultat attendu</h4>
                       <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-line">{tc.expectedResult}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Résultat Réel</h4>
+                      <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-line">{tc.actualResult || <span className="italic text-slate-400">Non renseigné</span>}</p>
                     </div>
                   </div>
 
@@ -550,6 +627,19 @@ const ProjectTests = () => {
                   placeholder="Quel est le comportement attendu en cas de succès ?"
                   value={formData.expectedResult}
                   onChange={(e) => setFormData(prev => ({ ...prev, expectedResult: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                  Résultat Réel
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Quel a été le comportement observé (optionnel à la création) ?"
+                  value={formData.actualResult}
+                  onChange={(e) => setFormData(prev => ({ ...prev, actualResult: e.target.value }))}
                   className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 />
               </div>

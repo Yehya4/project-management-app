@@ -8,10 +8,11 @@ import { CheckCircle, Clock, AlertCircle, PlusCircle, FileText, Check, X, Send, 
 import { DemandeDetailsModal } from '../components/DemandeSI';
 import Popup from '../components/Popup';
 import { generateDemandePDF } from '../utils/pdfGenerator';
+import mammoth from 'mammoth';
 
 const ListeDemandesSI = () => {
   const { user } = useAuth();
-  const { demandes, updateDemandeStatus, deleteDemande, updateDemande } = useDemandes();
+  const { demandes, addDemande, updateDemandeStatus, deleteDemande, updateDemande } = useDemandes();
   const [selectedDemande, setSelectedDemande] = useState(null);
   const [popup, setPopup] = useState({ isOpen: false, title: '', message: '', type: 'success' });
 
@@ -23,6 +24,163 @@ const ListeDemandesSI = () => {
     } catch (error) {
       setPopup({ isOpen: true, title: 'Erreur', message: 'Une erreur est survenue lors de l\'exportation du PDF.', type: 'error' });
     }
+  };
+
+  const fileInputRef = React.useRef(null);
+
+  const loadPdfJs = async () => {
+    if (window.pdfjsLib) return window.pdfjsLib;
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+      script.onload = () => {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+        resolve(window.pdfjsLib);
+      };
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+  };
+
+  // ─── Import fichier (Word / PDF) ──────────────────────────────────────────────
+  const handleImportFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const processText = async (text) => {
+      try {
+        const allPrefixes = [
+          'Entité', 'Nom du demandeur', 'Fonction',
+          'Domaines concernés', 'Domaines',
+          'Contexte du Projet', 'Contexte',
+          'Description du besoin', 'Description',
+          'Nature du besoin', 'Nature',
+          'Bénéfices escomptés', 'Bénéfices',
+          'Délai souhaité', 'Délai',
+          'Demande révisée et validée'
+        ];
+        const nextPrefixesPattern = allPrefixes.join('|');
+
+        const extractField = (prefixRegexStr, isMultiline = false) => {
+          const regex = new RegExp(
+            `(?:${prefixRegexStr})\\s*[:\\?]?\\s*([\\s\\S]*?)(?:\\n\\s*(?:${nextPrefixesPattern})\\s*[:\\?]|$)`,
+            'i'
+          );
+          const match = text.match(regex);
+          if (match) {
+            let val = match[1].trim();
+            if (!isMultiline) {
+              val = val.split('\n')[0].trim();
+            }
+            return val;
+          }
+          return '';
+        };
+
+        const extractCheckboxes = (textBlock, options) => {
+          if (!textBlock) return [];
+          const selected = [];
+          options.forEach(opt => {
+            // Cherche le nom de l'option suivi de ☒, x ou X (ignorant la casse et les espaces)
+            const regex = new RegExp(`${opt}\\s*[\\[\\(]?[☒xX][\\]\\)]?`, 'i');
+            if (regex.test(textBlock)) {
+              selected.push(opt);
+            }
+          });
+          return selected;
+        };
+
+        const domainesBlock = extractField('Domaines concernés|Domaines', true);
+        const natureBlock = extractField('Nature du besoin|Nature', true);
+        const beneficesBlock = extractField('Bénéfices escomptés|Bénéfices', true);
+        const validationBlock = extractField('Demande révisée et validée par responsable.*', false);
+
+        const valideeResponsable = /Oui.*?[☒xX]/i.test(validationBlock);
+
+        // ─── Mapping vers le schéma de la base de données ────────────────────
+        const nouvelleDemande = {
+          nomDemandeur:     extractField('Nom du demandeur|Demandeur').replace(/^- /g, '').trim(),
+          fonction:         extractField('Fonction').replace(/^- /g, '').trim(),
+          domaines:         extractCheckboxes(domainesBlock, ['Commercial', 'Atelier', 'Magasin', 'Gestion', 'Marketing', 'Logistique', 'Finance', 'Audit/Contrôle', 'Ressources Humaines']),
+          categoriesProjet: [], // OBSOLETE
+          contexte:         extractField('Contexte du Projet \\(Problèmes à résoudre\\)|Contexte', true),
+          description:      extractField('Description du besoin \\(Les exigences\\)|Description', true),
+          natureBesoin:     extractCheckboxes(natureBlock, ['Réglementaire', 'Amélioration satisfaction client', 'Amélioration fonctionnement']),
+          benefices:        extractCheckboxes(beneficesBlock, ['Diminution des Coûts', 'Améliorations des Performances', 'Réduction des Risques', 'Conformité']),
+          delaiSouhaite:    extractField('Délai souhaité|Délai'),
+          valideeResponsable: valideeResponsable,
+          statut:           'En attente',
+          dateCreation:     new Date().toLocaleDateString('fr-FR'),
+          dateSoumission:   new Date().toLocaleDateString('fr-FR')
+        };
+
+        // Vérification minimale : au moins un champ principal doit être renseigné
+        if (!nouvelleDemande.nomDemandeur && !nouvelleDemande.contexte && !nouvelleDemande.description) {
+          setPopup({
+            isOpen: true,
+            title: 'Avertissement',
+            message: 'Aucune donnée reconnue dans ce fichier. Vérifiez que le document utilise le bon format (exporté depuis cette application).',
+            type: 'error'
+          });
+          e.target.value = null;
+          return;
+        }
+
+        await addDemande(nouvelleDemande);
+        setPopup({ isOpen: true, title: 'Succès', message: 'Demande importée avec succès.', type: 'success' });
+      } catch (err) {
+        console.error('Erreur import:', err);
+        setPopup({ isOpen: true, title: 'Erreur', message: 'Le format du fichier est invalide ou une erreur serveur s\'est produite.', type: 'error' });
+      }
+      e.target.value = null;
+    };
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        if (file.name.toLowerCase().endsWith('.pdf')) {
+          const pdfjsLib = await loadPdfJs();
+          const typedarray = new Uint8Array(event.target.result);
+          const pdf = await pdfjsLib.getDocument(typedarray).promise;
+          let fullText = '';
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            let lastY = -1;
+            let pageText = '';
+            textContent.items.forEach(item => {
+              if (lastY !== item.transform[5] && lastY !== -1) {
+                pageText += '\n';
+              }
+              pageText += item.str;
+              lastY = item.transform[5];
+            });
+            fullText += pageText + '\n';
+          }
+          // Forcer les sauts de ligne avant chaque préfixe au cas où le PDF aurait
+          // perdu la mise en forme
+          const prefixes = [
+            'Demandeur', 'Nom du demandeur', 'Fonction',
+            'Domaines concernés', 'Catégories des projets',
+            'Contexte du projet', 'Description du besoin',
+            'Nature du besoin', 'Bénéfices escomptés', 'Délai souhaité'
+          ];
+          prefixes.forEach(p => {
+            const regex = new RegExp(`(${p}\\s*:)`, 'gi');
+            fullText = fullText.replace(regex, '\n$1');
+          });
+          processText(fullText);
+        } else {
+          const arrayBuffer = event.target.result;
+          const result = await mammoth.extractRawText({ arrayBuffer });
+          processText(result.value);
+        }
+      } catch (err) {
+        console.error('Erreur lecture fichier:', err);
+        setPopup({ isOpen: true, title: 'Erreur', message: 'Erreur lors de la lecture du fichier.', type: 'error' });
+      }
+    };
+    reader.readAsArrayBuffer(file);
   };
 
   const isReviewer = user?.role === 'Project Manager' || user?.role === 'Sponsor' || user?.role === 'Admin';
@@ -46,14 +204,37 @@ const ListeDemandesSI = () => {
     }
   };
 
-  const filteredDemandes = isReviewer 
-    ? demandes.filter(d => d.statut !== 'Brouillon')
-    : demandes.filter(d => d.nomDemandeur === user?.name || d.nomDemandeur === `${user?.prenom} ${user?.nom}`.trim() || d.nomDemandeur === `${user?.nom} ${user?.prenom}`.trim());
+  // ─── Filtrage des demandes ────────────────────────────────────────────────────
+  // Utilise prenom + nom (champs réels) et non user.name (inexistant)
+  const currentUserFullName = user
+    ? `${user.prenom || ''} ${user.nom || ''}`.trim()
+    : '';
+  const currentUserFullNameAlt = user
+    ? `${user.nom || ''} ${user.prenom || ''}`.trim()
+    : '';
 
-  const enCoursDemandes = filteredDemandes.filter(d => d.statut.includes('En')).length;
-  const valideeDemandes = filteredDemandes.filter(d => d.statut === 'Acceptée' || d.statut === 'Validée').length;
-  const refuseeDemandes = filteredDemandes.filter(d => d.statut === 'Refusée').length;
-  const totalDemandes = filteredDemandes.length;
+  const filteredDemandes = isReviewer
+    ? demandes.filter(d => d.statut !== 'Brouillon')
+    : demandes.filter(d =>
+        d.nomDemandeur === currentUserFullName ||
+        d.nomDemandeur === currentUserFullNameAlt
+      );
+
+  // ─── Statistiques ─────────────────────────────────────────────────────────────
+  const enCoursDemandes   = filteredDemandes.filter(d => d.statut && d.statut.includes('En')).length;
+  const valideeDemandes   = filteredDemandes.filter(d => d.statut === 'Acceptée' || d.statut === 'Validée').length;
+  const refuseeDemandes   = filteredDemandes.filter(d => d.statut === 'Refusée').length;
+  const totalDemandes     = filteredDemandes.length;
+
+  // Helper sécurisé pour afficher les tableaux (évite le crash si domaines est null)
+  const safeDisplayArray = (arr) => {
+    if (!arr) return '-';
+    if (Array.isArray(arr)) return arr.join(', ') || '-';
+    if (typeof arr === 'string') {
+      try { return JSON.parse(arr).join(', ') || '-'; } catch { return arr; }
+    }
+    return '-';
+  };
 
   return (
     <Layout title={isReviewer ? "Demandes SI" : "Mes Demandes SI"}>
@@ -69,7 +250,22 @@ const ListeDemandesSI = () => {
                 : "Retrouvez l'historique de toutes vos demandes et leur statut d'avancement."}
             </p>
           </div>
-          <div className="mt-6 md:mt-0">
+          <div className="mt-6 md:mt-0 flex gap-3">
+            <input 
+              type="file" 
+              accept=".docx,.pdf" 
+              ref={fileInputRef} 
+              onChange={handleImportFile} 
+              className="hidden" 
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="bg-slate-700 hover:bg-slate-600 text-white px-4 md:px-5 py-2.5 rounded-xl font-semibold shadow-lg transition-all flex items-center justify-center gap-2 whitespace-nowrap text-sm md:text-base"
+            >
+              <Download size={18} />
+              <span className="hidden md:inline">Importer (.docx / .pdf)</span>
+              <span className="md:hidden">Importer</span>
+            </button>
             <Link
               to="/demande-si/nouvelle"
               className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-5 py-3 rounded-xl font-semibold transition-all shadow-lg hover:shadow-orange-500/30"
@@ -158,7 +354,8 @@ const ListeDemandesSI = () => {
                         </td>
                       )}
                       <td className="px-6 py-4 text-sm text-slate-500">{demande.fonction || '-'}</td>
-                      <td className="px-6 py-4 text-sm text-slate-500">{demande.domaines.join(', ')}</td>
+                      {/* safeDisplayArray protège contre domaines null/non-tableau */}
+                      <td className="px-6 py-4 text-sm text-slate-500">{safeDisplayArray(demande.domaines)}</td>
                       <td className="px-6 py-4 text-sm text-slate-500">{demande.dateCreation}</td>
                       <td className="px-6 py-4 text-sm text-slate-500">{demande.dateSoumission || (demande.statut !== 'Brouillon' ? demande.dateCreation : '-')}</td>
                       <td className="px-6 py-4 text-sm">
@@ -167,7 +364,9 @@ const ListeDemandesSI = () => {
                               ? 'bg-emerald-100 text-emerald-700'
                               : demande.statut === 'Refusée'
                                 ? 'bg-rose-100 text-rose-700'
-                                : 'bg-amber-100 text-amber-700'
+                                : demande.statut === 'Brouillon'
+                                  ? 'bg-slate-100 text-slate-600'
+                                  : 'bg-amber-100 text-amber-700'
                           }`}>
                           {demande.statut}
                         </span>
@@ -202,15 +401,18 @@ const ListeDemandesSI = () => {
                                 </>
                               )}
                               {demande.statut !== 'Brouillon' && (
-                                <button
-                                  onClick={() => handleExportPDF(demande)}
-                                  className="flex items-center gap-1 px-2 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors shadow-sm border border-indigo-100 text-xs font-semibold"
-                                  title="Exporter la demande en PDF"
-                                >
-                                  <Download size={14} /> Exporter PDF
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => handleExportPDF(demande)}
+                                    className="flex items-center gap-1 px-2 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors shadow-sm border border-indigo-100 text-xs font-semibold"
+                                    title="Exporter la demande en PDF"
+                                  >
+                                    <Download size={14} /> PDF
+                                  </button>
+
+                                </>
                               )}
-                              {demande.statut !== 'En attente' && (
+                              {demande.statut !== 'En attente' && demande.statut !== 'Brouillon' && (
                                 <span className="text-slate-400 text-xs italic ml-2">Traité</span>
                               )}
                             </>
@@ -249,13 +451,16 @@ const ListeDemandesSI = () => {
                                 </>
                               )}
                               {demande.statut !== 'Brouillon' && (
-                                <button
-                                  onClick={() => handleExportPDF(demande)}
-                                  className="flex items-center gap-1 px-2 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors shadow-sm border border-indigo-100 text-xs font-semibold"
-                                  title="Exporter la demande en PDF"
-                                >
-                                  <Download size={14} /> Exporter PDF
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => handleExportPDF(demande)}
+                                    className="flex items-center gap-1 px-2 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors shadow-sm border border-indigo-100 text-xs font-semibold"
+                                    title="Exporter la demande en PDF"
+                                  >
+                                    <Download size={14} /> PDF
+                                  </button>
+
+                                </>
                               )}
                             </>
                           )}
@@ -265,7 +470,7 @@ const ListeDemandesSI = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={isReviewer ? "8" : "6"} className="py-12 text-center text-slate-500">
+                    <td colSpan={isReviewer ? "8" : "7"} className="py-12 text-center text-slate-500">
                       Aucune demande SI trouvée
                     </td>
                   </tr>

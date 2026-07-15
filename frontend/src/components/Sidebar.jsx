@@ -103,10 +103,10 @@ const Sidebar = () => {
       <div className="h-20 flex items-center px-4 border-b border-slate-200 overflow-hidden">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center shadow-lg shadow-blue-500/30 text-lg font-black tracking-tighter shrink-0 mx-auto">
-            AH
+            AP
           </div>
           <div className={`flex flex-col whitespace-nowrap transition-all duration-300 ${isOpen ? 'opacity-100 w-40' : 'opacity-0 w-0'}`}>
-            <h1 className="bg-clip-text text-transparent bg-gradient-to-r from-blue-800 to-indigo-600 font-black text-xl tracking-tight leading-tight">Auto Hall</h1>
+            <h1 className="bg-clip-text text-transparent bg-gradient-to-r from-blue-800 to-indigo-600 font-black text-xl tracking-tight leading-tight">Auto Project</h1>
             <p className="text-[11px] font-bold tracking-widest text-slate-400 uppercase mt-0.5">Workspace</p>
           </div>
         </div>

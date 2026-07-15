@@ -258,13 +258,37 @@ export const generateCharterPDF = (charter, demande, shouldSave = true) => {
 
       doc.setFont('times', 'normal');
       doc.setFontSize(11);
-      doc.text(`Sponsor Métier : ${charter.sponsorMetier || ''}`, startX + 5, y);
+      
+      const drawTeamRole = (role, name) => {
+        if (name) {
+          doc.setFont('times', 'italic');
+          doc.text(`- ${role} : `, startX + 5, y);
+          doc.setFont('times', 'normal');
+          doc.text(name, startX + 5 + doc.getTextWidth(`- ${role} : `), y);
+          y += 6;
+          checkPageBreak(10);
+        }
+      };
+
+      doc.setFont('times', 'bold');
+      doc.text('Équipe IT :', startX + 5, y);
       y += 6;
-      doc.text(`Chef de Projet Métier : ${charter.chefProjetMetier || ''}`, startX + 5, y);
+      drawTeamRole('Sponsor', charter.equipeITSponsor);
+      drawTeamRole('Chef de Projet', charter.equipeITChef);
+      drawTeamRole('Développement', charter.equipeITDev);
+      drawTeamRole('Test', charter.equipeITTest);
+
+      doc.setFont('times', 'bold');
+      doc.text('Équipe Métier :', startX + 5, y);
       y += 6;
-      doc.text(`Sponsor IT : ${charter.sponsorIT || ''}`, startX + 5, y);
+      drawTeamRole('Sponsor', charter.equipeMetierSponsor);
+      drawTeamRole('Chef de Projet', charter.equipeMetierChef);
+      drawTeamRole('Équipe', charter.equipeMetierEquipe);
+
+      doc.setFont('times', 'bold');
+      doc.text('Utilisateurs Finaux :', startX + 5, y);
       y += 6;
-      doc.text(`Chef de Projet IT : ${charter.chefProjetIT || ''}`, startX + 5, y);
+      drawTeamRole('Utilisateurs', charter.utilisateursFinaux);
       
       if (shouldSave) {
         doc.save(`Project_Charter_${demande?.id || 'doc'}.pdf`);

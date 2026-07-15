@@ -58,9 +58,9 @@ const Projects = () => {
     if (user?.role === 'User') {
       const d = demandes.find(dem => dem.id === project.demandeId);
       if (!d) return false;
-      return d.nomDemandeur === user?.name || 
-             d.nomDemandeur === `${user?.prenom} ${user?.nom}`.trim() || 
-             d.nomDemandeur === `${user?.nom} ${user?.prenom}`.trim();
+      const fn = `${user?.prenom || ''} ${user?.nom || ''}`.trim();
+      const fnAlt = `${user?.nom || ''} ${user?.prenom || ''}`.trim();
+      return d.nomDemandeur === fn || d.nomDemandeur === fnAlt;
     }
     return true;
   });

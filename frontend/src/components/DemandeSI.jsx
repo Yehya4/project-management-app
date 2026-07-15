@@ -93,7 +93,8 @@ const INITIAL_STATE = {
   description: '',
   natureBesoin: [],
   benefices: [],
-  delaiSouhaite: ''
+  delaiSouhaite: '',
+  valideeResponsable: false
 };
 
 
@@ -176,16 +177,8 @@ export const FormulaireDemandeSI = ({ onSubmit, onSave, initialData }) => {
         <GroupeCasesCocher
           label="Domaines concernés"
           name="domaines"
-          options={config?.domaines?.length > 0 ? config.domaines : ['Ressources Humaines', 'Finance', 'Logistique', 'Production', 'Commercial']}
+          options={['Commercial', 'Atelier', 'Magasin', 'Gestion', 'Marketing', 'Logistique', 'Finance', 'Audit/Contrôle', 'Ressources Humaines']}
           selectedValues={formData.domaines}
-          onChange={handleChange}
-        />
-        <div className="my-6 border-t border-dashed border-slate-200"></div>
-        <GroupeCasesCocher
-          label="Catégories des projets"
-          name="categoriesProjet"
-          options={config?.categoriesProjet?.length > 0 ? config.categoriesProjet : ['Nouveau projet', 'Refonte', 'Évolution majeure', 'Maintenance corrective']}
-          selectedValues={formData.categoriesProjet}
           onChange={handleChange}
         />
       </div>
@@ -215,7 +208,7 @@ export const FormulaireDemandeSI = ({ onSubmit, onSave, initialData }) => {
         <GroupeCasesCocher
           label="Nature du besoin"
           name="natureBesoin"
-          options={config?.natureBesoin?.length > 0 ? config.natureBesoin : ['Automatisation', 'Amélioration UX/UI', 'Mise en conformité', 'Nouveau service métier']}
+          options={['Réglementaire', 'Amélioration satisfaction client', 'Amélioration fonctionnement']}
           selectedValues={formData.natureBesoin}
           onChange={handleChange}
         />
@@ -223,20 +216,50 @@ export const FormulaireDemandeSI = ({ onSubmit, onSave, initialData }) => {
         <GroupeCasesCocher
           label="Bénéfices escomptés"
           name="benefices"
-          options={config?.benefices?.length > 0 ? config.benefices : ['Gain de temps / Productivité', 'Réduction des coûts', 'Qualité des données', 'Amélioration image de marque']}
+          options={['Diminution des Coûts', 'Améliorations des Performances', 'Réduction des Risques', 'Conformité']}
           selectedValues={formData.benefices}
           onChange={handleChange}
         />
         <div className="my-6 border-t border-dashed border-slate-200"></div>
-        <div className="max-w-md">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <ChampSaisie
             label="Délai souhaité"
             id="delaiSouhaite"
-            type="date"
+            type="text"
             value={formData.delaiSouhaite}
             onChange={handleChange}
+            placeholder="Ex: 12/02/2026 ou Q3 2026"
             required
           />
+          <div className="flex flex-col">
+            <label className="mb-2 text-sm font-semibold text-slate-700">
+              Demande révisée et validée par responsable de l’entité?
+            </label>
+            <div className="flex items-center gap-6 mt-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input 
+                  type="radio" 
+                  name="valideeResponsable" 
+                  value="true"
+                  checked={formData.valideeResponsable === true || formData.valideeResponsable === 'true'}
+                  onChange={(e) => handleChange({ target: { name: 'valideeResponsable', value: true }})}
+                  className="w-5 h-5 border-2 border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                />
+                <span className="text-slate-700">Oui</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input 
+                  type="radio" 
+                  name="valideeResponsable" 
+                  value="false"
+                  checked={formData.valideeResponsable === false || formData.valideeResponsable === 'false'}
+                  onChange={(e) => handleChange({ target: { name: 'valideeResponsable', value: false }})}
+                  className="w-5 h-5 border-2 border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                />
+                <span className="text-slate-700">Non</span>
+              </label>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -284,10 +307,18 @@ export const DemandeDetailsModal = ({ isOpen, onClose, demande }) => {
   if (!isOpen || !demande) return null;
 
   const renderArray = (arr) => {
-    if (!arr || arr.length === 0) return <span className="text-slate-400 italic">Non spécifié</span>;
+    // Gestion robuste : null, tableau vide, chaîne JSON, ou chaîne simple
+    let items = arr;
+    if (!items) return <span className="text-slate-400 italic">Non spécifié</span>;
+    if (typeof items === 'string') {
+      try { items = JSON.parse(items); } catch { items = [items]; }
+    }
+    if (!Array.isArray(items) || items.length === 0) {
+      return <span className="text-slate-400 italic">Non spécifié</span>;
+    }
     return (
       <div className="flex flex-wrap gap-2">
-        {arr.map((item, idx) => (
+        {items.map((item, idx) => (
           <span key={idx} className="px-3 py-1 bg-slate-100 text-slate-700 text-sm rounded-full font-medium">
             {item}
           </span>

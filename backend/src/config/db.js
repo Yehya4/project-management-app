@@ -22,6 +22,22 @@ pool.getConnection((error, connection) => {
   }
 
   console.log("Connexion réussie à MySQL");
+  
+  // Ensure the column exists
+  connection.query(
+    "ALTER TABLE demandes ADD COLUMN valideeResponsable BOOLEAN DEFAULT FALSE",
+    (err) => {
+      if (err) {
+        // Ignorer l'erreur si la colonne existe déjà (ER_DUP_FIELDNAME)
+        if (err.code !== 'ER_DUP_FIELDNAME') {
+          console.error("Erreur lors de l'ajout de la colonne valideeResponsable:", err.message);
+        }
+      } else {
+        console.log("Colonne valideeResponsable ajoutée avec succès à la table demandes.");
+      }
+    }
+  );
+
   connection.release();
 });
 

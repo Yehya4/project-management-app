@@ -341,10 +341,11 @@ const ProjectOverview = () => {
   const isSponsorRole = user?.role === 'Sponsor' || user?.role === 'Admin';
   
   const originalDemande = project.originalDemande || demandes.find(d => d.id === project.demandeId);
+  const _fn = `${user?.prenom || ''} ${user?.nom || ''}`.trim();
+  const _fnAlt = `${user?.nom || ''} ${user?.prenom || ''}`.trim();
   const isDemandeur = originalDemande && (
-    originalDemande.nomDemandeur === user?.name ||
-    originalDemande.nomDemandeur === `${user?.prenom} ${user?.nom}`.trim() ||
-    originalDemande.nomDemandeur === `${user?.nom} ${user?.prenom}`.trim()
+    originalDemande.nomDemandeur === _fn ||
+    originalDemande.nomDemandeur === _fnAlt
   );
 
   if (!charter && isStrictPM) {

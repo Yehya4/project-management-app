@@ -4,23 +4,31 @@ const bcrypt = require('bcrypt');
 class AuthService {
     login(email, password) {
         return new Promise((resolve, reject) => {
-            const query = 'SELECT * FROM users WHERE email = ?';
+            // SELECT uniquement les colonnes nécessaires — ne jamais retourner password en clair
+            const query = 'SELECT id, matricule, nom, prenom, fonction, telephone, emailPersonnelle, email, role, password FROM users WHERE email = ? AND archived = 0';
             db.query(query, [email], async (err, results) => {
                 if (err) {
                     return reject(err);
                 }
-                
+
                 if (results.length > 0) {
                     const user = results[0];
-                    let isMatch = false;
-                    
-                    if (user.password && (user.password.startsWith('$2b$') || user.password.startsWith('$2a$'))) {
-                        isMatch = await bcrypt.compare(password, user.password);
-                    } else {
-                        isMatch = (password === user.password);
+
+                    // Sécurité : on n'accepte QUE les mots de passe hashés bcrypt
+                    // Un mot de passe non hashé en base de données doit être réinitialisé par un admin
+                    const isBcrypt = user.password &&
+                        (user.password.startsWith('$2b$') || user.password.startsWith('$2a$'));
+
+                    if (!isBcrypt) {
+                        // Mot de passe non hashé : refuser la connexion pour sécurité
+                        console.error(`ALERTE SÉCURITÉ : L'utilisateur ${email} a un mot de passe non hashé en base.`);
+                        return resolve(null);
                     }
-                    
+
+                    const isMatch = await bcrypt.compare(password, user.password);
+
                     if (isMatch) {
+                        // Ne JAMAIS inclure le hash du mot de passe dans la réponse
                         resolve({
                             id: user.id,
                             matricule: user.matricule,

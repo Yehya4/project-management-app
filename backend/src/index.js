@@ -8,9 +8,11 @@ const app = express();
 const port = 5000;
 
 const server = http.createServer(app);
+const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:3000';
+
 const io = new Server(server, {
     cors: {
-        origin: 'http://localhost:3000',
+        origin: CORS_ORIGIN,
         methods: ['GET', 'POST', 'PUT', 'DELETE']
     }
 });
@@ -22,13 +24,19 @@ const userService = require('./services/userService');
 const notificationService = require('./services/notificationService');
 const jwt = require('jsonwebtoken');
 
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+    console.error('ERREUR CRITIQUE : JWT_SECRET non défini dans .env. Arrêt du serveur.');
+    process.exit(1);
+}
+
 io.use((socket, next) => {
     const token = socket.handshake.auth.token;
     if (!token) {
-        return next(new Error('Authentication error'));
+        return next(new Error('Authentication error: token manquant'));
     }
-    jwt.verify(token, process.env.JWT_SECRET || 'votre_secret_jwt_super_securise', (err, decoded) => {
-        if (err) return next(new Error('Authentication error'));
+    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+        if (err) return next(new Error('Authentication error: token invalide'));
         socket.user = decoded;
         next();
     });
@@ -110,8 +118,22 @@ io.on('connection', (socket) => {
 
 const routes = require('./routes/routes');
 
-app.use(cors({ origin: 'http://localhost:3000' }));
-app.use(express.json());
+// ─── Sécurité : headers HTTP ──────────────────────────────────────────────────
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    next();
+});
+
+// ─── CORS (une seule configuration, cohérente avec Socket.IO) ────────────────
+app.use(cors({
+    origin: CORS_ORIGIN,
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+app.use(express.json({ limit: '2mb' }));
 
 app.use('/api', routes);
 

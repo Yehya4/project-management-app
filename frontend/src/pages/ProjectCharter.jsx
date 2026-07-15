@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useDemandes, useCharter, useAuth, useProjects, useUser } from '../context/AppContext';
-import { FileText, Save, Send, Users, Activity, Flag, AlertTriangle, MessageSquare, Briefcase, CheckCircle, Trash2, ClipboardList, Zap } from 'lucide-react';
+import { FileText, Save, Send, Users, Activity, Flag, AlertTriangle, MessageSquare, Briefcase, CheckCircle, Trash2, ClipboardList, Zap, Download, Upload, Info } from 'lucide-react';
 import Popup from '../components/Popup';
+import mammoth from 'mammoth';
+import { generateCharterPDF } from '../utils/pdfGenerator';
 
 const ProjectCharter = () => {
   const [searchParams] = useSearchParams();
@@ -28,25 +30,32 @@ const ProjectCharter = () => {
     objectifs: '',
     perimetreInclus: '',
     perimetreExclu: '',
-    sponsorIT: '',
-    chefProjetIT: '',
-    equipeIT: '',
-    sponsorMetier: '',
-    chefProjetMetier: '',
-    equipeMetier: '',
+    equipeITSponsor: '',
+    equipeITChef: '',
+    equipeITDev: '',
+    equipeITTest: '',
+    equipeMetierSponsor: '',
+    equipeMetierChef: '',
+    equipeMetierEquipe: '',
     utilisateursFinaux: '',
     planCom: '',
     risques: '',
     criteresSucces: '',
+    categoriesProjet: '',
+    service: '',
+    dateFin: '',
     statut: 'Brouillon',
     commentaires: []
   });
 
+  const isEditable = isPMOrAdmin && formData.statut !== 'Validé';
+
   const [nouveauCommentaire, setNouveauCommentaire] = useState('');
 
-  const isDemandeur = demande?.nomDemandeur === user?.name ||
-                      demande?.nomDemandeur === `${user?.prenom || ''} ${user?.nom || ''}`.trim() ||
-                      demande?.nomDemandeur === `${user?.nom || ''} ${user?.prenom || ''}`.trim();
+  const userFullName = `${user?.prenom || ''} ${user?.nom || ''}`.trim();
+  const userFullNameAlt = `${user?.nom || ''} ${user?.prenom || ''}`.trim();
+  const isDemandeur = demande?.nomDemandeur === userFullName ||
+                      demande?.nomDemandeur === userFullNameAlt;
 
   const isDemandeurActionable = isDemandeur && formData.statut === 'Envoyé au Demandeur';
   const isSponsorActionable   = isSponsor && formData.statut === 'Soumis au Sponsor';
@@ -69,7 +78,8 @@ const ProjectCharter = () => {
         titre: demande.titre || `Projet issu de la demande ${demande.id}`,
         contexte: demande.contexte || '',
         objectifs: demande.description || '',
-        chefProjetIT: user?.role === 'Project Manager' ? `${user.prenom || ''} ${user.nom || ''}`.trim() : (users.find(u => u.role === 'Project Manager') ? `${users.find(u => u.role === 'Project Manager').prenom || ''} ${users.find(u => u.role === 'Project Manager').nom || ''}`.trim() : '')
+        chefProjetIT: user?.role === 'Project Manager' ? `${user.prenom || ''} ${user.nom || ''}`.trim() : (users.find(u => u.role === 'Project Manager') ? `${users.find(u => u.role === 'Project Manager').prenom || ''} ${users.find(u => u.role === 'Project Manager').nom || ''}`.trim() : ''),
+        equipeITChef: user?.role === 'Project Manager' ? `${user.prenom || ''} ${user.nom || ''}`.trim() : (users.find(u => u.role === 'Project Manager') ? `${users.find(u => u.role === 'Project Manager').prenom || ''} ${users.find(u => u.role === 'Project Manager').nom || ''}`.trim() : '')
       }));
     }
   }, [demande, demandeId, getCharterByDemandeId, navigate, user, users]);
@@ -119,7 +129,7 @@ const ProjectCharter = () => {
     let updatedCommentaires = formData.commentaires || [];
     if (action === 'returnDemandeur' || action === 'returnSponsor') {
       const newComment = {
-        auteur: user?.name || `${user?.nom} ${user?.prenom}` || (action === 'returnSponsor' ? 'Sponsor' : 'Demandeur'),
+        auteur: userFullName || (action === 'returnSponsor' ? 'Sponsor' : 'Demandeur'),
         role: user?.role || (action === 'returnSponsor' ? 'Sponsor' : 'User'),
         date: new Date().toISOString(),
         texte: nouveauCommentaire
@@ -160,6 +170,60 @@ const ProjectCharter = () => {
     navigate(-1);
   };
 
+  const fileInputRef = React.useRef(null);
+
+  const handleExportPDF = async () => {
+    try {
+      await generateCharterPDF(formData, demande);
+    } catch (error) {
+      alert("Erreur lors de l'exportation PDF");
+    }
+  };
+
+  const handleImportWord = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const arrayBuffer = event.target.result;
+        const result = await mammoth.extractRawText({ arrayBuffer });
+        const text = result.value;
+
+        const extractField = (prefix) => {
+          const regex = new RegExp(`${prefix}\\s*:\\s*(.*)`, 'i');
+          const match = text.match(regex);
+          return match ? match[1].trim() : '';
+        };
+
+        setFormData(prev => ({
+          ...prev,
+          titre: extractField('Titre du Projet') || prev.titre,
+          contexte: extractField('Contexte') || prev.contexte,
+          objectifs: extractField('Objectifs du Projet') || prev.objectifs,
+          perimetreInclus: extractField('Inclus dans le périmètre') || prev.perimetreInclus,
+          perimetreExclu: extractField('Hors périmètre') || prev.perimetreExclu,
+          equipeITSponsor: extractField('Équipe IT - Sponsor') || prev.equipeITSponsor,
+          equipeITChef: extractField('Équipe IT - Chef de Projet') || prev.equipeITChef,
+          equipeITDev: extractField('Équipe IT - Équipe de développement') || prev.equipeITDev,
+          equipeITTest: extractField('Équipe IT - Équipe de Test') || prev.equipeITTest,
+          equipeMetierSponsor: extractField('Équipe Métier - Sponsor') || prev.equipeMetierSponsor,
+          equipeMetierChef: extractField('Équipe Métier - Chef de Projet') || prev.equipeMetierChef,
+          equipeMetierEquipe: extractField('Équipe Métier - Équipe') || prev.equipeMetierEquipe,
+          utilisateursFinaux: extractField('Utilisateurs Finaux') || prev.utilisateursFinaux,
+          planCom: extractField('Plan de Communication') || prev.planCom,
+          risques: extractField('Risques Identifiés') || prev.risques,
+          criteresSucces: extractField('Critères de Succès') || prev.criteresSucces,
+        }));
+        alert('Contenu importé avec succès.');
+      } catch (err) {
+        alert("Erreur lors de l'importation du fichier Word.");
+      }
+      e.target.value = null;
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
   const handleDelete = async () => {
     if (window.confirm("Êtes-vous sûr de vouloir supprimer cette charte de projet en brouillon ?")) {
       await deleteCharter(demandeId);
@@ -171,7 +235,7 @@ const ProjectCharter = () => {
     if (!nouveauCommentaire.trim()) return;
 
     const newComment = {
-      auteur: user?.name || `${user?.nom} ${user?.prenom}` || 'Utilisateur',
+      auteur: userFullName || 'Utilisateur',
       role: user?.role || 'User',
       date: new Date().toISOString(),
       texte: nouveauCommentaire
@@ -255,18 +319,44 @@ const ProjectCharter = () => {
               Réf Demande : <span className="text-slate-700 font-bold">{demande?.id}</span> - Demandeur : {demande?.nomDemandeur}
             </p>
           </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <button onClick={() => navigate(-1)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-medium transition-colors">
+          <div className="flex items-center gap-3 shrink-0 flex-wrap justify-end">
+            {isEditable && (
+              <>
+                <input 
+                  type="file" 
+                  accept=".docx" 
+                  ref={fileInputRef} 
+                  onChange={handleImportWord} 
+                  className="hidden" 
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-2 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 px-3 py-2 rounded-xl font-semibold transition-all shadow-sm"
+                  title="Importer depuis Word"
+                >
+                  <Upload size={18} /> <span className="hidden md:inline">Importer</span>
+                </button>
+              </>
+            )}
+
+            <button
+              onClick={handleExportPDF}
+              className="flex items-center gap-2 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 px-3 py-2 rounded-xl font-semibold transition-all shadow-sm"
+              title="Exporter en PDF"
+            >
+              <Download size={18} /> <span className="hidden xl:inline">PDF</span>
+            </button>
+            <button onClick={() => navigate(-1)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-medium transition-colors hidden md:block">
               Retour
             </button>
             {isPMOrAdmin && formData.statut === 'Brouillon' && (
-              <button onClick={handleDelete} className="flex items-center gap-2 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 px-4 py-2 rounded-xl font-semibold transition-all shadow-sm">
+              <button onClick={handleDelete} className="flex items-center gap-2 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 px-3 py-2 rounded-xl font-semibold transition-all shadow-sm" title="Supprimer">
                 <Trash2 size={18} />
               </button>
             )}
-            {isPMOrAdmin && (
-              <button onClick={() => handleAction('save')} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-5 py-2.5 rounded-xl font-semibold transition-all shadow-sm">
-                <Save size={18} /> Enregistrer
+            {isEditable && (
+              <button onClick={() => handleAction('save')} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-5 py-2 rounded-xl font-semibold transition-all shadow-sm">
+                <Save size={18} /> <span className="hidden md:inline">Enregistrer</span>
               </button>
             )}
           </div>
@@ -287,24 +377,26 @@ const ProjectCharter = () => {
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Titre du Projet</label>
                 <input 
-                  type="text" name="titre" value={formData.titre} onChange={handleChange} readOnly={!isPMOrAdmin}
-                  className={`w-full px-4 py-3 border border-slate-300 rounded-xl transition-all font-medium text-slate-800 ${isPMOrAdmin ? 'focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500' : 'bg-slate-50'}`}
+                  type="text" name="titre" value={formData.titre} onChange={handleChange} readOnly={!isEditable}
+                  className={`w-full px-4 py-3 border border-slate-300 rounded-xl transition-all font-medium text-slate-800 ${isEditable ? 'focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500' : 'bg-slate-50 outline-none'}`}
                   placeholder="Ex: Digitalisation des Reportings Qualité"
                 />
               </div>
+
+
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Contexte</label>
                 <textarea 
-                  name="contexte" value={formData.contexte} onChange={handleChange} rows={4} readOnly={!isPMOrAdmin}
-                  className={`w-full px-4 py-3 border border-slate-300 rounded-xl transition-all text-slate-700 ${isPMOrAdmin ? 'focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500' : 'bg-slate-50'}`}
+                  name="contexte" value={formData.contexte} onChange={handleChange} rows={4} readOnly={!isEditable}
+                  className={`w-full px-4 py-3 border border-slate-300 rounded-xl transition-all text-slate-700 ${isEditable ? 'focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500' : 'bg-slate-50 outline-none'}`}
                   placeholder="Décrivez les défis et la situation actuelle..."
                 />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Objectif du Projet</label>
                 <textarea 
-                  name="objectifs" value={formData.objectifs} onChange={handleChange} rows={4} readOnly={!isPMOrAdmin}
-                  className={`w-full px-4 py-3 border border-slate-300 rounded-xl transition-all text-slate-700 ${isPMOrAdmin ? 'focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500' : 'bg-slate-50'}`}
+                  name="objectifs" value={formData.objectifs} onChange={handleChange} rows={4} readOnly={!isEditable}
+                  className={`w-full px-4 py-3 border border-slate-300 rounded-xl transition-all text-slate-700 ${isEditable ? 'focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500' : 'bg-slate-50 outline-none'}`}
                   placeholder="Quels sont les objectifs clairs et mesurables ?"
                 />
               </div>
@@ -323,16 +415,16 @@ const ProjectCharter = () => {
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2 text-emerald-700">Inclus dans le périmètre</label>
                 <textarea 
-                  name="perimetreInclus" value={formData.perimetreInclus} onChange={handleChange} rows={5} readOnly={!isPMOrAdmin}
-                  className={`w-full px-4 py-3 border border-emerald-200 rounded-xl transition-all text-slate-700 ${isPMOrAdmin ? 'bg-emerald-50/30 focus:ring-2 focus:ring-emerald-500' : 'bg-emerald-50/50'}`}
+                  name="perimetreInclus" value={formData.perimetreInclus} onChange={handleChange} rows={5} readOnly={!isEditable}
+                  className={`w-full px-4 py-3 border border-emerald-200 rounded-xl transition-all text-slate-700 ${isEditable ? 'bg-emerald-50/30 focus:ring-2 focus:ring-emerald-500' : 'bg-emerald-50/50 outline-none'}`}
                   placeholder="Lister ce qui fait partie du projet..."
                 />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2 text-rose-700">Hors périmètre</label>
                 <textarea 
-                  name="perimetreExclu" value={formData.perimetreExclu} onChange={handleChange} rows={5} readOnly={!isPMOrAdmin}
-                  className={`w-full px-4 py-3 border border-rose-200 rounded-xl transition-all text-slate-700 ${isPMOrAdmin ? 'bg-rose-50/30 focus:ring-2 focus:ring-rose-500' : 'bg-rose-50/50'}`}
+                  name="perimetreExclu" value={formData.perimetreExclu} onChange={handleChange} rows={5} readOnly={!isEditable}
+                  className={`w-full px-4 py-3 border border-rose-200 rounded-xl transition-all text-slate-700 ${isEditable ? 'bg-rose-50/30 focus:ring-2 focus:ring-rose-500' : 'bg-rose-50/50 outline-none'}`}
                   placeholder="Lister ce qui est explicitement exclu..."
                 />
               </div>
@@ -354,36 +446,39 @@ const ProjectCharter = () => {
                 <h3 className="font-bold text-slate-800 border-b border-slate-200 pb-2 mb-4">Équipe IT</h3>
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1">Sponsor IT</label>
-                  <input type="text" name="sponsorIT" value={formData.sponsorIT} onChange={handleChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                  <input type="text" name="equipeITSponsor" value={formData.equipeITSponsor} onChange={handleChange} readOnly={!isEditable} className={`w-full px-3 py-2 border border-slate-300 rounded-lg transition-all ${isEditable ? 'focus:ring-2 focus:ring-indigo-500' : 'bg-slate-50 outline-none'}`} />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1">Chef de Projet IT</label>
-                  <input type="text" name="chefProjetIT" value={formData.chefProjetIT} onChange={handleChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                  <input type="text" name="equipeITChef" value={formData.equipeITChef} onChange={handleChange} readOnly={!isEditable} className={`w-full px-3 py-2 border border-slate-300 rounded-lg transition-all ${isEditable ? 'focus:ring-2 focus:ring-indigo-500' : 'bg-slate-50 outline-none'}`} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1">Équipe IT</label>
-                  <input type="text" name="equipeIT" value={formData.equipeIT} onChange={handleChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Équipe de développement</label>
+                  <input type="text" name="equipeITDev" value={formData.equipeITDev} onChange={handleChange} readOnly={!isEditable} className={`w-full px-3 py-2 border border-slate-300 rounded-lg transition-all ${isEditable ? 'focus:ring-2 focus:ring-indigo-500' : 'bg-slate-50 outline-none'}`} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Équipe de Test</label>
+                  <input type="text" name="equipeITTest" value={formData.equipeITTest} onChange={handleChange} readOnly={!isEditable} className={`w-full px-3 py-2 border border-slate-300 rounded-lg transition-all ${isEditable ? 'focus:ring-2 focus:ring-indigo-500' : 'bg-slate-50 outline-none'}`} />
                 </div>
               </div>
 
-              
               <div className="space-y-4">
                 <h3 className="font-bold text-slate-800 border-b border-slate-200 pb-2 mb-4">Équipe Métier</h3>
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1">Sponsor Métier</label>
-                  <input type="text" name="sponsorMetier" value={formData.sponsorMetier} onChange={handleChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                  <input type="text" name="equipeMetierSponsor" value={formData.equipeMetierSponsor} onChange={handleChange} readOnly={!isEditable} className={`w-full px-3 py-2 border border-slate-300 rounded-lg transition-all ${isEditable ? 'focus:ring-2 focus:ring-indigo-500' : 'bg-slate-50 outline-none'}`} />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1">Chef de Projet Métier</label>
-                  <input type="text" name="chefProjetMetier" value={formData.chefProjetMetier} onChange={handleChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                  <input type="text" name="equipeMetierChef" value={formData.equipeMetierChef} onChange={handleChange} readOnly={!isEditable} className={`w-full px-3 py-2 border border-slate-300 rounded-lg transition-all ${isEditable ? 'focus:ring-2 focus:ring-indigo-500' : 'bg-slate-50 outline-none'}`} />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1">Équipe Métier</label>
-                  <input type="text" name="equipeMetier" value={formData.equipeMetier} onChange={handleChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                  <input type="text" name="equipeMetierEquipe" value={formData.equipeMetierEquipe} onChange={handleChange} readOnly={!isEditable} className={`w-full px-3 py-2 border border-slate-300 rounded-lg transition-all ${isEditable ? 'focus:ring-2 focus:ring-indigo-500' : 'bg-slate-50 outline-none'}`} />
                 </div>
-                <div>
+                <div className="mt-4 pt-4 border-t border-slate-200">
                   <label className="block text-xs font-semibold text-slate-500 mb-1">Utilisateurs Finaux</label>
-                  <input type="text" name="utilisateursFinaux" value={formData.utilisateursFinaux} onChange={handleChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                  <input type="text" name="utilisateursFinaux" value={formData.utilisateursFinaux} onChange={handleChange} readOnly={!isEditable} className={`w-full px-3 py-2 border border-slate-300 rounded-lg transition-all ${isEditable ? 'focus:ring-2 focus:ring-indigo-500' : 'bg-slate-50 outline-none'}`} />
                 </div>
               </div>
 
@@ -404,8 +499,8 @@ const ProjectCharter = () => {
                   <MessageSquare size={16} className="text-blue-500"/> Plan de Communication
                 </label>
                 <textarea 
-                  name="planCom" value={formData.planCom} onChange={handleChange} rows={3} readOnly={!isPMOrAdmin}
-                  className={`w-full px-4 py-3 border border-slate-300 rounded-xl transition-all text-slate-700 ${isPMOrAdmin ? 'focus:ring-2 focus:ring-indigo-500' : 'bg-slate-50'}`}
+                  name="planCom" value={formData.planCom} onChange={handleChange} rows={3} readOnly={!isEditable}
+                  className={`w-full px-4 py-3 border border-slate-300 rounded-xl transition-all text-slate-700 ${isEditable ? 'focus:ring-2 focus:ring-indigo-500' : 'bg-slate-50 outline-none'}`}
                   placeholder="Ex: Réunions hebdos, comités de pilotage mensuels..."
                 />
               </div>
@@ -414,8 +509,8 @@ const ProjectCharter = () => {
                   <AlertTriangle size={16} className="text-orange-500"/> Risques Identifiés
                 </label>
                 <textarea 
-                  name="risques" value={formData.risques} onChange={handleChange} rows={3} readOnly={!isPMOrAdmin}
-                  className={`w-full px-4 py-3 border border-slate-300 rounded-xl transition-all text-slate-700 ${isPMOrAdmin ? 'focus:ring-2 focus:ring-indigo-500' : 'bg-slate-50'}`}
+                  name="risques" value={formData.risques} onChange={handleChange} rows={3} readOnly={!isEditable}
+                  className={`w-full px-4 py-3 border border-slate-300 rounded-xl transition-all text-slate-700 ${isEditable ? 'focus:ring-2 focus:ring-indigo-500' : 'bg-slate-50 outline-none'}`}
                   placeholder="Lister les risques et plans de mitigation..."
                 />
               </div>
@@ -424,9 +519,55 @@ const ProjectCharter = () => {
                   <CheckCircle size={16} className="text-emerald-500"/> Critères de Succès
                 </label>
                 <textarea 
-                  name="criteresSucces" value={formData.criteresSucces} onChange={handleChange} rows={3} readOnly={!isPMOrAdmin}
-                  className={`w-full px-4 py-3 border border-slate-300 rounded-xl transition-all text-slate-700 ${isPMOrAdmin ? 'focus:ring-2 focus:ring-indigo-500' : 'bg-slate-50'}`}
+                  name="criteresSucces" value={formData.criteresSucces} onChange={handleChange} rows={3} readOnly={!isEditable}
+                  className={`w-full px-4 py-3 border border-slate-300 rounded-xl transition-all text-slate-700 ${isEditable ? 'focus:ring-2 focus:ring-indigo-500' : 'bg-slate-50 outline-none'}`}
                   placeholder="Comment mesurera-t-on la réussite de ce projet ?"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Informations Complémentaires */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mt-6">
+            <div className="bg-gradient-to-r from-teal-700 to-emerald-700 px-6 py-4">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <Info size={24} className="text-teal-300" /> Informations Complémentaires
+              </h3>
+            </div>
+            <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Catégories du Projet</label>
+                <input
+                  type="text"
+                  name="categoriesProjet"
+                  value={formData.categoriesProjet || ''}
+                  onChange={handleChange}
+                  readOnly={!isEditable}
+                  placeholder="Ex: Nouveau projet, Amélioration..."
+                  className={`w-full px-4 py-3 border border-slate-300 rounded-xl transition-all text-slate-700 ${isEditable ? 'focus:ring-2 focus:ring-emerald-500' : 'bg-slate-50 outline-none'}`}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Service</label>
+                <input
+                  type="text"
+                  name="service"
+                  value={formData.service || ''}
+                  onChange={handleChange}
+                  readOnly={!isEditable}
+                  placeholder="Ex: Marketing, IT..."
+                  className={`w-full px-4 py-3 border border-slate-300 rounded-xl transition-all text-slate-700 ${isEditable ? 'focus:ring-2 focus:ring-emerald-500' : 'bg-slate-50 outline-none'}`}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Date Fin Prévue</label>
+                <input
+                  type="date"
+                  name="dateFin"
+                  value={formData.dateFin || ''}
+                  onChange={handleChange}
+                  readOnly={!isEditable}
+                  className={`w-full px-4 py-3 border border-slate-300 rounded-xl transition-all text-slate-700 ${isEditable ? 'focus:ring-2 focus:ring-emerald-500' : 'bg-slate-50 outline-none'}`}
                 />
               </div>
             </div>
@@ -504,7 +645,7 @@ const ProjectCharter = () => {
                 : "Veuillez lire attentivement la charte avant de l'accepter ou de la retourner."}
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3 w-full md:w-auto">
-              {isPMOrAdmin && (
+              {isEditable && (
                 <>
                   <button 
                     onClick={() => handleAction('save')} 

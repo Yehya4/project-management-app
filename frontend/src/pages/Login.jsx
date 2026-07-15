@@ -68,11 +68,11 @@ const Login = () => {
           <div className="hidden lg:flex flex-col justify-between bg-gradient-to-br from-blue-100 via-indigo-100 to-slate-50 p-10 text-slate-800">
             <div>
               <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-md ring-1 ring-slate-200">
-                <span className="text-2xl font-black tracking-tight text-blue-700">AH</span>
+                <span className="text-2xl font-black tracking-tight text-blue-700">AP</span>
               </div>
 
-              <h1 className="max-w-md text-4xl font-black leading-tight text-slate-900">
-                Bienvenue sur Auto Hall Workspace
+              <h1 className="text-3xl md:text-4xl font-black text-slate-800 tracking-tight leading-tight mb-2">
+                Bienvenue sur Auto Project Workspace
               </h1>
               <p className="mt-4 max-w-md text-sm leading-6 text-slate-600">
                 Une interface claire, sécurisée et moderne pour accéder rapidement à votre espace de travail.
@@ -102,10 +102,10 @@ const Login = () => {
             <div className="mx-auto w-full max-w-md">
               <div className="mb-8 lg:hidden">
                 <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-200">
-                  <span className="text-2xl font-black tracking-tight">AH</span>
+                  <span className="text-2xl font-black tracking-tight">AP</span>
                 </div>
                 <h1 className="text-3xl font-black tracking-tight text-slate-900">
-                  Auto Hall
+                  Auto Project
                 </h1>
                 <p className="mt-1 text-sm uppercase tracking-[0.2em] text-slate-400">
                   Workspace

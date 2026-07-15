@@ -14,11 +14,10 @@ const UserDashboard = () => {
   const { charters } = useCharter();
   const [popup, setPopup] = React.useState({ isOpen: false, title: '', message: '', type: 'success' });
 
-  /* ── My demandes ──────────────────────────────────────────── */
+  /* ── Mes demandes : filtrage par prenom + nom (user.name n'existe pas) ── */
   const myDemandes = demandes.filter(d =>
-    d.nomDemandeur === user?.name ||
-    d.nomDemandeur === `${user?.prenom} ${user?.nom}`.trim() ||
-    d.nomDemandeur === `${user?.nom} ${user?.prenom}`.trim()
+    d.nomDemandeur === `${user?.prenom || ''} ${user?.nom || ''}`.trim() ||
+    d.nomDemandeur === `${user?.nom || ''} ${user?.prenom || ''}`.trim()
   );
 
   /* ── Chartes envoyées au demandeur ───────────────────────── */
@@ -26,10 +25,11 @@ const UserDashboard = () => {
     if (c.statut !== 'Envoyé au Demandeur') return false;
     const relatedDemande = demandes.find(d => d.id === c.demandeId);
     if (!relatedDemande) return false;
+    const fullName = `${user?.prenom || ''} ${user?.nom || ''}`.trim();
+    const fullNameAlt = `${user?.nom || ''} ${user?.prenom || ''}`.trim();
     return (
-      relatedDemande.nomDemandeur === user?.name ||
-      relatedDemande.nomDemandeur === `${user?.prenom} ${user?.nom}`.trim() ||
-      relatedDemande.nomDemandeur === `${user?.nom} ${user?.prenom}`.trim()
+      relatedDemande.nomDemandeur === fullName ||
+      relatedDemande.nomDemandeur === fullNameAlt
     );
   });
 
@@ -43,7 +43,7 @@ const UserDashboard = () => {
     }
   };
 
-  const enCoursDemandes  = myDemandes.filter(d => d.statut.includes('En cours')).length;
+  const enCoursDemandes  = myDemandes.filter(d => d.statut && (d.statut.includes('En') )).length;
   const valideeDemandes  = myDemandes.filter(d => d.statut === 'Validée' || d.statut === 'Acceptée').length;
   const refuseeDemandes  = myDemandes.filter(d => d.statut === 'Refusée').length;
   const totalDemandes    = myDemandes.length;
@@ -63,7 +63,7 @@ const UserDashboard = () => {
         <div>
           <p className="text-sm text-blue-100 mb-2">Tableau de bord utilisateur</p>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-            Bienvenue, {user?.name}
+            Bienvenue, {`${user?.prenom || ''} ${user?.nom || ''}`.trim() || user?.email}
           </h1>
           <p className="text-slate-200 mt-3 text-sm md:text-base max-w-2xl">
             Suivez rapidement l'état de vos Demandes SI, vos chartes en attente et vos travaux récents.

@@ -17,7 +17,7 @@ class TestCaseController {
 
     async create(req, res) {
         try {
-            const { projectId, testCaseId, testName, description, expectedResult } = req.body;
+            const { projectId, testCaseId, testName, description, expectedResult, actualResult } = req.body;
             if (!projectId || !testCaseId || !testName || !description || !expectedResult) {
                 return res.status(400).json({ message: 'Champs obligatoires manquants.' });
             }
@@ -28,7 +28,8 @@ class TestCaseController {
                 testCaseId,
                 testName,
                 description,
-                expectedResult
+                expectedResult,
+                actualResult
             }, io);
 
             return res.status(201).json(testCase);
@@ -41,13 +42,13 @@ class TestCaseController {
     async update(req, res) {
         try {
             const { id } = req.params;
-            const { testCaseId, testName, description, expectedResult } = req.body;
+            const { testCaseId, testName, description, expectedResult, actualResult } = req.body;
             if (!testCaseId || !testName || !description || !expectedResult) {
                 return res.status(400).json({ message: 'Champs obligatoires manquants.' });
             }
 
             const io = req.app.get('io');
-            const testCase = await testCaseService.update(id, { testCaseId, testName, description, expectedResult }, io);
+            const testCase = await testCaseService.update(id, { testCaseId, testName, description, expectedResult, actualResult }, io);
             return res.json(testCase);
         } catch (err) {
             console.error(err);
