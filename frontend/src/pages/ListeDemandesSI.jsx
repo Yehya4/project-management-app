@@ -11,7 +11,7 @@ import { generateDemandePDF } from '../utils/pdfGenerator';
 
 const ListeDemandesSI = () => {
   const { user } = useAuth();
-  const { demandes, updateDemandeStatus, deleteDemande } = useDemandes();
+  const { demandes, updateDemandeStatus, deleteDemande, updateDemande } = useDemandes();
   const [selectedDemande, setSelectedDemande] = useState(null);
   const [popup, setPopup] = useState({ isOpen: false, title: '', message: '', type: 'success' });
 
@@ -35,8 +35,9 @@ const ListeDemandesSI = () => {
     updateDemandeStatus(demandeId, 'Refusée');
   };
 
-  const handleSubmitDraft = (demandeId) => {
-    updateDemandeStatus(demandeId, 'En attente');
+  const handleSubmitDraft = (demande) => {
+    const today = new Date().toLocaleDateString('fr-FR');
+    updateDemande(demande.id, { ...demande, statut: 'En attente', dateSoumission: today });
   };
 
   const handleDeleteDraft = (demandeId) => {
@@ -51,6 +52,7 @@ const ListeDemandesSI = () => {
 
   const enCoursDemandes = filteredDemandes.filter(d => d.statut.includes('En')).length;
   const valideeDemandes = filteredDemandes.filter(d => d.statut === 'Acceptée' || d.statut === 'Validée').length;
+  const refuseeDemandes = filteredDemandes.filter(d => d.statut === 'Refusée').length;
   const totalDemandes = filteredDemandes.length;
 
   return (
@@ -78,7 +80,7 @@ const ListeDemandesSI = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <div className="flex items-start justify-between">
               <div>
@@ -112,6 +114,17 @@ const ListeDemandesSI = () => {
               </div>
             </div>
           </div>
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-500 mb-2">Refusées</p>
+                <p className="text-3xl font-bold text-slate-800">{refuseeDemandes}</p>
+              </div>
+              <div className="w-14 h-14 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center">
+                <X size={26} />
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
@@ -126,8 +139,10 @@ const ListeDemandesSI = () => {
                 <tr className="border-b border-slate-200">
                   <th className="px-6 py-4 font-semibold text-slate-600 text-sm">Référence</th>
                   {isReviewer && <th className="px-6 py-4 font-semibold text-slate-600 text-sm">Demandeur</th>}
+                  <th className="px-6 py-4 font-semibold text-slate-600 text-sm">Fonction Profil</th>
                   <th className="px-6 py-4 font-semibold text-slate-600 text-sm">Domaines</th>
                   <th className="px-6 py-4 font-semibold text-slate-600 text-sm">Date Création</th>
+                  <th className="px-6 py-4 font-semibold text-slate-600 text-sm">Date Soumission</th>
                   <th className="px-6 py-4 font-semibold text-slate-600 text-sm">Statut</th>
                   <th className="px-6 py-4 font-semibold text-slate-600 text-sm text-right">Actions</th>
                 </tr>
@@ -142,8 +157,10 @@ const ListeDemandesSI = () => {
                           {demande.nomDemandeur}
                         </td>
                       )}
+                      <td className="px-6 py-4 text-sm text-slate-500">{demande.fonction || '-'}</td>
                       <td className="px-6 py-4 text-sm text-slate-500">{demande.domaines.join(', ')}</td>
                       <td className="px-6 py-4 text-sm text-slate-500">{demande.dateCreation}</td>
+                      <td className="px-6 py-4 text-sm text-slate-500">{demande.dateSoumission || (demande.statut !== 'Brouillon' ? demande.dateCreation : '-')}</td>
                       <td className="px-6 py-4 text-sm">
                         <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
                             demande.statut === 'Acceptée'
@@ -209,7 +226,7 @@ const ListeDemandesSI = () => {
                               {demande.statut === 'Brouillon' && (
                                 <>
                                   <button
-                                    onClick={() => handleSubmitDraft(demande.id)}
+                                    onClick={() => handleSubmitDraft(demande)}
                                     className="flex items-center gap-1 px-2 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors shadow-sm border border-blue-100 text-xs font-semibold mr-1"
                                     title="Soumettre la demande"
                                   >
@@ -248,7 +265,7 @@ const ListeDemandesSI = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={isReviewer ? "6" : "4"} className="py-12 text-center text-slate-500">
+                    <td colSpan={isReviewer ? "8" : "6"} className="py-12 text-center text-slate-500">
                       Aucune demande SI trouvée
                     </td>
                   </tr>

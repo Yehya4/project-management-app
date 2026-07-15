@@ -33,10 +33,11 @@ const NouvelleDemandeSI = () => {
   }, [id, demandes, isEditMode, navigate, initialData]);
 
   const handleDemandeSubmit = async (formData) => {
+    const today = new Date().toLocaleDateString('fr-FR');
     if (isEditMode) {
-      await updateDemande(id, { ...formData, statut: 'En attente' });
+      await updateDemande(id, { ...formData, statut: 'En attente', dateSoumission: today });
     } else {
-      await addDemande({ ...formData, statut: 'En attente' });
+      await addDemande({ ...formData, statut: 'En attente', dateSoumission: today });
     }
     setShowPopup(true);
   };

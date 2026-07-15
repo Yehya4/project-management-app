@@ -318,9 +318,16 @@ export const DemandeDetailsModal = ({ isOpen, onClose, demande }) => {
                 }`}>
                 {demande.statut}
               </span>
-              <span className="text-sm text-slate-500 flex items-center gap-1">
-                <Calendar size={14} /> {demande.dateCreation}
-              </span>
+              <div className="flex flex-col gap-1">
+                <span className="text-sm text-slate-500 flex items-center gap-1">
+                  <Calendar size={14} /> Créée le : {demande.dateCreation}
+                </span>
+                {(demande.dateSoumission || demande.statut !== 'Brouillon') && (
+                  <span className="text-sm text-slate-500 flex items-center gap-1">
+                    <Calendar size={14} /> Soumise le : {demande.dateSoumission || demande.dateCreation}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <button

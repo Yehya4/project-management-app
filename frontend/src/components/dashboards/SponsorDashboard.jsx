@@ -55,8 +55,8 @@ const SponsorDashboard = () => {
     ['Utilisation', 'Archive', 'Archivée'].includes(p.status)
   ).length;
 
-  const totalBudget    = '1.2M MAD';
-  const consumedBudget = '850K MAD';
+  const totalBudget    = '0M MAD';
+  const consumedBudget = '0k MAD';
 
   const totalProgress = projects.reduce((acc, p) => acc + (p.progress || 0), 0);
   const avgProgress   = projects.length ? Math.round(totalProgress / projects.length) : 0;

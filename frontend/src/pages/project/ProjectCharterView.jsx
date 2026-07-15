@@ -1,6 +1,6 @@
 import React from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
-import { useCharter, useAuth } from '../../context/AppContext';
+import { useCharter, useAuth, useDemandes } from '../../context/AppContext';
 import {
   FileText, Flag, Activity, Users, Briefcase,
   CheckCircle, AlertTriangle, MessageSquare, Edit3,
@@ -48,45 +48,47 @@ const StatusBadge = ({ statut }) => {
 const ProjectCharterView = () => {
   const { project } = useOutletContext();
   const { getCharterByDemandeId } = useCharter();
+  const { demandes } = useDemandes();
   const { user } = useAuth();
 
   const charter = getCharterByDemandeId(project.demandeId);
+  const demande = demandes.find(d => d.id === project.demandeId);
   const isPMOrAdmin = user?.role === 'Project Manager' || user?.role === 'Sponsor' || user?.role === 'Admin';
 
-  if (!charter) {
+  const renderCharterContent = () => {
+    if (!charter) {
+      return (
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-800">Fiche de Projet — Project Charter</h2>
+            <p className="text-slate-500 mt-1">Document de cadrage officiel du projet.</p>
+          </div>
+          <div className="bg-amber-50 border border-amber-200 text-amber-800 p-8 rounded-2xl flex flex-col items-center justify-center gap-4 text-center">
+            <div className="p-4 bg-amber-100 rounded-2xl">
+              <FileText size={32} className="text-amber-500" />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg mb-1">Aucune Charte de Projet disponible</h3>
+              <p className="text-sm text-amber-700">
+                La charte de projet n'a pas encore été créée ou n'est pas encore validée pour ce projet.
+              </p>
+            </div>
+            {isPMOrAdmin && project.demandeId && (
+              <Link
+                to={`/project-charter?demandeId=${project.demandeId}`}
+                className="flex items-center gap-2 mt-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-semibold transition-all shadow-sm"
+              >
+                <Edit3 size={16} /> Créer la Charte
+              </Link>
+            )}
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800">Fiche de Projet — Project Charter</h2>
-          <p className="text-slate-500 mt-1">Document de cadrage officiel du projet.</p>
-        </div>
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 p-8 rounded-2xl flex flex-col items-center justify-center gap-4 text-center">
-          <div className="p-4 bg-amber-100 rounded-2xl">
-            <FileText size={32} className="text-amber-500" />
-          </div>
-          <div>
-            <h3 className="font-bold text-lg mb-1">Aucune Charte de Projet disponible</h3>
-            <p className="text-sm text-amber-700">
-              La charte de projet n'a pas encore été créée ou n'est pas encore validée pour ce projet.
-            </p>
-          </div>
-          {isPMOrAdmin && project.demandeId && (
-            <Link
-              to={`/project-charter?demandeId=${project.demandeId}`}
-              className="flex items-center gap-2 mt-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-semibold transition-all shadow-sm"
-            >
-              <Edit3 size={16} /> Créer la Charte
-            </Link>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6 pb-10">
-      {}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-2">
             <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
@@ -224,6 +226,8 @@ const ProjectCharterView = () => {
         </div>
       </Section>
 
+
+
       {}
       {charter.commentaires && charter.commentaires.length > 0 && (
         <Section
@@ -275,6 +279,29 @@ const ProjectCharterView = () => {
           </div>
         </div>
       )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-10 pb-10">
+      {/* Informations Complémentaires Indépendantes */}
+      <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="bg-gradient-to-r from-teal-800 to-emerald-800 px-8 py-6">
+          <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+            <Info size={28} className="text-teal-300" />
+            Informations Complémentaires
+          </h2>
+          <p className="text-teal-100 mt-2">Détails issus de la demande initiale du projet.</p>
+        </div>
+        <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+          <Field label="Catégories du Projet" value={demande?.categoriesProjet?.join(', ')} />
+          <Field label="Service / Département" value={demande?.service} />
+        </div>
+      </div>
+
+      {/* Contenu Project Charter */}
+      {renderCharterContent()}
     </div>
   );
 };

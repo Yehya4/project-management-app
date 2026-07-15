@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, Clock, CheckCircle, AlertCircle, PlusCircle, Download, Bell, ArrowRight, ExternalLink } from 'lucide-react';
+import { FileText, Clock, CheckCircle, XCircle, AlertCircle, PlusCircle, Download, Bell, ArrowRight, ExternalLink } from 'lucide-react';
 import { useAuth } from '../../context/AppContext';
 import { useDemandes } from '../../context/AppContext';
 import { useCharter } from '../../context/AppContext';
@@ -44,7 +44,8 @@ const UserDashboard = () => {
   };
 
   const enCoursDemandes  = myDemandes.filter(d => d.statut.includes('En cours')).length;
-  const valideeDemandes  = myDemandes.filter(d => d.statut === 'Validée').length;
+  const valideeDemandes  = myDemandes.filter(d => d.statut === 'Validée' || d.statut === 'Acceptée').length;
+  const refuseeDemandes  = myDemandes.filter(d => d.statut === 'Refusée').length;
   const totalDemandes    = myDemandes.length;
 
   const statusColor = (statut) => {
@@ -80,7 +81,7 @@ const UserDashboard = () => {
       </div>
 
       {/* ── KPI cards ──────────────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-all duration-300">
           <div className="flex items-start justify-between">
             <div>
@@ -113,6 +114,17 @@ const UserDashboard = () => {
             </div>
             <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center">
               <CheckCircle size={26} />
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-all duration-300">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-slate-500 mb-2">Refusées</p>
+              <p className="text-3xl font-bold text-slate-800">{refuseeDemandes}</p>
+            </div>
+            <div className="w-14 h-14 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center">
+              <XCircle size={26} />
             </div>
           </div>
         </div>
@@ -195,8 +207,10 @@ const UserDashboard = () => {
             <thead className="bg-white">
               <tr className="border-b border-slate-200">
                 <th className="px-6 py-4 font-semibold text-slate-600 text-sm">Référence</th>
+                <th className="px-6 py-4 font-semibold text-slate-600 text-sm">Fonction Profil</th>
                 <th className="px-6 py-4 font-semibold text-slate-600 text-sm">Domaines</th>
                 <th className="px-6 py-4 font-semibold text-slate-600 text-sm">Date Création</th>
+                <th className="px-6 py-4 font-semibold text-slate-600 text-sm">Date Soumission</th>
                 <th className="px-6 py-4 font-semibold text-slate-600 text-sm">Statut</th>
                 <th className="px-6 py-4 font-semibold text-slate-600 text-sm text-right">Actions</th>
               </tr>
@@ -209,8 +223,10 @@ const UserDashboard = () => {
                     className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors"
                   >
                     <td className="px-6 py-4 text-sm font-medium text-slate-800">{demande.id}</td>
+                    <td className="px-6 py-4 text-sm text-slate-500">{demande.fonction || '-'}</td>
                     <td className="px-6 py-4 text-sm text-slate-500">{demande.domaines.join(', ')}</td>
                     <td className="px-6 py-4 text-sm text-slate-500">{demande.dateCreation}</td>
+                    <td className="px-6 py-4 text-sm text-slate-500">{demande.dateSoumission || (demande.statut !== 'Brouillon' ? demande.dateCreation : '-')}</td>
                     <td className="px-6 py-4 text-sm">
                       <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusColor(demande.statut)}`}>
                         {demande.statut}
@@ -231,7 +247,7 @@ const UserDashboard = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" className="py-12 text-center">
+                  <td colSpan="7" className="py-12 text-center">
                     <div className="flex flex-col items-center justify-center text-slate-500">
                       <AlertCircle size={34} className="mb-3 text-slate-300" />
                       <p className="font-medium text-slate-600">Aucune demande SI trouvée</p>
