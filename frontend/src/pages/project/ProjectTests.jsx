@@ -132,16 +132,41 @@ const ProjectTests = () => {
   };
 
   const handleExportExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(testCases.map(tc => ({
-      "ID du cas": tc.testCaseId,
-      "Nom du test": tc.testName,
-      "Description": tc.description,
-      "Résultat attendu": tc.expectedResult,
-      "Résultat Réel": tc.actualResult || '',
-      "Statut": tc.status,
-      "Testeur": tc.testerName || '',
-      "Commentaire": tc.comment || ''
-    })));
+    // 1. Définir le titre et les en-têtes exactement comme demandé
+    const titleRow = [`Cas de test - ${project?.nom || 'Projet'}`, '', '', '', '', '', ''];
+    const headerRow = ["ID", "Cas de test", "Description", "Résultat attendu", "Résultat réel", "Statut", "commentaire"];
+    
+    // 2. Préparer les données
+    const dataRows = testCases.map(tc => [
+      tc.testCaseId,
+      tc.testName,
+      tc.description,
+      tc.expectedResult,
+      tc.actualResult || '',
+      tc.status,
+      tc.comment || ''
+    ]);
+
+    // 3. Créer la feuille avec un tableau 2D (AOA)
+    const aoa = [titleRow, headerRow, ...dataRows];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+    // 4. Fusionner la première ligne (A1 à G1)
+    if (!ws['!merges']) ws['!merges'] = [];
+    ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 6 } });
+
+    // Stylisation (largeur des colonnes pour correspondre à Excel)
+    ws['!cols'] = [
+      { wch: 10 }, // ID
+      { wch: 30 }, // Cas de test
+      { wch: 40 }, // Description
+      { wch: 30 }, // Résultat attendu
+      { wch: 30 }, // Résultat réel
+      { wch: 15 }, // Statut
+      { wch: 25 }  // commentaire
+    ];
+
+    // 5. Générer le fichier
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Cas de Test");
     XLSX.writeFile(wb, `Tests_${project?.nom || 'Projet'}.xlsx`);
@@ -152,23 +177,82 @@ const ProjectTests = () => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = async (evt) => {
-      const bstr = evt.target.result;
-      const wb = XLSX.read(bstr, { type: 'binary' });
-      const wsname = wb.SheetNames[0];
-      const ws = wb.Sheets[wsname];
-      const data = XLSX.utils.sheet_to_json(ws);
-      
-      for (const row of data) {
-        await addTestCase({
-          projectId: project.id,
-          testCaseId: row["ID du cas"] || `TC-${Date.now()}`,
-          testName: row["Nom du test"] || 'Test importé',
-          description: row["Description"] || '',
-          expectedResult: row["Résultat attendu"] || '',
-          actualResult: row["Résultat Réel"] || ''
-        });
+      try {
+        const bstr = evt.target.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        let totalImportedCount = 0;
+
+        // Parcourir toutes les feuilles du fichier Excel
+        for (const wsname of wb.SheetNames) {
+          const ws = wb.Sheets[wsname];
+          const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+          
+          if (rows.length === 0) continue;
+
+          let headerRowIndex = -1;
+          let colMap = {};
+
+          // 1. Chercher la ligne d'en-tête (qui contient "description" ou "cas de test" etc.)
+          for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            if (!row || !Array.isArray(row)) continue;
+            
+            const rowStr = row.map(cell => String(cell || '').toLowerCase().trim());
+            
+            if (rowStr.includes('description') || rowStr.includes('cas de test') || rowStr.includes('nom du test')) {
+              headerRowIndex = i;
+              rowStr.forEach((colName, index) => {
+                if (colName === 'id' || colName === 'id du cas') colMap.id = index;
+                if (colName === 'cas de test' || colName === 'nom du test') colMap.name = index;
+                if (colName === 'description') colMap.description = index;
+                if (colName === 'résultat attendu' || colName === 'resultat attendu') colMap.expected = index;
+                if (colName === 'résultat réel' || colName === 'resultat reel') colMap.actual = index;
+                if (colName === 'statut' || colName === 'status') colMap.status = index;
+                if (colName === 'commentaire' || colName === 'comment') colMap.comment = index;
+              });
+              break;
+            }
+          }
+
+          if (headerRowIndex === -1 || (colMap.description === undefined && colMap.name === undefined)) {
+            continue; // Passer à la feuille suivante si aucun en-tête trouvé
+          }
+
+          // 2. Parcourir les lignes sous l'en-tête
+          for (let i = headerRowIndex + 1; i < rows.length; i++) {
+            const row = rows[i];
+            if (!row || !Array.isArray(row) || row.length === 0) continue;
+            
+            const nameVal = colMap.name !== undefined ? String(row[colMap.name] || '').trim() : '';
+            const descVal = colMap.description !== undefined ? String(row[colMap.description] || '').trim() : '';
+            
+            if (nameVal || descVal) {
+              await addTestCase({
+                projectId: project.id,
+                testCaseId: colMap.id !== undefined && row[colMap.id] ? String(row[colMap.id]).trim() : `TC-${Date.now()}-${totalImportedCount}`,
+                testName: nameVal || 'Test importé',
+                description: descVal || 'Aucune description fournie',
+                expectedResult: colMap.expected !== undefined ? String(row[colMap.expected] || '').trim() : '',
+                actualResult: colMap.actual !== undefined ? String(row[colMap.actual] || '').trim() : '',
+                status: colMap.status !== undefined && row[colMap.status] ? String(row[colMap.status]).trim() : 'En attente',
+                comment: colMap.comment !== undefined ? String(row[colMap.comment] || '').trim() : ''
+              });
+              totalImportedCount++;
+            }
+          }
+        }
+        
+        if (totalImportedCount === 0) {
+          alert('Aucun cas de test valide trouvé. Vérifiez que votre fichier contient au moins les colonnes "Cas de test", "Nom du test" ou "Description" dans l\'une de ses feuilles.');
+        } else {
+          alert(`${totalImportedCount} cas de test importé(s) avec succès.`);
+        }
+      } catch (error) {
+        console.error('Erreur import Excel:', error);
+        alert('Impossible de lire ce fichier Excel. Veuillez vérifier qu\'il n\'est pas corrompu et qu\'il correspond au format attendu.');
+      } finally {
+        e.target.value = null; // reset
       }
-      e.target.value = null; // reset
     };
     reader.readAsBinaryString(file);
   };

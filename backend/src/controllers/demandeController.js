@@ -28,7 +28,8 @@ class DemandeController {
             const newDemande = await demandeService.create(req.body, io);
             return res.status(201).json(newDemande);
         } catch (error) {
-            return res.status(500).json({ message: 'Erreur lors de la création', error });
+            console.error("Erreur backend creation demande:", error);
+            return res.status(500).json({ message: 'Erreur lors de la création', error: error.message || error });
         }
     }
 

@@ -12,7 +12,7 @@ const NouvelleDemandeSI = () => {
   const { demandes, addDemande, updateDemande } = useDemandes();
   
   const [initialData, setInitialData] = React.useState(null);
-  const [showPopup, setShowPopup] = React.useState(false);
+  const [popupConfig, setPopupConfig] = React.useState({ isOpen: false, title: '', message: '', type: 'success' });
   const isEditMode = Boolean(id);
 
   React.useEffect(() => {
@@ -33,26 +33,57 @@ const NouvelleDemandeSI = () => {
   }, [id, demandes, isEditMode, navigate, initialData]);
 
   const handleDemandeSubmit = async (formData) => {
-    const today = new Date().toLocaleDateString('fr-FR');
-    if (isEditMode) {
-      await updateDemande(id, { ...formData, statut: 'En attente', dateSoumission: today });
-    } else {
-      await addDemande({ ...formData, statut: 'En attente', dateSoumission: today });
+    try {
+      const today = new Date().toLocaleDateString('fr-FR');
+      if (isEditMode) {
+        await updateDemande(id, { ...formData, statut: 'En attente', dateSoumission: today });
+      } else {
+        await addDemande({ ...formData, statut: 'En attente', dateSoumission: today });
+      }
+      setPopupConfig({
+        isOpen: true,
+        title: "Demande Enregistrée",
+        message: "Votre demande SI a été soumise avec succès. Elle sera traitée dans les plus brefs délais.",
+        type: "success"
+      });
+    } catch (error) {
+      setPopupConfig({
+        isOpen: true,
+        title: "Erreur",
+        message: error.message || "Une erreur est survenue.",
+        type: "error"
+      });
     }
-    setShowPopup(true);
   };
 
   const handleDemandeSave = async (formData) => {
-    if (isEditMode) {
-      await updateDemande(id, { ...formData, statut: 'Brouillon' });
-    } else {
-      await addDemande({ ...formData, statut: 'Brouillon' });
+    try {
+      if (isEditMode) {
+        await updateDemande(id, { ...formData, statut: 'Brouillon' });
+      } else {
+        await addDemande({ ...formData, statut: 'Brouillon' });
+      }
+      setPopupConfig({
+        isOpen: true,
+        title: "Brouillon Enregistré",
+        message: "Brouillon enregistré avec succès.",
+        type: "success"
+      });
+    } catch (error) {
+      setPopupConfig({
+        isOpen: true,
+        title: "Erreur",
+        message: error.message || "Une erreur est survenue lors de l'enregistrement.",
+        type: "error"
+      });
     }
   };
 
   const handlePopupClose = () => {
-    setShowPopup(false);
-    navigate(-1);
+    setPopupConfig({ ...popupConfig, isOpen: false });
+    if (popupConfig.type === 'success') {
+      navigate(-1);
+    }
   };
 
   return (
@@ -87,10 +118,10 @@ const NouvelleDemandeSI = () => {
         )}
 
         <Popup 
-          isOpen={showPopup}
-          title="Demande Enregistrée"
-          message="Votre demande SI a été soumise avec succès. Elle sera traitée dans les plus brefs délais."
-          type="success"
+          isOpen={popupConfig.isOpen}
+          title={popupConfig.title}
+          message={popupConfig.message}
+          type={popupConfig.type}
           onClose={handlePopupClose}
         />
       </div>

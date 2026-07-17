@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Send, ArrowLeft, Save, X, Calendar, User, Briefcase, FileText, CheckCircle, Clock } from 'lucide-react';
+import { Send, ArrowLeft, Save, X, Calendar, User, Briefcase, FileText, CheckCircle, Clock, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Popup from './Popup';
 import { useConfig } from '../context/AppContext';
 import { useAuth } from '../context/AppContext';
+import mammoth from 'mammoth';
 
 
 export const ChampSaisie = ({ label, id, type = 'text', value, onChange, placeholder, required, readOnly }) => (
@@ -97,6 +98,80 @@ const INITIAL_STATE = {
   valideeResponsable: false
 };
 
+// ─── Constantes pour les options de cases à cocher ──────────────────────────
+const DOMAINES_OPTS = [
+  'Commercial', 'Atelier', 'Magasin', 'Gestion',
+  'Marketing', 'Logistique', 'Finance', 'Audit/Contrôle', 'Ressources Humaines'
+];
+const NATURE_OPTS = [
+  'Réglementaire', 'Amélioration satisfaction client', 'Amélioration fonctionnement'
+];
+const BENEFICES_OPTS = [
+  'Diminution des Coûts', 'Améliorations des Performances', 'Réduction des Risques', 'Conformité'
+];
+
+// ─── Regex d'un marqueur de case cochée ─────────────────────────────────────
+// Supporte: ☑ ☒ ✓ ✔ ✅  et  [x] [X] [v] [V] (x) (X)
+const CHECKED_CHAR = `(?:[☒☑✅✔✓]|[\\[\\(][\\s]*[xXvV✓][\\s]*[\\]\\)])`;
+
+/**
+ * Cherche les options cochées dans un bloc de texte.
+ * Stratégie : l'option est dans un rayon de 25 caractères d'un marqueur coché.
+ */
+const extractCheckboxesFromText = (textBlock, options) => {
+  if (!textBlock) return [];
+  const selected = [];
+  options.forEach(opt => {
+    const esc = opt.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+    // Option PUIS marqueur (jusqu'à 25 chars entre les deux)
+    const after  = new RegExp(`${esc}[\\s\\S]{0,25}${CHECKED_CHAR}`, 'i');
+    // Marqueur PUIS option (jusqu'à 25 chars entre les deux)
+    const before = new RegExp(`${CHECKED_CHAR}[\\s\\S]{0,25}${esc}`, 'i');
+    if (after.test(textBlock) || before.test(textBlock)) {
+      selected.push(opt);
+    }
+  });
+  return selected;
+};
+
+/**
+ * Cherche les options cochées dans le HTML produit par mammoth.
+ * mammoth rend les checkboxes Word cochées comme  <input type="checkbox" checked>
+ * ou laisse le caractère Unicode correspondant dans le texte.
+ */
+const extractCheckboxesFromHtml = (html, options) => {
+  if (!html) return [];
+  const selected = [];
+
+  // 1) Remplace les <input type="checkbox" checked ...> par ☑ dans le texte
+  //    et les non-cochés par ☐ pour pouvoir distinguer
+  let enriched = html
+    .replace(/<input[^>]*type=["']checkbox["'][^>]*checked[^>]*>/gi, '☑ ')
+    .replace(/<input[^>]*checked[^>]*type=["']checkbox["'][^>]*>/gi, '☑ ')
+    .replace(/<input[^>]*type=["']checkbox["'][^>]*>/gi,              '☐ ');
+
+  // 2) Convertir le HTML enrichi en texte brut
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(enriched, 'text/html');
+  const textContent = doc.body ? doc.body.textContent : enriched;
+
+  console.log('[HTML→TEXT enrichi]', textContent);
+
+  // 3) Recherche dans le texte enrichi
+  options.forEach(opt => {
+    if (!selected.includes(opt)) {
+      const esc = opt.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const after  = new RegExp(`${esc}[\\s\\S]{0,25}${CHECKED_CHAR}`, 'i');
+      const before = new RegExp(`${CHECKED_CHAR}[\\s\\S]{0,25}${esc}`, 'i');
+      if (after.test(textContent) || before.test(textContent)) {
+        selected.push(opt);
+      }
+    }
+  });
+
+  return selected;
+};
+
 
 export const FormulaireDemandeSI = ({ onSubmit, onSave, initialData }) => {
   const navigate = useNavigate();
@@ -116,6 +191,9 @@ export const FormulaireDemandeSI = ({ onSubmit, onSave, initialData }) => {
   }, [initialData]);
   
   const [showSavePopup, setShowSavePopup] = useState(false);
+  const fileInputRef = React.useRef(null);
+
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -149,6 +227,10 @@ export const FormulaireDemandeSI = ({ onSubmit, onSave, initialData }) => {
 
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      {/* Barre d'outils en haut du formulaire */}
+      <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <span className="text-sm text-slate-500">Remplissez les informations de votre demande</span>
+      </div>
       <div className="p-6 md:p-8 border-b border-slate-100">
         <h2 className="text-xl font-bold text-slate-800 mb-6">Entité</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -177,7 +259,7 @@ export const FormulaireDemandeSI = ({ onSubmit, onSave, initialData }) => {
         <GroupeCasesCocher
           label="Domaines concernés"
           name="domaines"
-          options={['Commercial', 'Atelier', 'Magasin', 'Gestion', 'Marketing', 'Logistique', 'Finance', 'Audit/Contrôle', 'Ressources Humaines']}
+          options={DOMAINES_OPTS}
           selectedValues={formData.domaines}
           onChange={handleChange}
         />
@@ -190,7 +272,7 @@ export const FormulaireDemandeSI = ({ onSubmit, onSave, initialData }) => {
           id="contexte"
           value={formData.contexte}
           onChange={handleChange}
-          placeholder="Ex: Développer l’extraction des données relatives aux réclamations..."
+          placeholder="Ex: Développer l'extraction des données relatives aux réclamations..."
           required
         />
         <div className="my-6 border-t border-dashed border-slate-200"></div>
@@ -199,7 +281,7 @@ export const FormulaireDemandeSI = ({ onSubmit, onSave, initialData }) => {
           id="description"
           value={formData.description}
           onChange={handleChange}
-          placeholder="Ex: Dans le cadre de l’amélioration de la satisfaction des clients..."
+          placeholder="Ex: Dans le cadre de l'amélioration de la satisfaction des clients..."
           required
         />
       </div>
@@ -208,7 +290,7 @@ export const FormulaireDemandeSI = ({ onSubmit, onSave, initialData }) => {
         <GroupeCasesCocher
           label="Nature du besoin"
           name="natureBesoin"
-          options={['Réglementaire', 'Amélioration satisfaction client', 'Amélioration fonctionnement']}
+          options={NATURE_OPTS}
           selectedValues={formData.natureBesoin}
           onChange={handleChange}
         />
@@ -216,7 +298,7 @@ export const FormulaireDemandeSI = ({ onSubmit, onSave, initialData }) => {
         <GroupeCasesCocher
           label="Bénéfices escomptés"
           name="benefices"
-          options={['Diminution des Coûts', 'Améliorations des Performances', 'Réduction des Risques', 'Conformité']}
+          options={BENEFICES_OPTS}
           selectedValues={formData.benefices}
           onChange={handleChange}
         />
@@ -225,15 +307,14 @@ export const FormulaireDemandeSI = ({ onSubmit, onSave, initialData }) => {
           <ChampSaisie
             label="Délai souhaité"
             id="delaiSouhaite"
-            type="text"
+            type="date"
             value={formData.delaiSouhaite}
             onChange={handleChange}
-            placeholder="Ex: 12/02/2026 ou Q3 2026"
             required
           />
           <div className="flex flex-col">
             <label className="mb-2 text-sm font-semibold text-slate-700">
-              Demande révisée et validée par responsable de l’entité?
+              Demande révisée et validée par responsable de l'entité?
             </label>
             <div className="flex items-center gap-6 mt-2">
               <label className="flex items-center gap-2 cursor-pointer">
@@ -242,7 +323,7 @@ export const FormulaireDemandeSI = ({ onSubmit, onSave, initialData }) => {
                   name="valideeResponsable" 
                   value="true"
                   checked={formData.valideeResponsable === true || formData.valideeResponsable === 'true'}
-                  onChange={(e) => handleChange({ target: { name: 'valideeResponsable', value: true }})}
+                  onChange={() => handleChange({ target: { name: 'valideeResponsable', value: true }})}
                   className="w-5 h-5 border-2 border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                 />
                 <span className="text-slate-700">Oui</span>
@@ -253,7 +334,7 @@ export const FormulaireDemandeSI = ({ onSubmit, onSave, initialData }) => {
                   name="valideeResponsable" 
                   value="false"
                   checked={formData.valideeResponsable === false || formData.valideeResponsable === 'false'}
-                  onChange={(e) => handleChange({ target: { name: 'valideeResponsable', value: false }})}
+                  onChange={() => handleChange({ target: { name: 'valideeResponsable', value: false }})}
                   className="w-5 h-5 border-2 border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                 />
                 <span className="text-slate-700">Non</span>
@@ -442,6 +523,96 @@ export const DemandeDetailsModal = ({ isOpen, onClose, demande }) => {
             Fermer
           </button>
         </div>
+      </div>
+    </div>
+  );
+};
+
+export const InfosComplementairesModal = ({ isOpen, onClose, demande, onSave }) => {
+  const [formData, setFormData] = useState({
+    categoriesProjet: [],
+    service: '',
+    dateFin: ''
+  });
+
+  React.useEffect(() => {
+    if (demande) {
+      setFormData({
+        categoriesProjet: demande.categoriesProjet || [],
+        service: demande.service || '',
+        dateFin: demande.dateFin || ''
+      });
+    }
+  }, [demande]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave(demande.id, {
+      ...demande,
+      categoriesProjet: formData.categoriesProjet,
+      service: formData.service,
+      dateFin: formData.dateFin
+    });
+    onClose();
+  };
+
+  if (!isOpen || !demande) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50">
+          <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <Briefcase className="text-indigo-500" />
+            Informations Complémentaires
+          </h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <ChampSaisie
+            label="Service"
+            id="service"
+            value={formData.service}
+            onChange={handleChange}
+            placeholder="Ex: Marketing, IT..."
+          />
+          <ChampSaisie
+            label="Date Fin Prévue"
+            id="dateFin"
+            type="date"
+            value={formData.dateFin}
+            onChange={handleChange}
+          />
+          <GroupeCasesCocher
+            label="Catégories du Projet"
+            name="categoriesProjet"
+            options={['Nouveau projet', 'Amélioration', 'Maintenance', 'Urgent']}
+            selectedValues={formData.categoriesProjet}
+            onChange={handleChange}
+          />
+          <div className="pt-4 flex justify-end gap-3 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-lg transition-colors"
+            >
+              Annuler
+            </button>
+            <button
+              type="submit"
+              className="flex items-center gap-2 px-5 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+            >
+              <Save size={16} /> Enregistrer
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

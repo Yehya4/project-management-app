@@ -69,48 +69,7 @@ const ProjectCharterView = () => {
     }
   };
 
-  const handleImportWord = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      try {
-        const arrayBuffer = event.target.result;
-        const result = await mammoth.extractRawText({ arrayBuffer });
-        const text = result.value;
 
-        const extractField = (prefix) => {
-          const regex = new RegExp(`${prefix}\\s*:\\s*(.*)`, 'i');
-          const match = text.match(regex);
-          return match ? match[1].trim() : '';
-        };
-
-        const importedCharter = {
-          demandeId: project.demandeId,
-          titre: extractField('Titre du Projet'),
-          contexte: extractField('Contexte'),
-          objectifs: extractField('Objectifs du Projet'),
-          perimetreInclus: extractField('Inclus dans le périmètre'),
-          perimetreExclu: extractField('Hors périmètre'),
-          equipeIT: extractField('Équipe IT'),
-          equipeMetier: extractField('Équipe Métier'),
-          utilisateursFinaux: extractField('Utilisateurs Finaux'),
-          planCom: extractField('Plan de Communication'),
-          risques: extractField('Risques Identifiés'),
-          criteresSucces: extractField('Critères de Succès'),
-          statut: 'Brouillon',
-          lastUpdated: new Date().toISOString()
-        };
-        
-        await saveCharter(importedCharter);
-        alert('Project Charter importé avec succès.');
-      } catch (err) {
-        alert('Erreur lors de l\'importation du fichier Word.');
-      }
-      e.target.value = null;
-    };
-    reader.readAsArrayBuffer(file);
-  };
 
   const renderCharterContent = () => {
     if (!charter) {
@@ -138,21 +97,7 @@ const ProjectCharterView = () => {
                 >
                   <Edit3 size={16} /> Créer la Charte manuellement
                 </Link>
-                <div className="flex gap-2 justify-center">
-                  <input 
-                    type="file" 
-                    accept=".docx" 
-                    ref={fileInputRef} 
-                    onChange={handleImportWord} 
-                    className="hidden" 
-                  />
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex justify-center items-center gap-2 px-5 py-2.5 bg-white border border-amber-300 text-amber-700 hover:bg-amber-50 rounded-xl font-semibold transition-all shadow-sm"
-                  >
-                    <Upload size={16} /> Importer depuis Word
-                  </button>
-                </div>
+
               </div>
             )}
           </div>
@@ -177,24 +122,7 @@ const ProjectCharterView = () => {
           </div>
           {isPMOrAdmin && project.demandeId && (
             <div className="flex items-center gap-2">
-              {charter.statut !== 'Validé' && (
-                <>
-                  <input 
-                    type="file" 
-                    accept=".docx" 
-                    ref={fileInputRef} 
-                    onChange={handleImportWord} 
-                    className="hidden" 
-                  />
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-300 text-slate-700 rounded-xl font-semibold hover:bg-slate-50 transition-all shadow-sm shrink-0"
-                    title="Importer depuis Word"
-                  >
-                    <Upload size={16} /> <span className="hidden md:inline">Importer</span>
-                  </button>
-                </>
-              )}
+
 
               <button
                 onClick={handleExportPDF}

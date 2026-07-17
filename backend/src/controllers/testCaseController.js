@@ -17,7 +17,7 @@ class TestCaseController {
 
     async create(req, res) {
         try {
-            const { projectId, testCaseId, testName, description, expectedResult, actualResult } = req.body;
+            const { projectId, testCaseId, testName, description, expectedResult, actualResult, status, comment } = req.body;
             if (!projectId || !testCaseId || !testName || !description || !expectedResult) {
                 return res.status(400).json({ message: 'Champs obligatoires manquants.' });
             }
@@ -29,7 +29,9 @@ class TestCaseController {
                 testName,
                 description,
                 expectedResult,
-                actualResult
+                actualResult,
+                status,
+                comment
             }, io);
 
             return res.status(201).json(testCase);

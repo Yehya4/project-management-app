@@ -252,7 +252,7 @@ export const useDemandes = () => useContext(DemandeContext);
 
 export const DemandeProvider = ({ children }) => {
   const [demandes, setDemandes] = useState([]);
-  const { token } = useAuth();
+  const { token, logout } = useAuth();
 
   const API_URL = 'http://localhost:5000/api/demandes';
 
@@ -270,6 +270,10 @@ export const DemandeProvider = ({ children }) => {
   const fetchDemandes = async () => {
     try {
       const res = await fetch(API_URL, { headers: getHeaders() });
+      if (res.status === 401 || res.status === 403) {
+        if (logout) logout();
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         setDemandes(data);
@@ -287,6 +291,10 @@ export const DemandeProvider = ({ children }) => {
         body: JSON.stringify(nouvelleDemande)
       });
       if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          if (logout) logout();
+          throw new Error("Session expirée. Veuillez vous reconnecter.");
+        }
         const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.message || `Erreur serveur (${res.status})`);
       }
@@ -307,6 +315,10 @@ export const DemandeProvider = ({ children }) => {
         body: JSON.stringify(updatedData)
       });
       if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          if (logout) logout();
+          throw new Error("Session expirée. Veuillez vous reconnecter.");
+        }
         const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.message || `Erreur serveur (${res.status})`);
       }

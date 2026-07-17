@@ -49,29 +49,36 @@ class DemandeService {
 
     create(demandeData, io) {
         return new Promise((resolve, reject) => {
-            db.query('SELECT COUNT(*) AS count FROM demandes', (err, results) => {
+            const year = new Date().getFullYear();
+            db.query(
+                `SELECT MAX(CAST(SUBSTRING_INDEX(id, '-', -1) AS UNSIGNED)) AS maxSeq
+                 FROM demandes WHERE id LIKE ?`,
+                [`DSI-${year}-%`],
+                (err, results) => {
                 if (err) return reject(err);
-                const count = results[0].count + 1;
-                const newId = `DSI-${new Date().getFullYear()}-${String(count).padStart(3, '0')}`;
+                const maxSeq = results[0].maxSeq || 0;
+                const newId = `DSI-${year}-${String(maxSeq + 1).padStart(3, '0')}`;
                 
                 const { 
                     nomDemandeur, fonction, domaines, categoriesProjet, 
-                    contexte, description, natureBesoin, benefices, delaiSouhaite, statut, valideeResponsable 
+                    contexte, description, natureBesoin, benefices, delaiSouhaite, statut, valideeResponsable,
+                    service, dateFin
                 } = demandeData;
                 
                 const dateCreation = new Date().toLocaleDateString('fr-FR');
                 const initialStatut = statut || 'En attente';
                 
                 const query = `INSERT INTO demandes 
-                    (id, nomDemandeur, fonction, domaines, categoriesProjet, contexte, description, natureBesoin, benefices, delaiSouhaite, dateCreation, statut, valideeResponsable) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+                    (id, nomDemandeur, fonction, domaines, categoriesProjet, contexte, description, natureBesoin, benefices, delaiSouhaite, dateCreation, statut, valideeResponsable, service, dateFin) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
                 
                 const values = [
                     newId, nomDemandeur, fonction, 
                     JSON.stringify(domaines || []), JSON.stringify(categoriesProjet || []), 
                     contexte, description, 
                     JSON.stringify(natureBesoin || []), JSON.stringify(benefices || []), 
-                    delaiSouhaite, dateCreation, initialStatut, valideeResponsable || false
+                    delaiSouhaite, dateCreation, initialStatut, valideeResponsable || false,
+                    service || null, dateFin || null
                 ];
 
                 db.query(query, values, (err) => {
@@ -104,11 +111,12 @@ class DemandeService {
         return new Promise((resolve, reject) => {
             const { 
                 nomDemandeur, fonction, domaines, categoriesProjet, 
-                contexte, description, natureBesoin, benefices, delaiSouhaite, valideeResponsable
+                contexte, description, natureBesoin, benefices, delaiSouhaite, valideeResponsable,
+                service, dateFin
             } = demandeData;
             
             const query = `UPDATE demandes 
-                SET nomDemandeur=?, fonction=?, domaines=?, categoriesProjet=?, contexte=?, description=?, natureBesoin=?, benefices=?, delaiSouhaite=?, valideeResponsable=?
+                SET nomDemandeur=?, fonction=?, domaines=?, categoriesProjet=?, contexte=?, description=?, natureBesoin=?, benefices=?, delaiSouhaite=?, valideeResponsable=?, service=?, dateFin=?
                 WHERE id=?`;
             
             const values = [
@@ -116,7 +124,7 @@ class DemandeService {
                 JSON.stringify(domaines || []), JSON.stringify(categoriesProjet || []), 
                 contexte, description, 
                 JSON.stringify(natureBesoin || []), JSON.stringify(benefices || []), 
-                delaiSouhaite, valideeResponsable || false, id
+                delaiSouhaite, valideeResponsable || false, service || null, dateFin || null, id
             ];
 
             db.query(query, values, (err) => {

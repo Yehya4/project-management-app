@@ -41,9 +41,6 @@ const ProjectCharter = () => {
     planCom: '',
     risques: '',
     criteresSucces: '',
-    categoriesProjet: '',
-    service: '',
-    dateFin: '',
     statut: 'Brouillon',
     commentaires: []
   });
@@ -180,49 +177,6 @@ const ProjectCharter = () => {
     }
   };
 
-  const handleImportWord = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      try {
-        const arrayBuffer = event.target.result;
-        const result = await mammoth.extractRawText({ arrayBuffer });
-        const text = result.value;
-
-        const extractField = (prefix) => {
-          const regex = new RegExp(`${prefix}\\s*:\\s*(.*)`, 'i');
-          const match = text.match(regex);
-          return match ? match[1].trim() : '';
-        };
-
-        setFormData(prev => ({
-          ...prev,
-          titre: extractField('Titre du Projet') || prev.titre,
-          contexte: extractField('Contexte') || prev.contexte,
-          objectifs: extractField('Objectifs du Projet') || prev.objectifs,
-          perimetreInclus: extractField('Inclus dans le périmètre') || prev.perimetreInclus,
-          perimetreExclu: extractField('Hors périmètre') || prev.perimetreExclu,
-          equipeITSponsor: extractField('Équipe IT - Sponsor') || prev.equipeITSponsor,
-          equipeITChef: extractField('Équipe IT - Chef de Projet') || prev.equipeITChef,
-          equipeITDev: extractField('Équipe IT - Équipe de développement') || prev.equipeITDev,
-          equipeITTest: extractField('Équipe IT - Équipe de Test') || prev.equipeITTest,
-          equipeMetierSponsor: extractField('Équipe Métier - Sponsor') || prev.equipeMetierSponsor,
-          equipeMetierChef: extractField('Équipe Métier - Chef de Projet') || prev.equipeMetierChef,
-          equipeMetierEquipe: extractField('Équipe Métier - Équipe') || prev.equipeMetierEquipe,
-          utilisateursFinaux: extractField('Utilisateurs Finaux') || prev.utilisateursFinaux,
-          planCom: extractField('Plan de Communication') || prev.planCom,
-          risques: extractField('Risques Identifiés') || prev.risques,
-          criteresSucces: extractField('Critères de Succès') || prev.criteresSucces,
-        }));
-        alert('Contenu importé avec succès.');
-      } catch (err) {
-        alert("Erreur lors de l'importation du fichier Word.");
-      }
-      e.target.value = null;
-    };
-    reader.readAsArrayBuffer(file);
-  };
 
   const handleDelete = async () => {
     if (window.confirm("Êtes-vous sûr de vouloir supprimer cette charte de projet en brouillon ?")) {
@@ -320,24 +274,7 @@ const ProjectCharter = () => {
             </p>
           </div>
           <div className="flex items-center gap-3 shrink-0 flex-wrap justify-end">
-            {isEditable && (
-              <>
-                <input 
-                  type="file" 
-                  accept=".docx" 
-                  ref={fileInputRef} 
-                  onChange={handleImportWord} 
-                  className="hidden" 
-                />
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-2 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 px-3 py-2 rounded-xl font-semibold transition-all shadow-sm"
-                  title="Importer depuis Word"
-                >
-                  <Upload size={18} /> <span className="hidden md:inline">Importer</span>
-                </button>
-              </>
-            )}
+
 
             <button
               onClick={handleExportPDF}
@@ -527,53 +464,7 @@ const ProjectCharter = () => {
             </div>
           </div>
 
-          {/* Informations Complémentaires */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mt-6">
-            <div className="bg-gradient-to-r from-teal-700 to-emerald-700 px-6 py-4">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                <Info size={24} className="text-teal-300" /> Informations Complémentaires
-              </h3>
-            </div>
-            <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Catégories du Projet</label>
-                <input
-                  type="text"
-                  name="categoriesProjet"
-                  value={formData.categoriesProjet || ''}
-                  onChange={handleChange}
-                  readOnly={!isEditable}
-                  placeholder="Ex: Nouveau projet, Amélioration..."
-                  className={`w-full px-4 py-3 border border-slate-300 rounded-xl transition-all text-slate-700 ${isEditable ? 'focus:ring-2 focus:ring-emerald-500' : 'bg-slate-50 outline-none'}`}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Service</label>
-                <input
-                  type="text"
-                  name="service"
-                  value={formData.service || ''}
-                  onChange={handleChange}
-                  readOnly={!isEditable}
-                  placeholder="Ex: Marketing, IT..."
-                  className={`w-full px-4 py-3 border border-slate-300 rounded-xl transition-all text-slate-700 ${isEditable ? 'focus:ring-2 focus:ring-emerald-500' : 'bg-slate-50 outline-none'}`}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Date Fin Prévue</label>
-                <input
-                  type="date"
-                  name="dateFin"
-                  value={formData.dateFin || ''}
-                  onChange={handleChange}
-                  readOnly={!isEditable}
-                  className={`w-full px-4 py-3 border border-slate-300 rounded-xl transition-all text-slate-700 ${isEditable ? 'focus:ring-2 focus:ring-emerald-500' : 'bg-slate-50 outline-none'}`}
-                />
-              </div>
-            </div>
-          </div>
-
-          {}
+          {/* Commentaires & Échanges */}
           <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden mt-6">
             <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">

@@ -22,6 +22,12 @@ export const generateDemandePDF = (demande, shouldSave = true) => {
         const boxY = currentY - 3;
         const boxSize = 4;
         
+        // Add hidden text for PDF text extraction to work!
+        const prevColor = doc.getTextColor ? doc.getTextColor() : '#000000';
+        doc.setTextColor(255, 255, 255); // White color (invisible on white background)
+        doc.text(isChecked ? '[x]' : '[ ]', boxX, currentY);
+        doc.setTextColor(0, 0, 0); // Restore to black
+        
         doc.setLineWidth(0.2);
         doc.rect(boxX, boxY, boxSize, boxSize);
         if (isChecked) {

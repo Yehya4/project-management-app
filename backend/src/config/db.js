@@ -23,18 +23,31 @@ pool.getConnection((error, connection) => {
 
   console.log("Connexion réussie à MySQL");
   
-  // Ensure the column exists
+  // Ensure the columns exist
   connection.query(
     "ALTER TABLE demandes ADD COLUMN valideeResponsable BOOLEAN DEFAULT FALSE",
     (err) => {
-      if (err) {
-        // Ignorer l'erreur si la colonne existe déjà (ER_DUP_FIELDNAME)
-        if (err.code !== 'ER_DUP_FIELDNAME') {
-          console.error("Erreur lors de l'ajout de la colonne valideeResponsable:", err.message);
-        }
-      } else {
-        console.log("Colonne valideeResponsable ajoutée avec succès à la table demandes.");
-      }
+      if (err && err.code !== 'ER_DUP_FIELDNAME') console.error("Erreur ajout valideeResponsable:", err.message);
+    }
+  );
+  connection.query(
+    "ALTER TABLE demandes ADD COLUMN service VARCHAR(255)",
+    (err) => {
+      if (err && err.code !== 'ER_DUP_FIELDNAME') console.error("Erreur ajout service:", err.message);
+    }
+  );
+  connection.query(
+    "ALTER TABLE demandes ADD COLUMN dateFin VARCHAR(255)",
+    (err) => {
+      if (err && err.code !== 'ER_DUP_FIELDNAME') console.error("Erreur ajout dateFin:", err.message);
+    }
+  );
+
+  connection.query(
+    "DELETE FROM demandes WHERE LOWER(contexte) LIKE '%test%' OR LOWER(description) LIKE '%test%' OR LOWER(nomDemandeur) LIKE '%test%'",
+    (err) => {
+      if (err) console.error("Erreur suppression tests:", err.message);
+      else console.log("Demandes de test supprimées.");
     }
   );
 

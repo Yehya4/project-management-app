@@ -648,6 +648,102 @@ const ProjectDocuments = () => {
           </div>
         </div>
       )}
+
+      {/* ── Tous les Documents de A à Z ──────────────────────── */}
+      <div className="mt-12 mb-8">
+        <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2 mb-1">
+          <ClipboardList className="text-blue-600" /> Tous les documents du projet
+        </h2>
+        <p className="text-slate-500 mb-6">Regroupement de l'ensemble des documents associés à ce projet, de A à Z.</p>
+        
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-sm">
+                <th className="p-4 font-semibold">Nom du Document</th>
+                <th className="p-4 font-semibold">Type</th>
+                <th className="p-4 font-semibold">Format</th>
+                <th className="p-4 font-semibold text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              
+              <tr className="hover:bg-slate-50/80 transition-colors">
+                <td className="p-4 font-bold text-slate-800">Demande de Projet ({project.demandeId})</td>
+                <td className="p-4 text-sm text-slate-600">Initialisation</td>
+                <td className="p-4 text-sm text-slate-600 text-center">
+                  <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-semibold">Digital</span>
+                </td>
+                <td className="p-4">
+                  <div className="flex justify-end gap-2">
+                    <button onClick={() => handleViewDoc('request')} className="p-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-600 transition-colors" title="Consulter"><Eye size={16} /></button>
+                    <button onClick={() => originalDemande && generateDemandePDF(originalDemande)} className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors" title="Télécharger"><Download size={16} /></button>
+                  </div>
+                </td>
+              </tr>
+
+              {charter && (
+                <tr className="hover:bg-slate-50/80 transition-colors">
+                  <td className="p-4 font-bold text-slate-800">Project Charter</td>
+                  <td className="p-4 text-sm text-slate-600">Cadrage</td>
+                  <td className="p-4 text-sm text-slate-600 text-center">
+                    <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-semibold">Digital</span>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => handleViewDoc('charter')} className="p-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-600 transition-colors" title="Consulter"><Eye size={16} /></button>
+                      <button onClick={() => generateCharterPDF(charter, originalDemande)} className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors" title="Télécharger"><Download size={16} /></button>
+                    </div>
+                  </td>
+                </tr>
+              )}
+
+              {project.backlogFile && (
+                <tr className="hover:bg-slate-50/80 transition-colors">
+                  <td className="p-4 font-bold text-slate-800">{project.backlogFile}</td>
+                  <td className="p-4 text-sm text-slate-600">Backlog (Fichier)</td>
+                  <td className="p-4 text-sm text-slate-600 text-center">
+                    <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-xs font-semibold">Document</span>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => handleViewDoc('backlog')} className="p-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-600 transition-colors" title="Consulter"><Eye size={16} /></button>
+                      <button onClick={() => { const a = document.createElement('a'); a.href = '#'; a.download = project.backlogFile; a.click(); }} className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors" title="Télécharger"><Download size={16} /></button>
+                    </div>
+                  </td>
+                </tr>
+              )}
+
+              {project.architectureFile && (
+                <tr className="hover:bg-slate-50/80 transition-colors">
+                  <td className="p-4 font-bold text-slate-800">{project.architectureFile}</td>
+                  <td className="p-4 text-sm text-slate-600">Architecture (Fichier)</td>
+                  <td className="p-4 text-sm text-slate-600 text-center">
+                    <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-xs font-semibold">Document</span>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => handleViewDoc('architecture')} className="p-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-600 transition-colors" title="Consulter"><Eye size={16} /></button>
+                      <button onClick={() => { const a = document.createElement('a'); a.href = '#'; a.download = project.architectureFile; a.click(); }} className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors" title="Télécharger"><Download size={16} /></button>
+                    </div>
+                  </td>
+                </tr>
+              )}
+
+              {/* Cas où aucun fichier n'a encore été généré */}
+              {!charter && !project.backlogFile && !project.architectureFile && (
+                <tr>
+                  <td colSpan="4" className="p-8 text-center text-slate-500">
+                    <FileText size={32} className="mx-auto mb-2 text-slate-300" />
+                    Aucun document supplémentaire pour le moment.
+                  </td>
+                </tr>
+              )}
+
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 };
