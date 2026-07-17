@@ -27,8 +27,8 @@ class TaskService {
             db.query(query, [id, projectId, title, description || null, priority, assigneeId || null, status, reference || null, objet || null, dateDebutReel || null, dateFinReel || null, dateFin || null], async (err) => {
                 if (err) return reject(err);
                 const task = { id, ...taskData, createdAt: new Date().toISOString() };
-                
-                if (io) {
+
+                                if (io) {
                     io.emit('task_created', task);
                 }
                 try {
@@ -96,8 +96,8 @@ class TaskService {
             db.query(query, values, async (err) => {
                 if (err) return reject(err);
                 const task = { id, ...updates };
-                
-                try {
+
+                                try {
                     const taskData = await this.getById(id);
                     if (io) {
                         io.emit('task_updated', taskData);
@@ -118,8 +118,8 @@ class TaskService {
             const query = 'UPDATE tasks SET status = ? WHERE id = ?';
             db.query(query, [status, id], async (err) => {
                 if (err) return reject(err);
-                
-                try {
+
+                                try {
                     const taskData = await this.getById(id);
                     if (io) {
                         io.emit('task_updated', taskData);
@@ -149,8 +149,8 @@ class TaskService {
             this.getById(id).then(taskData => {
                 db.query('DELETE FROM tasks WHERE id = ?', [id], async (err) => {
                     if (err) return reject(err);
-                    
-                    if (io) {
+
+                                        if (io) {
                         io.emit('task_deleted', { id });
                     }
                     if (taskData) {

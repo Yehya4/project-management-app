@@ -14,13 +14,13 @@ const UserDashboard = () => {
   const { charters } = useCharter();
   const [popup, setPopup] = React.useState({ isOpen: false, title: '', message: '', type: 'success' });
 
-  /* ── Mes demandes : filtrage par prenom + nom (user.name n'existe pas) ── */
+  
   const myDemandes = demandes.filter(d =>
     d.nomDemandeur === `${user?.prenom || ''} ${user?.nom || ''}`.trim() ||
     d.nomDemandeur === `${user?.nom || ''} ${user?.prenom || ''}`.trim()
   );
 
-  /* ── Chartes envoyées au demandeur ───────────────────────── */
+  
   const myChartersPendingAction = charters.filter(c => {
     if (c.statut !== 'Envoyé au Demandeur') return false;
     const relatedDemande = demandes.find(d => d.id === c.demandeId);
@@ -58,7 +58,7 @@ const UserDashboard = () => {
   return (
     <div className="space-y-8">
 
-      {/* ── Banner ───────────────────────────────────────────── */}
+      {}
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-blue-900 rounded-3xl p-6 md:p-8 text-white shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center">
         <div>
           <p className="text-sm text-blue-100 mb-2">Tableau de bord utilisateur</p>
@@ -80,7 +80,7 @@ const UserDashboard = () => {
         </div>
       </div>
 
-      {/* ── KPI cards ──────────────────────────────────────── */}
+      {}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-all duration-300">
           <div className="flex items-start justify-between">
@@ -130,7 +130,7 @@ const UserDashboard = () => {
         </div>
       </div>
 
-      {/* ── ⚡ Chartes en attente de validation ────────────────── */}
+      {}
       {myChartersPendingAction.length > 0 && (
         <div className="bg-white rounded-3xl shadow-sm border border-indigo-200 overflow-hidden">
           <div className="px-6 py-5 border-b border-indigo-100 bg-indigo-50 flex items-center gap-3">
@@ -188,7 +188,7 @@ const UserDashboard = () => {
         </div>
       )}
 
-      {/* ── Mes Demandes SI ────────────────────────────────── */}
+      {}
       <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 px-6 py-5 border-b border-slate-100 bg-slate-50/80">
           <div>

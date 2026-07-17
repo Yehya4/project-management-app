@@ -4,7 +4,7 @@ import { useCharter, useAuth, useDemandes } from '../../context/AppContext';
 import {
   FileText, Flag, Activity, Users, Briefcase,
   CheckCircle, AlertTriangle, MessageSquare, Edit3,
-  Info, Shield, Target, Download, Upload
+  Info, Shield, Target, Download, Upload, Save, X
 } from 'lucide-react';
 import mammoth from 'mammoth';
 import { generateCharterPDF } from '../../utils/pdfGenerator';
@@ -56,6 +56,29 @@ const ProjectCharterView = () => {
   const charter = getCharterByDemandeId(project.demandeId);
   const demande = demandes.find(d => d.id === project.demandeId);
   const isPMOrAdmin = user?.role === 'Project Manager' || user?.role === 'Sponsor' || user?.role === 'Admin';
+
+  const [isEditingInfos, setIsEditingInfos] = React.useState(false);
+  const [infosFormData, setInfosFormData] = React.useState({});
+
+  React.useEffect(() => {
+    if (charter) {
+      setInfosFormData({
+        categoriesProjet: charter.categoriesProjet || '',
+        service: charter.service || '',
+        dateFin: charter.dateFin ? new Date(charter.dateFin).toISOString().split('T')[0] : ''
+      });
+    }
+  }, [charter, isEditingInfos]);
+
+  const handleInfosChange = (e) => {
+    setInfosFormData({ ...infosFormData, [e.target.name]: e.target.value });
+  };
+
+  const handleSaveInfos = async () => {
+    const updatedCharter = { ...charter, ...infosFormData };
+    await saveCharter(updatedCharter);
+    setIsEditingInfos(false);
+  };
 
   const fileInputRef = React.useRef(null);
 
@@ -320,22 +343,67 @@ const ProjectCharterView = () => {
 
   return (
     <div className="space-y-10 pb-10">
-      {/* Contenu Project Charter */}
+      {}
       {renderCharterContent()}
 
-      {/* Informations Complémentaires Indépendantes (En bas) */}
+      {}
       <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="bg-gradient-to-r from-teal-800 to-emerald-800 px-8 py-6">
-          <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-            <Info size={28} className="text-teal-300" />
-            Informations Complémentaires
-          </h2>
-          <p className="text-teal-100 mt-2">Détails complétés lors de la charte de projet.</p>
+        <div className="bg-gradient-to-r from-teal-800 to-emerald-800 px-8 py-6 flex justify-between items-center flex-wrap gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+              <Info size={28} className="text-teal-300" />
+              Informations Complémentaires
+            </h2>
+            <p className="text-teal-100 mt-2">Détails complétés lors de la charte de projet.</p>
+          </div>
+          {isPMOrAdmin && charter && !isEditingInfos && (
+            <button 
+              onClick={() => setIsEditingInfos(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl font-semibold transition-colors border border-white/20 text-sm"
+            >
+              <Edit3 size={16} /> Modifier
+            </button>
+          )}
+          {isEditingInfos && (
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setIsEditingInfos(false)}
+                className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl font-semibold transition-colors border border-white/20 text-sm"
+              >
+                <X size={16} /> Annuler
+              </button>
+              <button 
+                onClick={handleSaveInfos}
+                className="flex items-center gap-2 px-4 py-2 bg-teal-400 text-teal-950 rounded-xl font-bold hover:bg-teal-300 transition-colors shadow-sm text-sm"
+              >
+                <Save size={16} /> Enregistrer
+              </button>
+            </div>
+          )}
         </div>
         <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
-          <Field label="Catégories du Projet" value={charter?.categoriesProjet || '-'} />
-          <Field label="Service" value={charter?.service || '-'} />
-          <Field label="Date Fin Prévue" value={charter?.dateFin ? new Date(charter.dateFin).toLocaleDateString('fr-FR') : '-'} />
+          {isEditingInfos ? (
+            <>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Catégories du Projet</label>
+                <input type="text" name="categoriesProjet" value={infosFormData.categoriesProjet} onChange={handleInfosChange} className="w-full p-2.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-teal-500 text-sm bg-slate-50" placeholder="Ex: Technique, Métier..." />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Service</label>
+                <input type="text" name="service" value={infosFormData.service} onChange={handleInfosChange} className="w-full p-2.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-teal-500 text-sm bg-slate-50" placeholder="Ex: IT, RH, Finance..." />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Date Fin Prévue</label>
+                <input type="date" name="dateFin" value={infosFormData.dateFin} onChange={handleInfosChange} className="w-full p-2.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-teal-500 text-sm bg-slate-50" />
+              </div>
+            </>
+          ) : (
+            <>
+              <Field label="Catégories du Projet" value={charter?.categoriesProjet || '-'} />
+              <Field label="Service" value={charter?.service || '-'} />
+              <Field label="Date Fin Prévue" value={charter?.dateFin ? new Date(charter.dateFin).toLocaleDateString('fr-FR') : '-'} />
+            </>
+          )}
         </div>
       </div>
     </div>

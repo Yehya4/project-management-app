@@ -33,30 +33,34 @@ class CharterService {
             demandeId, titre, contexte, objectifs, perimetreInclus, perimetreExclu, 
             sponsorIT, chefProjetIT, equipeIT, 
             sponsorMetier, chefProjetMetier, equipeMetier, utilisateursFinaux, 
-            planCom, risques, criteresSucces, statut, commentaires
+            planCom, risques, criteresSucces, statut, commentaires,
+            categoriesProjet, service, dateFin
         } = charterData;
 
         await new Promise((resolve, reject) => {
             db.query('SELECT id FROM charters WHERE demandeId = ?', [demandeId], (err, results) => {
                 if (err) return reject(err);
-                
-                if (results.length > 0) {
+
+                                if (results.length > 0) {
                     const query = `UPDATE charters SET 
                         titre=?, contexte=?, objectifs=?, perimetreInclus=?, perimetreExclu=?, 
                         sponsorIT=?, chefProjetIT=?, equipeIT=?, 
                         sponsorMetier=?, chefProjetMetier=?, equipeMetier=?, utilisateursFinaux=?, 
-                        planCom=?, risques=?, criteresSucces=?, statut=?, commentaires=?
+                        planCom=?, risques=?, criteresSucces=?, statut=?, commentaires=?,
+                        categoriesProjet=?, service=?, dateFin=?
                         WHERE demandeId=?`;
-                    
-                    const values = [
+
+                                        const values = [
                         titre, contexte, objectifs, perimetreInclus, perimetreExclu, 
                         sponsorIT, chefProjetIT, equipeIT, 
                         sponsorMetier, chefProjetMetier, equipeMetier, utilisateursFinaux, 
                         planCom, risques, criteresSucces, statut || 'Brouillon', 
-                        JSON.stringify(commentaires || []), demandeId
+                        JSON.stringify(commentaires || []), 
+                        categoriesProjet || null, service || null, dateFin || null, 
+                        demandeId
                     ];
-                    
-                    db.query(query, values, (err) => {
+
+                                        db.query(query, values, (err) => {
                         if (err) return reject(err);
                         resolve();
                     });
@@ -65,15 +69,16 @@ class CharterService {
                         (demandeId, titre, contexte, objectifs, perimetreInclus, perimetreExclu, 
                         sponsorIT, chefProjetIT, equipeIT, 
                         sponsorMetier, chefProjetMetier, equipeMetier, utilisateursFinaux, 
-                        planCom, risques, criteresSucces, statut, commentaires) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-                    
-                    const values = [
+                        planCom, risques, criteresSucces, statut, commentaires, categoriesProjet, service, dateFin) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+                                        const values = [
                         demandeId, titre, contexte, objectifs, perimetreInclus, perimetreExclu, 
                         sponsorIT, chefProjetIT, equipeIT, 
                         sponsorMetier, chefProjetMetier, equipeMetier, utilisateursFinaux, 
                         planCom, risques, criteresSucces, statut || 'Brouillon',
-                        JSON.stringify(commentaires || [])
+                        JSON.stringify(commentaires || []),
+                        categoriesProjet || null, service || null, dateFin || null
                     ];
 
                     db.query(query, values, (err) => {
@@ -88,8 +93,8 @@ class CharterService {
             let notifType = 'info';
             let notifTitle = '';
             let notifMessage = '';
-            
-            if (statut === 'Envoyé au Demandeur') {
+
+                        if (statut === 'Envoyé au Demandeur') {
                 notifTitle = 'Charte de projet envoyée';
                 notifMessage = `La charte du projet (Demande: ${demandeId}) a été envoyée au Demandeur pour validation.`;
             } else if (statut === 'Soumis au Sponsor') {
@@ -104,8 +109,8 @@ class CharterService {
                 notifMessage = `La charte (Demande: ${demandeId}) a été retournée avec des commentaires.`;
                 notifType = 'warning';
             }
-            
-            if (notifTitle) {
+
+                        if (notifTitle) {
                 let nomDemandeur = null;
                 try {
                     const demandeService = require('./demandeService');

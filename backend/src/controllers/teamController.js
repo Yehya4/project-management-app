@@ -26,8 +26,8 @@ class TeamController {
         try {
             const { projectId } = req.params;
             const { userId, role } = req.body;
-            
-            if (!userId || !role) {
+
+                        if (!userId || !role) {
                 return res.status(400).json({ message: 'userId et role sont requis.' });
             }
 

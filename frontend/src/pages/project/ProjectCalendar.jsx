@@ -281,16 +281,16 @@ const ProjectCalendar = () => {
         </div>
       </div>
 
-      {/* Main Grid View */}
+      {}
       <div className="flex-1 bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden flex flex-col min-h-0">
-        {/* Weekdays Labels */}
+        {}
         <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50 text-center py-3 select-none text-xs font-bold text-slate-500 uppercase tracking-wider">
           {WEEKDAYS.map(day => (
             <div key={day} className="first:text-slate-400 last:text-slate-400">{day}</div>
           ))}
         </div>
 
-        {/* Days Grid */}
+        {}
         <div className="flex-1 grid grid-cols-7 grid-rows-5 divide-x divide-y divide-slate-100 min-h-0 overflow-y-auto">
           {daysGrid.map((day, idx) => {
             const isToday = isSameDay(day, new Date());
@@ -323,7 +323,7 @@ const ProjectCalendar = () => {
                   </div>
                 )}
 
-                {/* Day events tags list */}
+                {}
                 <div className="flex-1 overflow-y-auto space-y-1.5 scrollbar-thin">
                   {day && dayEvents.map(event => {
                     const colors = getEventColors(event.color);
@@ -346,14 +346,14 @@ const ProjectCalendar = () => {
         </div>
       </div>
 
-      {/* MODAL: ADD / EDIT EVENT */}
+      {}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <form 
             onSubmit={handleSubmit}
             className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden transform transition-all flex flex-col"
           >
-            {/* Modal Header */}
+            {}
             <div className="px-6 py-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
               <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
                 <CalendarIcon size={20} className="text-blue-600" />
@@ -368,7 +368,7 @@ const ProjectCalendar = () => {
               </button>
             </div>
 
-            {/* Modal Body */}
+            {}
             <div className="p-6 space-y-5 overflow-y-auto max-h-[70vh]">
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Titre de l'événement</label>
@@ -434,7 +434,7 @@ const ProjectCalendar = () => {
               </div>
             </div>
 
-            {/* Modal Footer */}
+            {}
             <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center">
               <button 
                 type="button"
@@ -454,11 +454,11 @@ const ProjectCalendar = () => {
         </div>
       )}
 
-      {/* MODAL: VIEW EVENT DETAILS */}
+      {}
       {selectedEvent && !isEditMode && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden transform transition-all flex flex-col">
-            {/* Header */}
+            {}
             <div className="px-6 py-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
               <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider ${getEventColors(selectedEvent.color).bg} ${getEventColors(selectedEvent.color).border} ${getEventColors(selectedEvent.color).text}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${getEventColors(selectedEvent.color).bullet}`} />
@@ -472,7 +472,7 @@ const ProjectCalendar = () => {
               </button>
             </div>
 
-            {/* Body */}
+            {}
             <div className="p-6 space-y-6">
               <div>
                 <h4 className="text-xl font-bold text-slate-800">{selectedEvent.title}</h4>
@@ -497,7 +497,7 @@ const ProjectCalendar = () => {
               </div>
             </div>
 
-            {/* Footer */}
+            {}
             <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center">
               {isController ? (
                 <>
@@ -535,14 +535,14 @@ const ProjectCalendar = () => {
         </div>
       )}
 
-      {/* MODAL: EDIT EVENT VIEW */}
+      {}
       {selectedEvent && isEditMode && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <form 
             onSubmit={handleSubmit}
             className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden transform transition-all flex flex-col"
           >
-            {/* Header */}
+            {}
             <div className="px-6 py-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
               <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
                 <CalendarIcon size={20} className="text-blue-600" />
@@ -560,7 +560,7 @@ const ProjectCalendar = () => {
               </button>
             </div>
 
-            {/* Body */}
+            {}
             <div className="p-6 space-y-5 overflow-y-auto max-h-[70vh]">
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Titre de l'événement</label>
@@ -624,7 +624,7 @@ const ProjectCalendar = () => {
               </div>
             </div>
 
-            {/* Footer */}
+            {}
             <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center">
               <button 
                 type="button"

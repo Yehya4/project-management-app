@@ -44,38 +44,38 @@ io.use((socket, next) => {
 
 io.on('connection', (socket) => {
     console.log('Un client est connecté :', socket.id);
-    
-    socket.on('register_user', ({ userId, role, fullName }) => {
+
+        socket.on('register_user', ({ userId, role, fullName }) => {
         socket.userId = userId;
         socket.role = role;
         socket.fullName = fullName;
-        
-        socket.join(`user_${userId}`);
+
+                socket.join(`user_${userId}`);
         socket.join(`role_${role}`);
         if (fullName) {
             socket.join(`name_${fullName}`);
         }
         console.log(`Socket ${socket.id} enregistré pour l'utilisateur ${userId} (${role}, ${fullName})`);
     });
-    
-    socket.on('send_message', async (messageData) => {
+
+        socket.on('send_message', async (messageData) => {
         try {
             const savedMessage = await messageService.addMessage(messageData);
-            
-            if (messageData.recipientId) {
+
+                        if (messageData.recipientId) {
                 io.to(`user_${messageData.senderId}`).to(`user_${messageData.recipientId}`).emit('new_message', savedMessage);
             } else {
                 io.emit('new_message', savedMessage);
             }
-            
-            if (messageData.mentions && messageData.mentions.length > 0) {
+
+                        if (messageData.mentions && messageData.mentions.length > 0) {
                 for (const mentionId of messageData.mentions) {
                     try {
                         const mentionedUser = await userService.getById(mentionId);
                         if (mentionedUser) {
                             const mentionedName = `${mentionedUser.prenom || ''} ${mentionedUser.nom || ''}`.trim();
-                            
-                            const notificationForMentionedData = {
+
+                                                        const notificationForMentionedData = {
                                 id: Date.now().toString() + Math.random().toString(36).substring(7),
                                 type: 'mention',
                                 title: 'Mention dans le chat',
@@ -85,19 +85,19 @@ io.on('connection', (socket) => {
                             };
                             const savedNotifForMentioned = await notificationService.addNotification(notificationForMentionedData);
                             io.to(`user_${mentionId}`).emit('new_notification', savedNotifForMentioned);
-                            
-                            const notificationForSponsorAdminData = {
+
+                                                        const notificationForSponsorAdminData = {
                                 id: Date.now().toString() + Math.random().toString(36).substring(7),
                                 type: 'mention',
                                 title: 'Mention dans le chat',
                                 message: `${messageData.senderName} a mentionné ${mentionedName} dans le chat`,
-                                role: 'Admin', // Example, this would be better to send separately for Admin and Sponsor
+                                role: 'Admin', 
                                 link: `/projects/${messageData.projectId}/messages`
                             };
                             const savedNotifForAdmin = await notificationService.addNotification(notificationForSponsorAdminData);
                             io.to('role_Admin').emit('new_notification', savedNotifForAdmin);
-                            
-                            const notificationForSponsorData = { ...notificationForSponsorAdminData, role: 'Sponsor', id: Date.now().toString() + Math.random().toString(36).substring(7) };
+
+                                                        const notificationForSponsorData = { ...notificationForSponsorAdminData, role: 'Sponsor', id: Date.now().toString() + Math.random().toString(36).substring(7) };
                             const savedNotifForSponsor = await notificationService.addNotification(notificationForSponsorData);
                             io.to('role_Sponsor').emit('new_notification', savedNotifForSponsor);
                         }
@@ -118,7 +118,6 @@ io.on('connection', (socket) => {
 
 const routes = require('./routes/routes');
 
-// ─── Sécurité : headers HTTP ──────────────────────────────────────────────────
 app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
@@ -127,7 +126,6 @@ app.use((req, res, next) => {
     next();
 });
 
-// ─── CORS (une seule configuration, cohérente avec Socket.IO) ────────────────
 app.use(cors({
     origin: CORS_ORIGIN,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],

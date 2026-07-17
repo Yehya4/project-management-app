@@ -15,7 +15,7 @@ const ProjectMessages = () => {
   const [mentionFilter, setMentionFilter] = useState('');
   const [mentions, setMentions] = useState([]);
   
-  // New private messaging states
+
   const [activeChat, setActiveChat] = useState('general'); // 'general' or userId
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [searchPartnerQuery, setSearchPartnerQuery] = useState('');
@@ -39,7 +39,7 @@ const ProjectMessages = () => {
     ...projectTeamUsers
   ].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
 
-  // Extract active private chats for this user in this project
+
   const privateChats = messages.reduce((acc, msg) => {
     if (msg.projectId === project.id && msg.recipientId) {
       const partnerId = msg.senderId === user.id ? msg.recipientId : msg.senderId;
@@ -55,7 +55,7 @@ const ProjectMessages = () => {
     ...(tempActiveChat && !privateChats.includes(tempActiveChat) ? [tempActiveChat] : [])
   ];
 
-  // Filter messages based on activeChat selection
+
   const projectMessages = messages.filter(m => {
     if (m.projectId !== project.id) return false;
     
@@ -131,7 +131,7 @@ const ProjectMessages = () => {
 
   return (
     <div className="flex h-[calc(100vh-10rem)] bg-slate-50 overflow-hidden rounded-2xl border border-slate-200 shadow-sm relative">
-      {/* Sidebar */}
+      {}
       <div className="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col">
         <div className="p-4 border-b border-slate-200">
           <h2 className="font-bold text-slate-800 flex items-center gap-2">
@@ -200,9 +200,9 @@ const ProjectMessages = () => {
         </div>
       </div>
 
-      {/* Main chat area */}
+      {}
       <div className="flex-1 flex flex-col bg-slate-50/50">
-        {/* Header */}
+        {}
         <div className="h-16 bg-white border-b border-slate-200 flex items-center px-6 justify-between shrink-0">
           {activeChat === 'general' ? (
             <>
@@ -244,7 +244,7 @@ const ProjectMessages = () => {
           })()}
         </div>
 
-        {/* Messages list */}
+        {}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {projectMessages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-slate-400">
@@ -255,7 +255,7 @@ const ProjectMessages = () => {
             projectMessages.map((msg, index) => {
               const isMine = msg.senderId === user.id;
               
-              // Simple parser to highlight mentions (only on general channel)
+
               const contentWithMentions = activeChat === 'general' 
                 ? msg.content.split(/(@\w+(?: \w+)?)/g).map((part, i) => {
                     if (part.startsWith('@')) {
@@ -290,9 +290,9 @@ const ProjectMessages = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Area */}
+        {}
         <div className="p-4 bg-white border-t border-slate-200 relative">
-          {/* Mentions Popup (only in general channel) */}
+          {}
           {activeChat === 'general' && showMentions && filteredUsers.length > 0 && (
             <div className="absolute bottom-full left-4 mb-2 w-64 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50 max-h-48 overflow-y-auto">
               <div className="px-3 py-2 bg-slate-50 border-b border-slate-100 text-xs font-bold text-slate-500 uppercase">
@@ -341,7 +341,7 @@ const ProjectMessages = () => {
         </div>
       </div>
 
-      {/* New Private Message Modal */}
+      {}
       {showNewChatModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
           <div className="bg-white rounded-2xl shadow-xl max-w-md w-full border border-slate-100 overflow-hidden flex flex-col max-h-[80vh]">

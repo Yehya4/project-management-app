@@ -22,8 +22,7 @@ pool.getConnection((error, connection) => {
   }
 
   console.log("Connexion réussie à MySQL");
-  
-  // Ensure the columns exist
+
   connection.query(
     "ALTER TABLE demandes ADD COLUMN valideeResponsable BOOLEAN DEFAULT FALSE",
     (err) => {

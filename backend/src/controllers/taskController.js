@@ -25,8 +25,8 @@ class TaskController {
     async create(req, res) {
         try {
             const { projectId, title, description, priority, assigneeId, status, id } = req.body;
-            
-            if (!projectId || !title || !priority || !status) {
+
+                        if (!projectId || !title || !priority || !status) {
                 return res.status(400).json({ message: 'Champs obligatoires manquants (projectId, title, priority, status).' });
             }
 

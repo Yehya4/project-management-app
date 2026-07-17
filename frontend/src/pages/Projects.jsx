@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useDemandes, useProjects, useAuth, useTeam } from '../context/AppContext';
+import { useDemandes, useProjects, useAuth, useTeam, useCharter } from '../context/AppContext';
 import Layout from '../components/Layout';
 import { Link } from 'react-router-dom';
 import { FolderKanban, Activity, Clock, LayoutDashboard, FileText, LayoutGrid, List } from 'lucide-react';
@@ -7,6 +7,7 @@ import { FolderKanban, Activity, Clock, LayoutDashboard, FileText, LayoutGrid, L
 const Projects = () => {
   const { demandes } = useDemandes();
   const { projects } = useProjects();
+  const { getCharterByDemandeId } = useCharter();
   const { user } = useAuth();
   const { teams } = useTeam();
   const [viewMode, setViewMode] = useState('cards');
@@ -22,30 +23,36 @@ const Projects = () => {
   );
 
   const unifiedProjects = [
-    ...pendingDemandes.map(d => ({
-      id: d.id,
-      demandeId: d.id,
-      nom: d.titre || `Projet en préparation (${d.id})`,
-      description: d.description || 'Aucune description fournie.',
-      status: 'En Préparation',
-      progress: 0,
-      isPending: true,
-      nomDemandeur: d.nomDemandeur,
-      domaines: d.domaines,
-      dateCreation: d.dateCreation,
-      categoriesProjet: d.categoriesProjet,
-      service: d.service || '-'
-    })),
+    ...pendingDemandes.map(d => {
+      const charter = getCharterByDemandeId(d.id);
+      return {
+        id: d.id,
+        demandeId: d.id,
+        nom: d.titre || `Projet en préparation (${d.id})`,
+        description: d.description || 'Aucune description fournie.',
+        status: 'En Préparation',
+        progress: 0,
+        isPending: true,
+        nomDemandeur: d.nomDemandeur,
+        domaines: d.domaines,
+        dateCreation: d.dateCreation,
+        dateFin: charter?.dateFin ? new Date(charter.dateFin).toLocaleDateString('fr-FR') : '-',
+        categoriesProjet: charter?.categoriesProjet ? charter.categoriesProjet.split(',').map(s=>s.trim()) : (d.categoriesProjet || []),
+        service: charter?.service || d.service || '-'
+      };
+    }),
     ...projects.map(p => {
       const d = demandes.find(dem => dem.id === p.demandeId);
+      const charter = getCharterByDemandeId(p.demandeId);
       return {
         ...p,
         isPending: false,
         nomDemandeur: d?.nomDemandeur || '-',
         domaines: d?.domaines || [],
         dateCreation: d?.dateCreation || '-',
-        categoriesProjet: d?.categoriesProjet || [],
-        service: d?.service || '-'
+        dateFin: charter?.dateFin ? new Date(charter.dateFin).toLocaleDateString('fr-FR') : '-',
+        categoriesProjet: charter?.categoriesProjet ? charter.categoriesProjet.split(',').map(s=>s.trim()) : (d?.categoriesProjet || []),
+        service: charter?.service || d?.service || '-'
       };
     })
   ];
@@ -136,8 +143,9 @@ const Projects = () => {
                     <div><span className="text-slate-400 block mb-0.5">Date Création</span><span className="font-semibold">{project.dateCreation}</span></div>
                     <div><span className="text-slate-400 block mb-0.5">Demandeur</span><span className="font-semibold truncate block" title={project.nomDemandeur}>{project.nomDemandeur}</span></div>
                     <div><span className="text-slate-400 block mb-0.5">Service</span><span className="font-semibold truncate block" title={project.service}>{project.service}</span></div>
+                    <div><span className="text-slate-400 block mb-0.5">Date Fin Prévue</span><span className="font-semibold">{project.dateFin}</span></div>
+                    <div><span className="text-slate-400 block mb-0.5">Catégories</span><span className="font-semibold truncate block" title={project.categoriesProjet?.join(', ') || '-'}>{project.categoriesProjet?.join(', ') || '-'}</span></div>
                     <div className="col-span-2"><span className="text-slate-400 block mb-0.5">Domaines</span><span className="font-semibold">{project.domaines?.join(', ') || '-'}</span></div>
-                    <div className="col-span-2"><span className="text-slate-400 block mb-0.5">Catégories</span><span className="font-semibold">{project.categoriesProjet?.join(', ') || '-'}</span></div>
                   </div>
                   <p className="text-sm text-slate-500 line-clamp-2 leading-relaxed">
                     {project.description}

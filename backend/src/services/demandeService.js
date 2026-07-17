@@ -1,15 +1,13 @@
 const db = require('../config/db');
 
 class DemandeService {
-    // Parse sécurisé : si un champ JSON est corrompu, on retourne [] au lieu de crasher
     parseJSONField(value, defaultValue = []) {
         if (!value) return defaultValue;
-        if (Array.isArray(value)) return value; // Déjà parsé (cas MySQL2 auto-parse)
+        if (Array.isArray(value)) return value; 
         try {
             const parsed = JSON.parse(value);
             return Array.isArray(parsed) ? parsed : defaultValue;
         } catch {
-            // Si la valeur est une string simple (pas du JSON), la retourner comme tableau
             if (typeof value === 'string' && value.trim()) {
                 return [value.trim()];
             }
@@ -58,21 +56,21 @@ class DemandeService {
                 if (err) return reject(err);
                 const maxSeq = results[0].maxSeq || 0;
                 const newId = `DSI-${year}-${String(maxSeq + 1).padStart(3, '0')}`;
-                
-                const { 
+
+                                const { 
                     nomDemandeur, fonction, domaines, categoriesProjet, 
                     contexte, description, natureBesoin, benefices, delaiSouhaite, statut, valideeResponsable,
                     service, dateFin
                 } = demandeData;
-                
-                const dateCreation = new Date().toLocaleDateString('fr-FR');
+
+                                const dateCreation = new Date().toLocaleDateString('fr-FR');
                 const initialStatut = statut || 'En attente';
-                
-                const query = `INSERT INTO demandes 
+
+                                const query = `INSERT INTO demandes 
                     (id, nomDemandeur, fonction, domaines, categoriesProjet, contexte, description, natureBesoin, benefices, delaiSouhaite, dateCreation, statut, valideeResponsable, service, dateFin) 
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-                
-                const values = [
+
+                                const values = [
                     newId, nomDemandeur, fonction, 
                     JSON.stringify(domaines || []), JSON.stringify(categoriesProjet || []), 
                     contexte, description, 
@@ -84,8 +82,8 @@ class DemandeService {
                 db.query(query, values, (err) => {
                     if (err) return reject(err);
                     const newDemande = { id: newId, ...demandeData, statut: initialStatut, dateCreation };
-                    
-                    if (io && initialStatut !== 'Brouillon') {
+
+                                        if (io && initialStatut !== 'Brouillon') {
                         const notification = {
                             id: Date.now(),
                             title: 'Nouvelle demande SI',
@@ -100,8 +98,8 @@ class DemandeService {
                         }
                         target.emit('new_notification', notification);
                     }
-                    
-                    resolve(newDemande);
+
+                                        resolve(newDemande);
                 });
             });
         });
@@ -114,12 +112,12 @@ class DemandeService {
                 contexte, description, natureBesoin, benefices, delaiSouhaite, valideeResponsable,
                 service, dateFin
             } = demandeData;
-            
-            const query = `UPDATE demandes 
+
+                        const query = `UPDATE demandes 
                 SET nomDemandeur=?, fonction=?, domaines=?, categoriesProjet=?, contexte=?, description=?, natureBesoin=?, benefices=?, delaiSouhaite=?, valideeResponsable=?, service=?, dateFin=?
                 WHERE id=?`;
-            
-            const values = [
+
+                        const values = [
                 nomDemandeur, fonction, 
                 JSON.stringify(domaines || []), JSON.stringify(categoriesProjet || []), 
                 contexte, description, 
@@ -139,8 +137,8 @@ class DemandeService {
             db.query('UPDATE demandes SET statut = ? WHERE id = ?', [statut, id], async (err) => {
                 if (err) return reject(err);
                 const result = { id, statut };
-                
-                if (io) {
+
+                                if (io) {
                     let nomDemandeur = null;
                     try {
                         const demande = await this.getById(id);
@@ -180,8 +178,8 @@ class DemandeService {
                         target.emit('new_notification', notification);
                     }
                 }
-                
-                resolve(result);
+
+                                resolve(result);
             });
         });
     }

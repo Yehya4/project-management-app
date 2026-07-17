@@ -98,7 +98,7 @@ const INITIAL_STATE = {
   valideeResponsable: false
 };
 
-// ─── Constantes pour les options de cases à cocher ──────────────────────────
+
 const DOMAINES_OPTS = [
   'Commercial', 'Atelier', 'Magasin', 'Gestion',
   'Marketing', 'Logistique', 'Finance', 'Audit/Contrôle', 'Ressources Humaines'
@@ -110,22 +110,19 @@ const BENEFICES_OPTS = [
   'Diminution des Coûts', 'Améliorations des Performances', 'Réduction des Risques', 'Conformité'
 ];
 
-// ─── Regex d'un marqueur de case cochée ─────────────────────────────────────
-// Supporte: ☑ ☒ ✓ ✔ ✅  et  [x] [X] [v] [V] (x) (X)
+
+
 const CHECKED_CHAR = `(?:[☒☑✅✔✓]|[\\[\\(][\\s]*[xXvV✓][\\s]*[\\]\\)])`;
 
-/**
- * Cherche les options cochées dans un bloc de texte.
- * Stratégie : l'option est dans un rayon de 25 caractères d'un marqueur coché.
- */
+
 const extractCheckboxesFromText = (textBlock, options) => {
   if (!textBlock) return [];
   const selected = [];
   options.forEach(opt => {
     const esc = opt.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-    // Option PUIS marqueur (jusqu'à 25 chars entre les deux)
+
     const after  = new RegExp(`${esc}[\\s\\S]{0,25}${CHECKED_CHAR}`, 'i');
-    // Marqueur PUIS option (jusqu'à 25 chars entre les deux)
+
     const before = new RegExp(`${CHECKED_CHAR}[\\s\\S]{0,25}${esc}`, 'i');
     if (after.test(textBlock) || before.test(textBlock)) {
       selected.push(opt);
@@ -134,30 +131,26 @@ const extractCheckboxesFromText = (textBlock, options) => {
   return selected;
 };
 
-/**
- * Cherche les options cochées dans le HTML produit par mammoth.
- * mammoth rend les checkboxes Word cochées comme  <input type="checkbox" checked>
- * ou laisse le caractère Unicode correspondant dans le texte.
- */
+
 const extractCheckboxesFromHtml = (html, options) => {
   if (!html) return [];
   const selected = [];
 
-  // 1) Remplace les <input type="checkbox" checked ...> par ☑ dans le texte
-  //    et les non-cochés par ☐ pour pouvoir distinguer
+
+
   let enriched = html
     .replace(/<input[^>]*type=["']checkbox["'][^>]*checked[^>]*>/gi, '☑ ')
     .replace(/<input[^>]*checked[^>]*type=["']checkbox["'][^>]*>/gi, '☑ ')
     .replace(/<input[^>]*type=["']checkbox["'][^>]*>/gi,              '☐ ');
 
-  // 2) Convertir le HTML enrichi en texte brut
+
   const parser = new DOMParser();
   const doc = parser.parseFromString(enriched, 'text/html');
   const textContent = doc.body ? doc.body.textContent : enriched;
 
   console.log('[HTML→TEXT enrichi]', textContent);
 
-  // 3) Recherche dans le texte enrichi
+
   options.forEach(opt => {
     if (!selected.includes(opt)) {
       const esc = opt.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
@@ -227,7 +220,7 @@ export const FormulaireDemandeSI = ({ onSubmit, onSave, initialData }) => {
 
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-      {/* Barre d'outils en haut du formulaire */}
+      {}
       <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
         <span className="text-sm text-slate-500">Remplissez les informations de votre demande</span>
       </div>
@@ -388,7 +381,7 @@ export const DemandeDetailsModal = ({ isOpen, onClose, demande }) => {
   if (!isOpen || !demande) return null;
 
   const renderArray = (arr) => {
-    // Gestion robuste : null, tableau vide, chaîne JSON, ou chaîne simple
+
     let items = arr;
     if (!items) return <span className="text-slate-400 italic">Non spécifié</span>;
     if (typeof items === 'string') {

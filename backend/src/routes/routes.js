@@ -30,8 +30,6 @@ router.delete('/demandes/:id', demandeController.delete);
 
 router.get('/projects/', projectController.getAll);
 router.post('/projects/', projectController.create);
-// IMPORTANT : /projects/members doit être AVANT /projects/:id
-// sinon Express intercepte 'members' comme valeur de :id
 router.get('/projects/members', teamController.getAllMembers);
 router.put('/projects/:id/status', projectController.updateStatus);
 router.put('/projects/:id', projectController.update);

@@ -46,7 +46,7 @@ const ProjectWorkspaceLayout = () => {
     }
   }, [id, projects, users, user, updateProject]);
 
-  // ── Auto-assign PM / Sponsor / Admin to project team ─────────────────────
+
   useEffect(() => {
     const linkedProject = projects.find(p => p.id === id || p.demandeId === id);
     if (!linkedProject) return;
@@ -54,7 +54,7 @@ const ProjectWorkspaceLayout = () => {
     const teamMembers = getTeamByProjectId(linkedProject.id) || [];
     const teamUserIds = teamMembers.map(m => m.userId?.toString());
 
-    // All users with PM, Sponsor, Admin role
+
     const privilegedUsers = users.filter(u =>
       ['Project Manager', 'Sponsor', 'Admin'].includes(u.role)
     );

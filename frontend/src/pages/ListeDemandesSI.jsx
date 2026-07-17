@@ -63,8 +63,8 @@ const ListeDemandesSI = () => {
     }
   };
 
-  // ─── Filtrage des demandes ────────────────────────────────────────────────────
-  // Utilise prenom + nom (champs réels) et non user.name (inexistant)
+
+
   const currentUserFullName = user
     ? `${user.prenom || ''} ${user.nom || ''}`.trim()
     : '';
@@ -79,13 +79,13 @@ const ListeDemandesSI = () => {
         d.nomDemandeur === currentUserFullNameAlt
       );
 
-  // ─── Statistiques ─────────────────────────────────────────────────────────────
+
   const enCoursDemandes   = filteredDemandes.filter(d => d.statut && d.statut.includes('En')).length;
   const valideeDemandes   = filteredDemandes.filter(d => d.statut === 'Acceptée' || d.statut === 'Validée').length;
   const refuseeDemandes   = filteredDemandes.filter(d => d.statut === 'Refusée').length;
   const totalDemandes     = filteredDemandes.length;
 
-  // Helper sécurisé pour afficher les tableaux (évite le crash si domaines est null)
+
   const safeDisplayArray = (arr) => {
     if (!arr) return '-';
     if (Array.isArray(arr)) return arr.join(', ') || '-';
@@ -199,7 +199,7 @@ const ListeDemandesSI = () => {
                         </td>
                       )}
                       <td className="px-6 py-4 text-sm text-slate-500">{demande.fonction || '-'}</td>
-                      {/* safeDisplayArray protège contre domaines null/non-tableau */}
+                      {}
                       <td className="px-6 py-4 text-sm text-slate-500">{safeDisplayArray(demande.domaines)}</td>
                       <td className="px-6 py-4 text-sm text-slate-500">{demande.dateCreation}</td>
                       <td className="px-6 py-4 text-sm text-slate-500">{demande.dateSoumission || (demande.statut !== 'Brouillon' ? demande.dateCreation : '-')}</td>

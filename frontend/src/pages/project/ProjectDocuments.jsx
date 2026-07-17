@@ -9,9 +9,7 @@ import {
 import { useAuth, useProjects, useCharter, useDemandes } from '../../context/AppContext';
 import { generateDemandePDF, generateCharterPDF, generateFilePreviewPDF } from '../../utils/pdfGenerator';
 
-/* ─────────────────────────────────────────────────────────────────
-   HELPERS
-───────────────────────────────────────────────────────────────── */
+
 
 const StepBadge = ({ status }) => {
   if (status === 'Validé' || status === 'done')
@@ -27,9 +25,7 @@ const StepBadge = ({ status }) => {
   return <span className="inline-flex items-center gap-1 px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-bold"><Clock size={12} /> En Attente</span>;
 };
 
-/* ─────────────────────────────────────────────────────────────────
-   MAIN COMPONENT
-───────────────────────────────────────────────────────────────── */
+
 
 const ProjectDocuments = () => {
   const { project } = useOutletContext();
@@ -59,7 +55,7 @@ const ProjectDocuments = () => {
   const backlogInputRef      = useRef(null);
   const architectureInputRef = useRef(null);
 
-  /* ── Upload / action handlers ─────────────────────────────── */
+  
   const handleUploadBacklog = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -92,7 +88,7 @@ const ProjectDocuments = () => {
   };
 
   const handleValidateArchitecture = async () => {
-    // Architecture validée → passage automatique à Développement
+
     await updateProject(project.id, { architectureStatus: 'Validé', status: 'Développement', sponsorComment: null });
   };
 
@@ -135,7 +131,7 @@ const ProjectDocuments = () => {
   const handleRefuseAtelier = () =>
     updateProject(project.id, { atelierCadrage: 'Refusé' });
 
-  /* ── Séquençage du workflow ───────────────────────────────── */
+  
   const charterStatut     = charter?.statut || null;
   const charterValidated  = charterStatut === 'Validé';
   const atelierStatut     = project.atelierCadrage || null;
@@ -146,7 +142,7 @@ const ProjectDocuments = () => {
   const archValidated     = archStatut === 'Validé';
   const isDev             = project.status === 'Développement' || ['Développement', 'Testing', 'Déploiement', 'Utilisation'].includes(project.status);
 
-  // Étape active dans la séquence
+
   const activeStep =
     !charterValidated                              ? 'charter'
     : !atelierValidated                            ? 'atelier'
@@ -167,7 +163,7 @@ const ProjectDocuments = () => {
     }
   };
 
-  /* ── Render helpers ──────────────────────────────────────── */
+  
   const rowClass = (isLocked) =>
     `transition-all duration-200 ${isLocked ? 'opacity-50 bg-slate-50/50' : 'hover:bg-slate-50/80'}`;
 
@@ -177,7 +173,7 @@ const ProjectDocuments = () => {
 
   return (
     <div className="space-y-6 max-w-5xl">
-      {/* Header */}
+      {}
       <div>
         <h2 className="text-2xl font-bold text-slate-800">Gestionnaire de Documents</h2>
         <p className="text-slate-500 mt-1">
@@ -185,7 +181,7 @@ const ProjectDocuments = () => {
         </p>
       </div>
 
-      {/* Sponsor comment banner */}
+      {}
       {project.sponsorComment && (
         <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-2xl flex gap-3 items-start shadow-sm">
           <MessageSquare size={22} className="text-rose-500 shrink-0 mt-0.5" />
@@ -196,7 +192,7 @@ const ProjectDocuments = () => {
         </div>
       )}
 
-      {/* Initiation terminée */}
+      {}
       {isDev && (
         <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 p-5 rounded-2xl flex gap-4 items-center shadow-sm">
           <div className="p-3 bg-emerald-500 text-white rounded-xl shadow-md shadow-emerald-500/20">
@@ -211,7 +207,7 @@ const ProjectDocuments = () => {
         </div>
       )}
 
-      {/* Progress stepper */}
+      {}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
         <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Progression du workflow d'initiation</p>
         <div className="flex items-center gap-1 flex-wrap">
@@ -251,7 +247,7 @@ const ProjectDocuments = () => {
         </div>
       </div>
 
-      {/* Document table */}
+      {}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -264,7 +260,7 @@ const ProjectDocuments = () => {
           </thead>
           <tbody className="divide-y divide-slate-100">
 
-            {/* ── 1. Project Request ─────────────────────────────── */}
+            {}
             <tr className="hover:bg-slate-50/80 transition-colors">
               <td className="p-4">
                 <div className="flex items-center gap-3">
@@ -295,7 +291,7 @@ const ProjectDocuments = () => {
               </td>
             </tr>
 
-            {/* ── 2. Project Charter ─────────────────────────────── */}
+            {}
             <tr className="hover:bg-slate-50/80 transition-colors">
               <td className="p-4">
                 <div className="flex items-center gap-3">
@@ -347,7 +343,7 @@ const ProjectDocuments = () => {
               </td>
             </tr>
 
-            {/* ── 3. Atelier de Cadrage ──────────────────────────── */}
+            {}
             {(() => {
               const locked = !charterValidated;
               const st = stepStatus('atelier');
@@ -391,7 +387,7 @@ const ProjectDocuments = () => {
               );
             })()}
 
-            {/* ── 4. Backlog ──────────────────────────────────────── */}
+            {}
             {(() => {
               const locked = !atelierValidated;
               const st = stepStatus('backlog');
@@ -417,7 +413,7 @@ const ProjectDocuments = () => {
                   <td className="p-4"><StepBadge status={locked ? 'locked' : st} /></td>
                   <td className="p-4">
                     <div className="flex items-center justify-end gap-2 flex-wrap">
-                      {/* PM peut importer */}
+                      {}
                       {(canImport || canReimport) && (
                         <>
                           <input type="file" className="hidden" ref={backlogInputRef}
@@ -434,7 +430,7 @@ const ProjectDocuments = () => {
                           </button>
                         </>
                       )}
-                      {/* Consulter / télécharger si fichier */}
+                      {}
                       {project.backlogFile && (
                         <>
                           <button
@@ -449,7 +445,7 @@ const ProjectDocuments = () => {
                           ><Download size={16} /></button>
                         </>
                       )}
-                      {/* Sponsor valide ou rejette */}
+                      {}
                       {backlogStatut === 'Soumis' && isSponsor && (
                         <div className="flex gap-2 pl-2 border-l border-slate-200">
                           <button
@@ -470,7 +466,7 @@ const ProjectDocuments = () => {
               );
             })()}
 
-            {/* ── 5. Architecture Technique ───────────────────────── */}
+            {}
             {(() => {
               const locked = !backlogValidated;
               const st = stepStatus('arch');
@@ -504,7 +500,7 @@ const ProjectDocuments = () => {
                   </td>
                   <td className="p-4">
                     <div className="flex items-center justify-end gap-2 flex-wrap">
-                      {/* PM peut importer */}
+                      {}
                       {(canImport || canReimport) && (
                         <>
                           <input type="file" className="hidden" ref={architectureInputRef}
@@ -521,7 +517,7 @@ const ProjectDocuments = () => {
                           </button>
                         </>
                       )}
-                      {/* Consulter / télécharger si fichier */}
+                      {}
                       {project.architectureFile && (
                         <>
                           <button
@@ -536,7 +532,7 @@ const ProjectDocuments = () => {
                           ><Download size={16} /></button>
                         </>
                       )}
-                      {/* Sponsor valide ou rejette */}
+                      {}
                       {archStatut === 'Soumis' && isSponsor && (
                         <div className="flex gap-2 pl-2 border-l border-slate-200">
                           <button
@@ -561,7 +557,7 @@ const ProjectDocuments = () => {
         </table>
       </div>
 
-      {/* Reject form */}
+      {}
       {rejectingDoc && (
         <div className="p-6 bg-rose-50 border border-rose-200 rounded-2xl animate-fadeIn">
           <div className="space-y-3">
@@ -592,7 +588,7 @@ const ProjectDocuments = () => {
         </div>
       )}
 
-      {/* ── Inline viewers ──────────────────────────────────── */}
+      {}
 
       {viewingDoc && (
         <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 relative shadow-inner animate-fadeIn flex flex-col h-[650px]">
@@ -630,7 +626,7 @@ const ProjectDocuments = () => {
         </div>
       )}
 
-      {/* Info guide */}
+      {}
       {!isDev && (
         <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex gap-3 items-start">
           <div className="p-2 bg-blue-100 text-blue-600 rounded-xl shrink-0">
@@ -649,7 +645,7 @@ const ProjectDocuments = () => {
         </div>
       )}
 
-      {/* ── Tous les Documents de A à Z ──────────────────────── */}
+      {}
       <div className="mt-12 mb-8">
         <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2 mb-1">
           <ClipboardList className="text-blue-600" /> Tous les documents du projet
@@ -730,7 +726,7 @@ const ProjectDocuments = () => {
                 </tr>
               )}
 
-              {/* Cas où aucun fichier n'a encore été généré */}
+              {}
               {!charter && !project.backlogFile && !project.architectureFile && (
                 <tr>
                   <td colSpan="4" className="p-8 text-center text-slate-500">

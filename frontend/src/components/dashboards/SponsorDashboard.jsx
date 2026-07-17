@@ -23,10 +23,10 @@ const SponsorDashboard = () => {
   const handleAccept = (demandeId) => updateDemandeStatus(demandeId, 'Acceptée');
   const handleRefuse = (demandeId) => updateDemandeStatus(demandeId, 'Refusée');
 
-  // 1. Chartes soumises au Sponsor en attente de validation
+
   const chartersToValidate = charters.filter(c => c.statut === 'Soumis au Sponsor');
 
-  // 1b. Chartes envoyées au demandeur (quand le Sponsor EST le demandeur)
+
   const myChartersPendingAction = charters.filter(c => {
     if (c.statut !== 'Envoyé au Demandeur') return false;
     const relatedDemande = demandes.find(d => d.id === c.demandeId);
@@ -39,19 +39,19 @@ const SponsorDashboard = () => {
     );
   });
 
-  // 2. Backlogs soumis en attente de validation Sponsor
+
   const backlogsToValidate = projects.filter(p =>
     p.backlogStatus === 'Soumis' && p.backlogFile
   );
 
-  // 3. Architectures soumises en attente de validation Sponsor
+
   const archsToValidate = projects.filter(p =>
     p.architectureStatus === 'Soumis' && p.architectureFile
   );
 
   const totalPendingActions = chartersToValidate.length + backlogsToValidate.length + archsToValidate.length;
 
-  /* ── KPIs ────────────────────────────────────────────────── */
+  
   const validatedProjects = projects.filter(p =>
     ['Utilisation', 'Archive', 'Archivée'].includes(p.status)
   ).length;
@@ -62,9 +62,9 @@ const SponsorDashboard = () => {
   const totalProgress = projects.reduce((acc, p) => acc + (p.progress || 0), 0);
   const avgProgress   = projects.length ? Math.round(totalProgress / projects.length) : 0;
 
-  /* ── Validate helpers ───────────────────────────────────── */
+  
   const handleValidateCharter = (charter) => {
-    // Will be handled in ProjectCharter page via navigate
+
     navigate(`/project-charter?demandeId=${charter.demandeId}`);
   };
 
@@ -88,7 +88,7 @@ const SponsorDashboard = () => {
   return (
     <div className="space-y-8">
 
-      {/* ── Banner ─────────────────────────────────────────── */}
+      {}
       <div className="bg-gradient-to-r from-slate-950 via-emerald-950 to-slate-900 rounded-3xl p-6 md:p-8 text-white shadow-xl">
         <p className="text-sm text-emerald-100 mb-2">Vision sponsor</p>
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
@@ -99,7 +99,7 @@ const SponsorDashboard = () => {
         </p>
       </div>
 
-      {/* ── ⚡ Actions requises ───────────────────────────── */}
+      {}
       {totalPendingActions > 0 && (
         <div className="bg-white rounded-3xl shadow-sm border border-amber-200 overflow-hidden">
           <div className="px-6 py-5 border-b border-amber-100 bg-amber-50 flex items-center gap-3">
@@ -121,7 +121,7 @@ const SponsorDashboard = () => {
 
           <div className="p-5 space-y-3">
 
-            {/* Chartes à valider en tant que Demandeur */}
+            {}
             {myChartersPendingAction.map(charter => {
               const relatedDemande = demandes.find(d => d.id === charter.demandeId);
               return (
@@ -157,7 +157,7 @@ const SponsorDashboard = () => {
               );
             })}
 
-            {/* Chartes à valider (Sponsor) */}
+            {}
             {chartersToValidate.map(charter => {
               const relatedDemande = demandes.find(d => d.id === charter.demandeId);
               return (
@@ -194,7 +194,7 @@ const SponsorDashboard = () => {
               );
             })}
 
-            {/* Backlogs à valider */}
+            {}
             {backlogsToValidate.map(project => (
               <div
                 key={`backlog-${project.id}`}
@@ -233,7 +233,7 @@ const SponsorDashboard = () => {
               </div>
             ))}
 
-            {/* Architectures à valider */}
+            {}
             {archsToValidate.map(project => (
               <div
                 key={`arch-${project.id}`}
@@ -279,7 +279,7 @@ const SponsorDashboard = () => {
         </div>
       )}
 
-      {/* ── KPI Cards ───────────────────────────────────────── */}
+      {}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 rounded-2xl shadow-lg text-white">
           <div className="flex justify-between items-start mb-4">
@@ -319,7 +319,7 @@ const SponsorDashboard = () => {
         </div>
       </div>
 
-      {/* ── Synthèse des projets ─────────────────────────────── */}
+      {}
       <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/80">
           <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
@@ -343,7 +343,7 @@ const SponsorDashboard = () => {
                   <span className="text-xs font-mono text-slate-400 bg-slate-200 px-2 py-0.5 rounded">{project.id}</span>
                 </div>
                 <p className="text-sm text-slate-500">Sponsorisé par vous</p>
-                {/* Mini progress */}
+                {}
                 <div className="flex items-center gap-2 mt-2">
                   <div className="w-32 h-1.5 bg-slate-200 rounded-full">
                     <div
@@ -376,7 +376,7 @@ const SponsorDashboard = () => {
         </div>
       </div>
 
-      {/* ── Demandes SI ────────────────────────────────────── */}
+      {}
       <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 px-6 py-5 border-b border-slate-100 bg-slate-50/80">
           <div>

@@ -208,10 +208,6 @@ class ProjectService {
                     else if (currentStatus === 'Développement' && totalTasks > 0 && !hasUnfinishedTasks) {
                         targetStatus = 'Testing';
                     }
-                    // Auto-transition to Déploiement is now handled manually by Chef Testeur
-                    // else if (currentStatus === 'Testing' && allTestsPassed) {
-                    //     targetStatus = 'Déploiement';
-                    // }
 
                     if (targetStatus !== currentStatus) {
                         applyStatus(targetStatus);

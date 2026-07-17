@@ -7,9 +7,7 @@ import {
 } from 'lucide-react';
 import mammoth from 'mammoth';
 
-/* ─────────────────────────────────────────────────────────────────
-   HELPERS
-───────────────────────────────────────────────────────────────── */
+
 
 const COLUMNS = [
   { id: 'En cours',  title: 'En cours',  color: 'border-blue-400',   dot: 'bg-blue-400'   },
@@ -25,9 +23,7 @@ const getPriorityStyle = (p) => ({
   Critique: 'bg-red-100   text-red-700',
 }[p] || 'bg-slate-100 text-slate-600');
 
-/* ─────────────────────────────────────────────────────────────────
-   MAIN COMPONENT
-───────────────────────────────────────────────────────────────── */
+
 
 const ProjectTasks = () => {
   const { project, isPending } = useOutletContext();
@@ -46,16 +42,16 @@ const ProjectTasks = () => {
     reference: '', objet: '', dateDebutReel: '', dateFinReel: '', dateFin: ''
   });
 
-  /* ── Permissions ────────────────────────────────────────────── */
+  
   const canManageTasks = ['Project Manager', 'Sponsor', 'Admin'].includes(user?.role);
 
   const canMoveTask = (task) => {
     if (canManageTasks) return true;
-    // Developer/Tester can only move their own assigned tasks
+
     return task.assigneeId?.toString() === user?.id?.toString();
   };
 
-  /* ── Progress stats ─────────────────────────────────────────── */
+  
   const doneTasks  = projectTasks.filter(t => ['Fait', 'Clôturée', 'Archivée'].includes(t.status));
   const totalTasks = projectTasks.length;
   const doneCount  = doneTasks.length;
@@ -75,7 +71,7 @@ const ProjectTasks = () => {
         const result = await mammoth.extractRawText({ arrayBuffer });
         const text = result.value;
 
-        // Split text by lines
+
         const lines = text.split('\n');
         let currentTask = null;
 
@@ -128,9 +124,9 @@ const ProjectTasks = () => {
     reader.readAsArrayBuffer(file);
   };
 
-  /* ── Auto-transition est géré par le backend en temps réel ────────────────── */
+  
 
-  /* ── Handlers ───────────────────────────────────────────────── */
+  
   const handleAddTask = (e) => {
     e.preventDefault();
     addTask({ ...formData, projectId: project.id });
@@ -170,7 +166,7 @@ const ProjectTasks = () => {
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col gap-4">
       
-      {/* ── Header ─────────────────────────────────────────────── */}
+      {}
       <div className="flex justify-between items-center shrink-0">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Tâches de développement</h2>
@@ -203,7 +199,7 @@ const ProjectTasks = () => {
         )}
       </div>
 
-      {/* ── Progress bar ────────────────────────────────────────── */}
+      {}
       {totalTasks > 0 && (
         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm shrink-0">
           <div className="flex justify-between items-center mb-2">
@@ -240,7 +236,7 @@ const ProjectTasks = () => {
       )}
 
 
-      {/* ── Kanban Board ────────────────────────────────────────── */}
+      {}
       <div className="flex-1 flex gap-5 overflow-x-auto pb-4">
           {COLUMNS.map(column => {
             const colTasks = projectTasks.filter(t => t.status === column.id);
@@ -251,7 +247,7 @@ const ProjectTasks = () => {
                 onDrop={(e) => handleDrop(e, column.id)}
                 onDragOver={(e) => e.preventDefault()}
               >
-                {/* Column header */}
+                {}
                 <div className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className={`w-2.5 h-2.5 rounded-full ${column.dot}`} />
@@ -260,7 +256,7 @@ const ProjectTasks = () => {
                   </div>
                 </div>
 
-                {/* Cards */}
+                {}
                 <div className="flex-1 p-3 flex flex-col gap-3 overflow-y-auto">
                   {colTasks.length > 0 ? (
                     colTasks.map(task => (
@@ -313,7 +309,7 @@ const ProjectTasks = () => {
             );
           })}
         </div>
-      {/* ── Empty state ─────────────────────────────────────────── */}
+      {}
       {projectTasks.length === 0 && (
         <div className="flex-1 flex flex-col items-center justify-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 text-center p-8">
           <PlusCircle size={40} className="text-slate-300 mb-3" />
@@ -326,7 +322,7 @@ const ProjectTasks = () => {
         </div>
       )}
 
-      {/* ── Modal Créer Tâche ────────────────────────────────────── */}
+      {}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -478,7 +474,7 @@ const ProjectTasks = () => {
         </div>
       )}
 
-      {/* ── Modal Détail Tâche ───────────────────────────────────── */}
+      {}
       {selectedTask && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">

@@ -10,9 +10,7 @@ import {
 } from 'lucide-react';
 import { useCharter, useDemandes, useProjects, useAuth, useTasks } from '../../context/AppContext';
 
-/* ─────────────────────────────────────────────────────────────────
-   CONFIG
-───────────────────────────────────────────────────────────────── */
+
 
 const LIFECYCLE = ['Initiation', 'Développement', 'Testing', 'Déploiement', 'Utilisation'];
 
@@ -33,9 +31,7 @@ const mapStatus = (s) => {
   return s;
 };
 
-/* ─────────────────────────────────────────────────────────────────
-   Sub-steps for Initiation phase
-───────────────────────────────────────────────────────────────── */
+
 
 const getInitiationSubSteps = (charter, project) => {
   const charterValidated = charter?.statut === 'Validé';
@@ -164,9 +160,7 @@ const getPhaseSubSteps = (phaseId, project, charter, currentIdx) => {
   }
 };
 
-/* ─────────────────────────────────────────────────────────────────
-   PHASE STEP (horizontal stepper)
-───────────────────────────────────────────────────────────────── */
+
 
 const PhaseStep = ({ phase, state, isLast }) => {
   const Icon = phase.icon;
@@ -177,7 +171,7 @@ const PhaseStep = ({ phase, state, isLast }) => {
   return (
     <div className="flex items-center flex-1 min-w-0">
       <div className="flex flex-col items-center gap-2 flex-shrink-0 w-24">
-        {/* Circle */}
+        {}
         <div
           className="relative w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-500"
           style={{
@@ -196,7 +190,7 @@ const PhaseStep = ({ phase, state, isLast }) => {
           )}
         </div>
 
-        {/* Label */}
+        {}
         <span
           className="text-xs font-bold text-center leading-tight whitespace-nowrap"
           style={{ color: isDone || isActive ? phase.color : '#94a3b8' }}
@@ -204,7 +198,7 @@ const PhaseStep = ({ phase, state, isLast }) => {
           {phase.label}
         </span>
 
-        {/* Sub-label */}
+        {}
         {isDone && (
           <span className="text-[10px] font-semibold text-emerald-600 whitespace-nowrap">
             Terminé ✓
@@ -225,7 +219,7 @@ const PhaseStep = ({ phase, state, isLast }) => {
         )}
       </div>
 
-      {/* Connector */}
+      {}
       {!isLast && (
         <div
           className="flex-1 h-0.5 mx-2 rounded-full transition-all duration-700"
@@ -236,15 +230,13 @@ const PhaseStep = ({ phase, state, isLast }) => {
   );
 };
 
-/* ─────────────────────────────────────────────────────────────────
-   INITIATION SUB-STEP ROW
-───────────────────────────────────────────────────────────────── */
+
 
 const SubStepRow = ({ step, isLast }) => {
   const Icon = step.icon;
   return (
     <div className="flex items-stretch gap-3">
-      {/* Left icon + line */}
+      {}
       <div className="flex flex-col items-center">
         <div
           className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-black transition-all"
@@ -264,7 +256,7 @@ const SubStepRow = ({ step, isLast }) => {
         )}
       </div>
 
-      {/* Content */}
+      {}
       <div className={`pb-4 flex-1 transition-opacity ${step.locked ? 'opacity-40' : ''}`}>
         <div className="flex items-center justify-between">
           <p
@@ -293,9 +285,7 @@ const SubStepRow = ({ step, isLast }) => {
   );
 };
 
-/* ─────────────────────────────────────────────────────────────────
-   MAIN COMPONENT
-───────────────────────────────────────────────────────────────── */
+
 
 const ProjectOverview = () => {
   const [expandedPhase, setExpandedPhase] = React.useState('Initiation');
@@ -314,7 +304,7 @@ const ProjectOverview = () => {
   const doneTasksCount    = projectTasks.filter(t => ['Fait', 'Clôture', 'Clôturée', 'Archive', 'Archivée'].includes(t.status)).length;
   const pendingTasksCount = projectTasks.filter(t => t.status === 'En cours').length;
 
-  /* Phase state */
+  
   const normalized = mapStatus(project.status);
   const currentIdx = LIFECYCLE.indexOf(normalized);
 
@@ -327,15 +317,15 @@ const ProjectOverview = () => {
 
   const currentPhase = PHASES.find(p => p.id === normalized) || PHASES[0];
 
-  /* Initiation sub-steps */
+  
   const initiationSubSteps = getInitiationSubSteps(charter, project);
   const isInitiation = normalized === 'Initiation';
 
-  /* Progression bar */
+  
   const phaseProgress = Math.round((currentIdx / (LIFECYCLE.length - 1)) * 100);
   const taskProgress  = projectTasks.length > 0 ? Math.round((doneTasksCount / projectTasks.length) * 100) : 0;
 
-  /* Pending Actions logic */
+  
   const pendingActions = [];
   const isStrictPM = user?.role === 'Project Manager' || user?.role === 'Sponsor' || user?.role === 'Admin';
   const isSponsorRole = user?.role === 'Sponsor' || user?.role === 'Admin';
@@ -376,7 +366,7 @@ const ProjectOverview = () => {
   return (
     <div className="space-y-6 pb-8">
 
-      {/* ── Header ─────────────────────────────────────────── */}
+      {}
       <div className="flex justify-between items-start flex-wrap gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Vue d'ensemble</h2>
@@ -393,7 +383,7 @@ const ProjectOverview = () => {
         )}
       </div>
 
-      {/* ── Pending Actions Panel (Dynamic based on Role & Status) ── */}
+      {}
       {pendingActions.length > 0 && (
         <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-3xl p-6 shadow-sm relative overflow-hidden">
           <div className="absolute top-0 right-0 p-4 opacity-10">
@@ -420,9 +410,9 @@ const ProjectOverview = () => {
         </div>
       )}
 
-      {/* ── Phase stepper ──────────────────────────────────── */}
+      {}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        {/* Header bar */}
+        {}
         <div
           className="px-6 py-4 border-b flex items-center justify-between"
           style={{ background: currentPhase.bg, borderColor: currentPhase.border }}
@@ -453,7 +443,7 @@ const ProjectOverview = () => {
           </div>
         </div>
 
-        {/* Steps */}
+        {}
         <div className="px-6 py-8">
           <div className="flex items-start">
             {PHASES.map((phase, i) => (
@@ -467,7 +457,7 @@ const ProjectOverview = () => {
           </div>
         </div>
 
-        {/* Phase progress bar */}
+        {}
         <div className="px-6 pb-5">
           <div className="flex justify-between items-center mb-1.5">
             <span className="text-xs text-slate-500 font-medium">Progression globale du cycle</span>
@@ -482,10 +472,10 @@ const ProjectOverview = () => {
         </div>
       </div>
 
-      {/* ── KPI Cards ──────────────────────────────────────── */}
+      {}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
-        {/* Progression projet */}
+        {}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
             <div className="p-2 bg-blue-50 text-blue-600 rounded-xl"><Activity size={20} /></div>
@@ -504,7 +494,7 @@ const ProjectOverview = () => {
 
 
 
-        {/* Tâches */}
+        {}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
             <div className="p-2 bg-purple-50 text-purple-600 rounded-xl"><AlertCircle size={20} /></div>
@@ -527,7 +517,7 @@ const ProjectOverview = () => {
         </div>
       </div>
 
-      {/* ── Initiation sub-steps ─────────────────────────── */}
+      {}
       {isInitiation && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 bg-indigo-50/50 flex items-center gap-3">
@@ -549,7 +539,7 @@ const ProjectOverview = () => {
         </div>
       )}
 
-      {/* ── Info section ─────────────────────────────────── */}
+      {}
       <div className={`grid gap-6 ${isPending ? 'grid-cols-1 lg:grid-cols-3' : 'grid-cols-1'}`}>
         <div className={`${isPending ? 'lg:col-span-2' : ''} space-y-5`}>
           <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">

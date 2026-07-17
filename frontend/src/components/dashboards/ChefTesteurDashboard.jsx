@@ -94,7 +94,7 @@ const ChefTesteurDashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Side: Projects in testing */}
+        {}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
           <div className="flex items-center gap-2 mb-6">
             <CheckCircle2 className="text-emerald-600" size={24} />
@@ -112,7 +112,7 @@ const ChefTesteurDashboard = () => {
           </div>
         </div>
 
-        {/* Right Side: Other Projects */}
+        {}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
           <div className="flex items-center gap-2 mb-6">
             <FolderKanban className="text-slate-600" size={24} />

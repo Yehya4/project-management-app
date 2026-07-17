@@ -100,7 +100,7 @@ const ProjectCharter = () => {
     }
     if (action === 'acceptSponsor') {
       newStatut = 'Validé';
-      // Create/update the project with Initiation status
+
       if (linkedProject) {
         await updateProject(linkedProject.id, { status: 'Initiation', charterValidated: true });
       } else {
@@ -214,7 +214,7 @@ const ProjectCharter = () => {
     <Layout title="Charte de Projet">
       <div className="max-w-5xl mx-auto pb-24">
         
-        {/* ── Atelier de Cadrage banner (PM only, after Sponsor validation) ── */}
+        {}
         {canValidateAtelier && (
           <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-2xl p-5 mb-6 mt-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -240,7 +240,7 @@ const ProjectCharter = () => {
           </div>
         )}
 
-        {/* Atelier already validated banner */}
+        {}
         {isCharterValidated && linkedProject?.atelierCadrage === 'Validé' && (
           <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-6 mt-4 flex items-center gap-3">
             <CheckCircle size={20} className="text-emerald-600 shrink-0" />
@@ -464,7 +464,7 @@ const ProjectCharter = () => {
             </div>
           </div>
 
-          {/* Commentaires & Échanges */}
+          {}
           <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden mt-6">
             <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">

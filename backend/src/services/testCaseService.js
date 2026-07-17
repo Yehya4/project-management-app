@@ -28,12 +28,12 @@ class TestCaseService {
             const query = 'INSERT INTO test_cases (projectId, testCaseId, testName, description, expectedResult, actualResult, status) VALUES (?, ?, ?, ?, ?, ?, ?)';
             db.query(query, [projectId, testCaseId, testName, description, expectedResult, actualResult || null, 'En attente'], async (err, results) => {
                 if (err) return reject(err);
-                
-                try {
+
+                                try {
                     const insertedId = results.insertId;
                     const testCase = await this.getById(insertedId);
-                    
-                    if (io) {
+
+                                        if (io) {
                         io.emit('test_case_created', testCase);
                     }
                     await projectService.autoUpdateStatus(projectId, io);
@@ -51,8 +51,8 @@ class TestCaseService {
             const query = 'UPDATE test_cases SET testCaseId = ?, testName = ?, description = ?, expectedResult = ?, actualResult = ? WHERE id = ?';
             db.query(query, [testCaseId, testName, description, expectedResult, actualResult || null, id], async (err) => {
                 if (err) return reject(err);
-                
-                try {
+
+                                try {
                     const testCase = await this.getById(id);
                     if (io) {
                         io.emit('test_case_updated', testCase);
@@ -73,8 +73,8 @@ class TestCaseService {
             const query = 'UPDATE test_cases SET status = ?, comment = ?, testerId = ?, testerName = ? WHERE id = ?';
             db.query(query, [status, comment || null, testerId || null, testerName || null, id], async (err) => {
                 if (err) return reject(err);
-                
-                try {
+
+                                try {
                     const testCase = await this.getById(id);
                     if (io) {
                         io.emit('test_case_updated', testCase);
@@ -94,12 +94,12 @@ class TestCaseService {
         return new Promise((resolve, reject) => {
             this.getById(id).then(testCase => {
                 if (!testCase) return resolve({ id });
-                
-                const query = 'DELETE FROM test_cases WHERE id = ?';
+
+                                const query = 'DELETE FROM test_cases WHERE id = ?';
                 db.query(query, [id], async (err) => {
                     if (err) return reject(err);
-                    
-                    if (io) {
+
+                                        if (io) {
                         io.emit('test_case_deleted', { id: parseInt(id) || id });
                     }
                     await projectService.autoUpdateStatus(testCase.projectId, io);

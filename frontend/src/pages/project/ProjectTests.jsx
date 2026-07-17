@@ -36,7 +36,7 @@ const ProjectTests = () => {
 
   const teamMembers = getTeamByProjectId(project?.id) || [];
 
-  // State
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('Tous');
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -58,14 +58,14 @@ const ProjectTests = () => {
     comment: ''
   });
 
-  // Fetch test cases on mount or project change
+
   useEffect(() => {
     if (project?.id) {
       fetchTestCases(project.id);
     }
   }, [project?.id]);
 
-  // Determine permissions
+
   const isAdmin       = user?.role === 'Admin';
   const isPM          = user?.role === 'Project Manager';
   const isSponsor     = user?.role === 'Sponsor';
@@ -86,15 +86,15 @@ const ProjectTests = () => {
     m => m.userId.toString() === user?.id?.toString() && m.role === 'Chef Testeur'
   );
 
-  // PM, Sponsor, Admin, Chef de projet, Dev, Chef Testeur can CREATE tests
+
   const canCreateTest = isAdmin || isPM || isSponsor || isProjectChef || isAssignedDev || isChefTesteur;
-  // Testers, PM, Sponsor, Admin, Chef, Chef Testeur can RUN tests
+
   const canRunTest    = isAssignedTester || isAdmin || isPM || isSponsor || isProjectChef || isChefTesteur;
 
-  // ── Auto-transition est géré par le backend en temps réel ─────────────────────────
+
   const allTestsPassed = testCases.length > 0 && testCases.every(t => t.status === 'Réussite');
 
-  // Filter test cases
+
   const filteredTests = testCases.filter(t => {
     const matchesSearch = 
       t.testCaseId.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -106,7 +106,7 @@ const ProjectTests = () => {
     return matchesSearch && t.status === statusFilter;
   });
 
-  // Stats calculation
+
   const totalCount = testCases.length;
   const pendingCount = testCases.filter(t => t.status === 'En attente').length;
   const successCount = testCases.filter(t => t.status === 'Réussite').length;
@@ -114,9 +114,9 @@ const ProjectTests = () => {
   const executionRate = totalCount > 0 ? Math.round(((totalCount - pendingCount) / totalCount) * 100) : 0;
   const successRate = (totalCount - pendingCount) > 0 ? Math.round((successCount / (totalCount - pendingCount)) * 100) : 0;
 
-  // Handlers
+
   const handleOpenCreateForm = () => {
-    // Auto-generate test case ID suggestion
+
     const nextNumber = testCases.length + 1;
     const suggestedId = `TC-${String(nextNumber).padStart(3, '0')}`;
     
@@ -132,11 +132,11 @@ const ProjectTests = () => {
   };
 
   const handleExportExcel = () => {
-    // 1. Définir le titre et les en-têtes exactement comme demandé
+
     const titleRow = [`Cas de test - ${project?.nom || 'Projet'}`, '', '', '', '', '', ''];
     const headerRow = ["ID", "Cas de test", "Description", "Résultat attendu", "Résultat réel", "Statut", "commentaire"];
     
-    // 2. Préparer les données
+
     const dataRows = testCases.map(tc => [
       tc.testCaseId,
       tc.testName,
@@ -147,15 +147,15 @@ const ProjectTests = () => {
       tc.comment || ''
     ]);
 
-    // 3. Créer la feuille avec un tableau 2D (AOA)
+
     const aoa = [titleRow, headerRow, ...dataRows];
     const ws = XLSX.utils.aoa_to_sheet(aoa);
 
-    // 4. Fusionner la première ligne (A1 à G1)
+
     if (!ws['!merges']) ws['!merges'] = [];
     ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 6 } });
 
-    // Stylisation (largeur des colonnes pour correspondre à Excel)
+
     ws['!cols'] = [
       { wch: 10 }, // ID
       { wch: 30 }, // Cas de test
@@ -166,7 +166,7 @@ const ProjectTests = () => {
       { wch: 25 }  // commentaire
     ];
 
-    // 5. Générer le fichier
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Cas de Test");
     XLSX.writeFile(wb, `Tests_${project?.nom || 'Projet'}.xlsx`);
@@ -182,7 +182,7 @@ const ProjectTests = () => {
         const wb = XLSX.read(bstr, { type: 'binary' });
         let totalImportedCount = 0;
 
-        // Parcourir toutes les feuilles du fichier Excel
+
         for (const wsname of wb.SheetNames) {
           const ws = wb.Sheets[wsname];
           const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
@@ -192,7 +192,7 @@ const ProjectTests = () => {
           let headerRowIndex = -1;
           let colMap = {};
 
-          // 1. Chercher la ligne d'en-tête (qui contient "description" ou "cas de test" etc.)
+
           for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
             if (!row || !Array.isArray(row)) continue;
@@ -218,7 +218,7 @@ const ProjectTests = () => {
             continue; // Passer à la feuille suivante si aucun en-tête trouvé
           }
 
-          // 2. Parcourir les lignes sous l'en-tête
+
           for (let i = headerRowIndex + 1; i < rows.length; i++) {
             const row = rows[i];
             if (!row || !Array.isArray(row) || row.length === 0) continue;
@@ -296,7 +296,7 @@ const ProjectTests = () => {
   const handleRunSubmit = async (e) => {
     e.preventDefault();
     if (!selectedTestCase) return;
-    // Mandatory comment on failure
+
     if (runData.status === 'Non Réussite' && !runData.comment.trim()) {
       alert('Un commentaire est obligatoire lorsque le test échoue.');
       return;
@@ -324,7 +324,7 @@ const ProjectTests = () => {
 
   return (
     <div className="space-y-6">
-      {/* Title & Action */}
+      {}
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
@@ -367,10 +367,10 @@ const ProjectTests = () => {
         </div>
       </div>
 
-      {/* Statistics Cards */}
+      {}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
 
-      {/* Banner: all tests passed */}
+      {}
       {allTestsPassed && project?.status === 'Testing' && (
         <div className="md:col-span-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
           <div className="flex items-center gap-3 w-full md:w-auto">
@@ -391,7 +391,7 @@ const ProjectTests = () => {
         </div>
       )}
 
-      {/* Banner: some tests failing */}
+      {}
       {failCount > 0 && (
         <div className="md:col-span-4 bg-rose-50 border border-rose-200 p-4 rounded-2xl flex items-center gap-3">
           <XCircle size={20} className="text-rose-600 shrink-0" />
@@ -454,7 +454,7 @@ const ProjectTests = () => {
         </div>
       </div>
 
-      {/* Filter / Search Bar */}
+      {}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="relative w-full md:w-96">
           <Search className="absolute left-3 top-2.5 text-slate-400" size={18} />
@@ -494,7 +494,7 @@ const ProjectTests = () => {
         </div>
       </div>
 
-      {/* Test Cases List */}
+      {}
       <div className="space-y-4">
         {filteredTests.length === 0 ? (
           <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center shadow-sm">
@@ -543,7 +543,7 @@ const ProjectTests = () => {
                 className={`bg-white rounded-2xl border p-6 shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row justify-between gap-6 ${styles.cardBorder}`}
               >
                 <div className="flex-1 space-y-4">
-                  {/* TC Header */}
+                  {}
                   <div className="flex items-center gap-3 flex-wrap">
                     <span className="px-3 py-1 bg-slate-900 text-white font-mono text-xs font-bold rounded-lg shadow-sm">
                       {tc.testCaseId}
@@ -557,7 +557,7 @@ const ProjectTests = () => {
                     </span>
                   </div>
 
-                  {/* Description & Expected */}
+                  {}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Description</h4>
@@ -573,7 +573,7 @@ const ProjectTests = () => {
                     </div>
                   </div>
 
-                  {/* Execution Comment & Info */}
+                  {}
                   {tc.status !== 'En attente' && (
                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 mt-2 space-y-2">
                       <div className="flex items-center gap-6 text-xs text-slate-500 flex-wrap">
@@ -600,7 +600,7 @@ const ProjectTests = () => {
                   )}
                 </div>
 
-                {/* Actions */}
+                {}
                 <div className="flex md:flex-col justify-end items-center gap-2 border-t md:border-t-0 border-slate-100 pt-4 md:pt-0 shrink-0">
                   {canRunTest && (
                     <button
@@ -639,11 +639,11 @@ const ProjectTests = () => {
         )}
       </div>
 
-      {/* CREATE / EDIT MODAL */}
+      {}
       {isFormOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            {/* Modal Header */}
+            {}
             <div className="flex justify-between items-center px-6 py-5 border-b border-slate-100 bg-slate-50">
               <h3 className="text-lg font-bold text-slate-800">
                 {selectedTestCase ? 'Modifier le cas de test' : 'Créer un cas de test'}
@@ -656,7 +656,7 @@ const ProjectTests = () => {
               </button>
             </div>
 
-            {/* Modal Body */}
+            {}
             <form onSubmit={handleFormSubmit} className="p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="md:col-span-1">
@@ -728,7 +728,7 @@ const ProjectTests = () => {
                 />
               </div>
 
-              {/* Modal Footer */}
+              {}
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                 <button
                   type="button"
@@ -749,11 +749,11 @@ const ProjectTests = () => {
         </div>
       )}
 
-      {/* RUN TEST EXECUTION DIALOG */}
+      {}
       {isRunOpen && selectedTestCase && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            {/* Header */}
+            {}
             <div className="flex justify-between items-center px-6 py-5 border-b border-slate-100 bg-slate-50">
               <div>
                 <h3 className="text-lg font-bold text-slate-800">Exécuter le test</h3>
@@ -767,9 +767,9 @@ const ProjectTests = () => {
               </button>
             </div>
 
-            {/* Body */}
+            {}
             <form onSubmit={handleRunSubmit} className="p-6 space-y-5">
-              {/* Test summary info */}
+              {}
               <div className="bg-slate-50 p-4 rounded-xl text-xs space-y-2 border border-slate-100">
                 <p className="text-slate-700">
                   <strong className="text-slate-500 font-bold uppercase tracking-wider block text-[10px] mb-0.5">Description</strong>
@@ -781,7 +781,7 @@ const ProjectTests = () => {
                 </p>
               </div>
 
-              {/* Status Radio buttons / Segmented control */}
+              {}
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
                   Résultat de l'exécution *
@@ -815,7 +815,7 @@ const ProjectTests = () => {
                 </div>
               </div>
 
-              {/* Comment text area */}
+              {}
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
                   Commentaires / Détails {runData.status === 'Non Réussite' ? '*' : '(Optionnel)'}
@@ -830,7 +830,7 @@ const ProjectTests = () => {
                 />
               </div>
 
-              {/* Footer */}
+              {}
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                 <button
                   type="button"

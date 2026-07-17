@@ -81,7 +81,7 @@ const TesterDashboard = () => {
           </div>
         </div>
 
-        {/* Right Side: Tasks Ready for testing */}
+        {}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
           <div className="flex items-center gap-2 mb-6">
             <ClipboardCheck className="text-slate-600" size={24} />

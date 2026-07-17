@@ -5,16 +5,16 @@ class ConfigService {
         return new Promise((resolve, reject) => {
             db.query('SELECT * FROM configurations', (err, results) => {
                 if (err) return reject(err);
-                
-                const config = {};
+
+                                const config = {};
                 const archivedConfig = {};
-                
-                results.forEach(row => {
+
+                                results.forEach(row => {
                     config[row.config_key] = JSON.parse(row.config_value || '[]');
                     archivedConfig[row.config_key] = JSON.parse(row.archived_value || '[]');
                 });
-                
-                resolve({ config, archivedConfig });
+
+                                resolve({ config, archivedConfig });
             });
         });
     }

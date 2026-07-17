@@ -920,7 +920,7 @@ export const MessageProvider = ({ children }) => {
       const messageData = {
         content,
         senderId: user.id,
-        // Utilise nom + prenom (champs réels), pas user.name qui n'existe pas
+
         senderName: `${user.prenom || ''} ${user.nom || ''}`.trim() || user.email,
         senderRole: user.role,
         mentions,
