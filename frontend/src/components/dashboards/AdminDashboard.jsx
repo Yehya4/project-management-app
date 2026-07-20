@@ -159,8 +159,8 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+      <div className="grid grid-cols-1 gap-6">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
           <h3 className="text-slate-500 font-medium mb-4 text-sm">Répartition des Projets</h3>
           <div className="space-y-4">
             <div className="flex justify-between items-center">
@@ -174,25 +174,6 @@ const AdminDashboard = () => {
             <div className="flex justify-between items-center">
               <span className="text-slate-600 text-sm flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-rose-500"></span>En Retard</span>
               <span className="font-semibold text-slate-800">{delayedProjects}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="md:col-span-2 bg-gradient-to-br from-emerald-500 to-teal-600 p-6 rounded-2xl shadow-sm text-white">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-white/20 rounded-xl">
-              <PieChart size={24} className="text-white" />
-            </div>
-            <h3 className="font-medium text-emerald-50">Budget Global (Toutes Directions)</h3>
-          </div>
-          <div className="flex justify-between items-end">
-            <div>
-              <p className="text-emerald-100 mb-1 text-sm">Budget Total Alloué</p>
-              <p className="text-4xl font-bold">{totalBudget}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-emerald-100 mb-1 text-sm">Consommé</p>
-              <p className="text-2xl font-bold">{consumedBudget}</p>
             </div>
           </div>
         </div>

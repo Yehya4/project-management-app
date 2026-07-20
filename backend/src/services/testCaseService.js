@@ -24,9 +24,9 @@ class TestCaseService {
 
     create(testCaseData, io) {
         return new Promise((resolve, reject) => {
-            const { projectId, testCaseId, testName, description, expectedResult, actualResult } = testCaseData;
-            const query = 'INSERT INTO test_cases (projectId, testCaseId, testName, description, expectedResult, actualResult, status) VALUES (?, ?, ?, ?, ?, ?, ?)';
-            db.query(query, [projectId, testCaseId, testName, description, expectedResult, actualResult || null, 'En attente'], async (err, results) => {
+            const { projectId, testCaseId, testName, description, expectedResult, actualResult, priority, assignedTo, attachment, profile, rubrique } = testCaseData;
+            const query = 'INSERT INTO test_cases (projectId, testCaseId, testName, description, expectedResult, actualResult, status, priority, assignedTo, attachment, profile, rubrique) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+            db.query(query, [projectId, testCaseId, testName, description, expectedResult, actualResult || null, 'En attente', priority || 'Moyenne', assignedTo || null, attachment || null, profile || null, rubrique || null], async (err, results) => {
                 if (err) return reject(err);
 
                                 try {
@@ -47,9 +47,9 @@ class TestCaseService {
 
     update(id, data, io) {
         return new Promise((resolve, reject) => {
-            const { testCaseId, testName, description, expectedResult, actualResult } = data;
-            const query = 'UPDATE test_cases SET testCaseId = ?, testName = ?, description = ?, expectedResult = ?, actualResult = ? WHERE id = ?';
-            db.query(query, [testCaseId, testName, description, expectedResult, actualResult || null, id], async (err) => {
+            const { testCaseId, testName, description, expectedResult, actualResult, priority, assignedTo, attachment, profile, rubrique } = data;
+            const query = 'UPDATE test_cases SET testCaseId = ?, testName = ?, description = ?, expectedResult = ?, actualResult = ?, priority = ?, assignedTo = ?, attachment = ?, profile = ?, rubrique = ? WHERE id = ?';
+            db.query(query, [testCaseId, testName, description, expectedResult, actualResult || null, priority || 'Moyenne', assignedTo || null, attachment || null, profile || null, rubrique || null, id], async (err) => {
                 if (err) return reject(err);
 
                                 try {
@@ -68,10 +68,10 @@ class TestCaseService {
         });
     }
 
-    updateStatus(id, status, comment, testerId, testerName, io) {
+    updateStatus(id, status, comment, testerId, testerName, io, actualResult) {
         return new Promise((resolve, reject) => {
-            const query = 'UPDATE test_cases SET status = ?, comment = ?, testerId = ?, testerName = ? WHERE id = ?';
-            db.query(query, [status, comment || null, testerId || null, testerName || null, id], async (err) => {
+            const query = 'UPDATE test_cases SET status = ?, comment = ?, testerId = ?, testerName = ?, actualResult = COALESCE(?, actualResult) WHERE id = ?';
+            db.query(query, [status, comment || null, testerId || null, testerName || null, actualResult || null, id], async (err) => {
                 if (err) return reject(err);
 
                                 try {

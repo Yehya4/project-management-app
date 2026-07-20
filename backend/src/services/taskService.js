@@ -22,9 +22,9 @@ class TaskService {
 
     create(taskData, io) {
         return new Promise((resolve, reject) => {
-            const { id, projectId, title, description, priority, assigneeId, status, reference, objet, dateDebutReel, dateFinReel, dateFin } = taskData;
-            const query = 'INSERT INTO tasks (id, projectId, title, description, priority, assigneeId, status, reference, objet, dateDebutReel, dateFinReel, dateFin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
-            db.query(query, [id, projectId, title, description || null, priority, assigneeId || null, status, reference || null, objet || null, dateDebutReel || null, dateFinReel || null, dateFin || null], async (err) => {
+            const { id, projectId, title, description, priority, assigneeId, status, reference, objet, dateDebutReel, dateFinReel, dateFin, solutionResultat, attachment } = taskData;
+            const query = 'INSERT INTO tasks (id, projectId, title, description, priority, assigneeId, status, reference, objet, dateDebutReel, dateFinReel, dateFin, solutionResultat, attachment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+            db.query(query, [id, projectId, title || null, description || null, priority, assigneeId || null, status, reference || null, objet || null, dateDebutReel || null, dateFinReel || null, dateFin || null, solutionResultat || null, attachment || null], async (err) => {
                 if (err) return reject(err);
                 const task = { id, ...taskData, createdAt: new Date().toISOString() };
 
@@ -86,6 +86,14 @@ class TaskService {
             if (updates.dateFin !== undefined) {
                 fields.push('dateFin = ?');
                 values.push(updates.dateFin || null);
+            }
+            if (updates.solutionResultat !== undefined) {
+                fields.push('solutionResultat = ?');
+                values.push(updates.solutionResultat || null);
+            }
+            if (updates.attachment !== undefined) {
+                fields.push('attachment = ?');
+                values.push(updates.attachment || null);
             }
 
             if (fields.length === 0) return resolve({ id });

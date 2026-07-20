@@ -2,19 +2,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { useTestCases, useTeam, useAuth, useProjects } from '../../context/AppContext';
-import { 
-  Plus, 
-  FlaskConical, 
-  CheckCircle2, 
-  XCircle, 
-  HelpCircle, 
-  Search, 
-  Edit2, 
-  Trash2, 
-  Play, 
-  X, 
-  MessageSquare, 
-  User, 
+import {
+  Plus,
+  FlaskConical,
+  CheckCircle2,
+  XCircle,
+  HelpCircle,
+  Search,
+  Edit2,
+  Trash2,
+  Play,
+  X,
+  MessageSquare,
+  User,
   Calendar,
   Download,
   Upload
@@ -25,13 +25,13 @@ const ProjectTests = () => {
   const { user } = useAuth();
   const { getTeamByProjectId } = useTeam();
   const { updateProject } = useProjects();
-  const { 
-    testCases, 
-    fetchTestCases, 
-    addTestCase, 
-    updateTestCase, 
-    updateTestCaseStatus, 
-    deleteTestCase 
+  const {
+    testCases,
+    fetchTestCases,
+    addTestCase,
+    updateTestCase,
+    updateTestCaseStatus,
+    deleteTestCase
   } = useTestCases();
 
   const teamMembers = getTeamByProjectId(project?.id) || [];
@@ -41,7 +41,7 @@ const ProjectTests = () => {
   const [statusFilter, setStatusFilter] = useState('Tous');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isRunOpen, setIsRunOpen] = useState(false);
-  
+
   const fileInputRef = useRef(null);
 
   const [selectedTestCase, setSelectedTestCase] = useState(null);
@@ -50,12 +50,18 @@ const ProjectTests = () => {
     testName: '',
     description: '',
     expectedResult: '',
-    actualResult: ''
+    actualResult: '',
+    priority: 'Moyenne',
+    profile: '',
+    rubrique: '',
+    assignedTo: '',
+    attachment: ''
   });
 
   const [runData, setRunData] = useState({
     status: 'Réussite',
-    comment: ''
+    comment: '',
+    actualResult: ''
   });
 
 
@@ -66,20 +72,20 @@ const ProjectTests = () => {
   }, [project?.id]);
 
 
-  const isAdmin       = user?.role === 'Admin';
-  const isPM          = user?.role === 'Project Manager';
-  const isSponsor     = user?.role === 'Sponsor';
+  const isAdmin = user?.role === 'Admin';
+  const isPM = user?.role === 'Project Manager';
+  const isSponsor = user?.role === 'Sponsor';
   const isProjectChef = project?.chefProjet &&
     (`${user?.prenom || ''} ${user?.nom || ''}`.trim() === project.chefProjet);
-  
+
   const isAssignedDev = teamMembers.some(
-    m => m.userId.toString() === user?.id?.toString() && 
-    (m.role === 'Développeur' || m.role === 'Tech Lead')
+    m => m.userId.toString() === user?.id?.toString() &&
+      (m.role === 'Développeur' || m.role === 'Tech Lead')
   );
 
   const isAssignedTester = teamMembers.some(
-    m => m.userId.toString() === user?.id?.toString() && 
-    m.role === 'QA / Testeur'
+    m => m.userId.toString() === user?.id?.toString() &&
+      m.role === 'QA / Testeur'
   );
 
   const isChefTesteur = user?.role === 'Chef Testeur' || teamMembers.some(
@@ -89,19 +95,19 @@ const ProjectTests = () => {
 
   const canCreateTest = isAdmin || isPM || isSponsor || isProjectChef || isAssignedDev || isChefTesteur;
 
-  const canRunTest    = isAssignedTester || isAdmin || isPM || isSponsor || isProjectChef || isChefTesteur;
+  const canRunTest = isAssignedTester || isAdmin || isPM || isSponsor || isProjectChef || isChefTesteur;
 
 
   const allTestsPassed = testCases.length > 0 && testCases.every(t => t.status === 'Réussite');
 
 
   const filteredTests = testCases.filter(t => {
-    const matchesSearch = 
+    const matchesSearch =
       t.testCaseId.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (t.testName && t.testName.toLowerCase().includes(searchTerm.toLowerCase())) ||
       t.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.expectedResult.toLowerCase().includes(searchTerm.toLowerCase());
-      
+
     if (statusFilter === 'Tous') return matchesSearch;
     return matchesSearch && t.status === statusFilter;
   });
@@ -119,23 +125,28 @@ const ProjectTests = () => {
 
     const nextNumber = testCases.length + 1;
     const suggestedId = `TC-${String(nextNumber).padStart(3, '0')}`;
-    
+
     setSelectedTestCase(null);
     setFormData({
       testCaseId: suggestedId,
       testName: '',
       description: '',
       expectedResult: '',
-      actualResult: ''
+      actualResult: '',
+      priority: 'Moyenne',
+      profile: '',
+      rubrique: '',
+      assignedTo: '',
+      attachment: ''
     });
     setIsFormOpen(true);
   };
 
   const handleExportExcel = () => {
 
-    const titleRow = [`Cas de test - ${project?.nom || 'Projet'}`, '', '', '', '', '', ''];
-    const headerRow = ["ID", "Cas de test", "Description", "Résultat attendu", "Résultat réel", "Statut", "commentaire"];
-    
+    const titleRow = [`Cas de test - ${project?.nom || 'Projet'}`, '', '', '', '', '', '', '', '', '', ''];
+    const headerRow = ["ID", "Cas de test", "Description", "Résultat attendu", "Résultat réel", "Statut", "Commentaire", "Priorité", "Affecté à", "Profil", "Rubrique", "Pièce jointe"];
+
 
     const dataRows = testCases.map(tc => [
       tc.testCaseId,
@@ -144,7 +155,12 @@ const ProjectTests = () => {
       tc.expectedResult,
       tc.actualResult || '',
       tc.status,
-      tc.comment || ''
+      tc.comment || '',
+      tc.priority || 'Moyenne',
+      tc.assignedTo || '',
+      tc.profile || '',
+      tc.rubrique || '',
+      tc.attachment ? 'Fichier joint' : ''
     ]);
 
 
@@ -153,7 +169,7 @@ const ProjectTests = () => {
 
 
     if (!ws['!merges']) ws['!merges'] = [];
-    ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 6 } });
+    ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 11 } });
 
 
     ws['!cols'] = [
@@ -163,7 +179,12 @@ const ProjectTests = () => {
       { wch: 30 }, // Résultat attendu
       { wch: 30 }, // Résultat réel
       { wch: 15 }, // Statut
-      { wch: 25 }  // commentaire
+      { wch: 25 }, // commentaire
+      { wch: 15 }, // Priorité
+      { wch: 20 }, // Affecté à
+      { wch: 20 }, // Profil
+      { wch: 20 }, // Rubrique
+      { wch: 15 }  // Pièce jointe
     ];
 
 
@@ -186,7 +207,7 @@ const ProjectTests = () => {
         for (const wsname of wb.SheetNames) {
           const ws = wb.Sheets[wsname];
           const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-          
+
           if (rows.length === 0) continue;
 
           let headerRowIndex = -1;
@@ -196,19 +217,24 @@ const ProjectTests = () => {
           for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
             if (!row || !Array.isArray(row)) continue;
-            
+
             const rowStr = row.map(cell => String(cell || '').toLowerCase().trim());
-            
+
             if (rowStr.includes('description') || rowStr.includes('cas de test') || rowStr.includes('nom du test')) {
               headerRowIndex = i;
               rowStr.forEach((colName, index) => {
                 if (colName === 'id' || colName === 'id du cas') colMap.id = index;
-                if (colName === 'cas de test' || colName === 'nom du test') colMap.name = index;
+                if (colName === 'profil' || colName === 'profile') colMap.profile = index;
                 if (colName === 'description') colMap.description = index;
                 if (colName === 'résultat attendu' || colName === 'resultat attendu') colMap.expected = index;
                 if (colName === 'résultat réel' || colName === 'resultat reel') colMap.actual = index;
                 if (colName === 'statut' || colName === 'status') colMap.status = index;
+                if (colName === 'rubrique') colMap.rubrique = index;
                 if (colName === 'commentaire' || colName === 'comment') colMap.comment = index;
+                if (colName === 'testeur' || colName === 'tester') colMap.tester = index;
+                if (colName === 'pièce jointe' || colName === 'piece jointe') colMap.attachment = index;
+                if (colName === 'priorité' || colName === 'priorite' || colName === 'priority') colMap.priority = index;
+                if (colName === 'affecté à' || colName === 'affecte a' || colName === 'assigned to') colMap.assignedTo = index;
               });
               break;
             }
@@ -222,10 +248,10 @@ const ProjectTests = () => {
           for (let i = headerRowIndex + 1; i < rows.length; i++) {
             const row = rows[i];
             if (!row || !Array.isArray(row) || row.length === 0) continue;
-            
+
             const nameVal = colMap.name !== undefined ? String(row[colMap.name] || '').trim() : '';
             const descVal = colMap.description !== undefined ? String(row[colMap.description] || '').trim() : '';
-            
+
             if (nameVal || descVal) {
               await addTestCase({
                 projectId: project.id,
@@ -235,13 +261,17 @@ const ProjectTests = () => {
                 expectedResult: colMap.expected !== undefined ? String(row[colMap.expected] || '').trim() : '',
                 actualResult: colMap.actual !== undefined ? String(row[colMap.actual] || '').trim() : '',
                 status: colMap.status !== undefined && row[colMap.status] ? String(row[colMap.status]).trim() : 'En attente',
-                comment: colMap.comment !== undefined ? String(row[colMap.comment] || '').trim() : ''
+                comment: colMap.comment !== undefined ? String(row[colMap.comment] || '').trim() : '',
+                priority: colMap.priority !== undefined ? String(row[colMap.priority] || '').trim() : 'Moyenne',
+                profile: colMap.profile !== undefined ? String(row[colMap.profile] || '').trim() : '',
+                rubrique: colMap.rubrique !== undefined ? String(row[colMap.rubrique] || '').trim() : '',
+                assignedTo: colMap.assignedTo !== undefined ? String(row[colMap.assignedTo] || '').trim() : ''
               });
               totalImportedCount++;
             }
           }
         }
-        
+
         if (totalImportedCount === 0) {
           alert('Aucun cas de test valide trouvé. Vérifiez que votre fichier contient au moins les colonnes "Cas de test", "Nom du test" ou "Description" dans l\'une de ses feuilles.');
         } else {
@@ -264,7 +294,12 @@ const ProjectTests = () => {
       testName: tc.testName || '',
       description: tc.description,
       expectedResult: tc.expectedResult,
-      actualResult: tc.actualResult || ''
+      actualResult: tc.actualResult || '',
+      priority: tc.priority || 'Moyenne',
+      profile: tc.profile || '',
+      rubrique: tc.rubrique || '',
+      assignedTo: tc.assignedTo || '',
+      attachment: tc.attachment || ''
     });
     setIsFormOpen(true);
   };
@@ -288,7 +323,8 @@ const ProjectTests = () => {
     setSelectedTestCase(tc);
     setRunData({
       status: tc.status === 'En attente' ? 'Réussite' : tc.status,
-      comment: tc.comment || ''
+      comment: tc.comment || '',
+      actualResult: tc.actualResult || ''
     });
     setIsRunOpen(true);
   };
@@ -302,17 +338,18 @@ const ProjectTests = () => {
       return;
     }
 
-    const testerId   = user.id;
+    const testerId = user.id;
     const testerName = `${user.prenom || ''} ${user.nom || ''}`.trim();
 
     await updateTestCaseStatus(
-      selectedTestCase.id, 
-      runData.status, 
-      runData.comment, 
-      testerId, 
-      testerName
+      selectedTestCase.id,
+      runData.status,
+      runData.comment,
+      testerId,
+      testerName,
+      runData.actualResult
     );
-    
+
     setIsRunOpen(false);
   };
 
@@ -324,7 +361,7 @@ const ProjectTests = () => {
 
   return (
     <div className="space-y-6">
-      {}
+      { }
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
@@ -334,21 +371,21 @@ const ProjectTests = () => {
           <p className="text-slate-500">Définissez et validez la qualité technique de {project?.nom}.</p>
         </div>
         <div className="flex items-center gap-3">
-          <input 
-            type="file" 
-            accept=".xlsx, .xls" 
-            ref={fileInputRef} 
-            onChange={handleImportExcel} 
-            className="hidden" 
+          <input
+            type="file"
+            accept=".xlsx, .xls"
+            ref={fileInputRef}
+            onChange={handleImportExcel}
+            className="hidden"
           />
-          <button 
+          <button
             onClick={() => fileInputRef.current?.click()}
             className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-semibold hover:bg-slate-200 transition-colors shadow-sm border border-slate-200"
           >
             <Upload size={18} />
             <span className="hidden md:inline">Importer</span>
           </button>
-          <button 
+          <button
             onClick={handleExportExcel}
             className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-semibold hover:bg-slate-200 transition-colors shadow-sm border border-slate-200"
           >
@@ -356,7 +393,7 @@ const ProjectTests = () => {
             <span className="hidden md:inline">Exporter</span>
           </button>
           {!isPending && canCreateTest && (
-            <button 
+            <button
               onClick={handleOpenCreateForm}
               className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors shadow-sm"
             >
@@ -367,39 +404,39 @@ const ProjectTests = () => {
         </div>
       </div>
 
-      {}
+      { }
       <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
 
-      {}
-      {allTestsPassed && project?.status === 'Testing' && (
-        <div className="md:col-span-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            <div className="p-2 bg-emerald-500 text-white rounded-xl shrink-0"><CheckCircle2 size={20} /></div>
-            <div>
-              <p className="font-bold text-emerald-900">Tous les tests sont réussis !</p>
-              <p className="text-emerald-700 text-sm">En attente de la validation du Chef Testeur pour passer au Déploiement.</p>
+        { }
+        {allTestsPassed && project?.status === 'Testing' && (
+          <div className="md:col-span-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="p-2 bg-emerald-500 text-white rounded-xl shrink-0"><CheckCircle2 size={20} /></div>
+              <div>
+                <p className="font-bold text-emerald-900">Tous les tests sont réussis !</p>
+                <p className="text-emerald-700 text-sm">En attente de la validation du Chef Testeur pour passer au Déploiement.</p>
+              </div>
             </div>
+            {isChefTesteur && (
+              <button
+                onClick={() => updateProject(project.id, { status: 'Déploiement' })}
+                className="w-full md:w-auto px-5 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-bold shadow-sm whitespace-nowrap"
+              >
+                Valider pour Déploiement
+              </button>
+            )}
           </div>
-          {isChefTesteur && (
-            <button 
-              onClick={() => updateProject(project.id, { status: 'Déploiement' })}
-              className="w-full md:w-auto px-5 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-bold shadow-sm whitespace-nowrap"
-            >
-              Valider pour Déploiement
-            </button>
-          )}
-        </div>
-      )}
+        )}
 
-      {}
-      {failCount > 0 && (
-        <div className="md:col-span-4 bg-rose-50 border border-rose-200 p-4 rounded-2xl flex items-center gap-3">
-          <XCircle size={20} className="text-rose-600 shrink-0" />
-          <p className="text-rose-800 text-sm font-semibold">
-            {failCount} test(s) en échec — Les testeurs doivent corriger et relancer les tests.
-          </p>
-        </div>
-      )}
+        { }
+        {failCount > 0 && (
+          <div className="md:col-span-4 bg-rose-50 border border-rose-200 p-4 rounded-2xl flex items-center gap-3">
+            <XCircle size={20} className="text-rose-600 shrink-0" />
+            <p className="text-rose-800 text-sm font-semibold">
+              {failCount} test(s) en échec — Les testeurs doivent corriger et relancer les tests.
+            </p>
+          </div>
+        )}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Total cas de test</span>
           <div className="flex justify-between items-baseline mt-2">
@@ -415,12 +452,12 @@ const ProjectTests = () => {
           <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">En Attente</span>
           <div className="flex justify-between items-baseline mt-2">
             <span className="text-3xl font-extrabold text-amber-500">{pendingCount}</span>
-            <span className="text-slate-400 text-xs">{totalCount > 0 ? Math.round((pendingCount/totalCount)*100) : 0}% du total</span>
+            <span className="text-slate-400 text-xs">{totalCount > 0 ? Math.round((pendingCount / totalCount) * 100) : 0}% du total</span>
           </div>
           <div className="w-full bg-slate-100 h-1.5 rounded-full mt-4 overflow-hidden">
-            <div 
-              className="bg-amber-500 h-1.5 rounded-full transition-all duration-500" 
-              style={{ width: `${totalCount > 0 ? (pendingCount/totalCount)*100 : 0}%` }}
+            <div
+              className="bg-amber-500 h-1.5 rounded-full transition-all duration-500"
+              style={{ width: `${totalCount > 0 ? (pendingCount / totalCount) * 100 : 0}%` }}
             ></div>
           </div>
         </div>
@@ -432,8 +469,8 @@ const ProjectTests = () => {
             <span className="text-slate-400 text-xs">{successRate}% de réussite</span>
           </div>
           <div className="w-full bg-slate-100 h-1.5 rounded-full mt-4 overflow-hidden">
-            <div 
-              className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500" 
+            <div
+              className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500"
               style={{ width: `${successRate}%` }}
             ></div>
           </div>
@@ -446,15 +483,15 @@ const ProjectTests = () => {
             <span className="text-slate-400 text-xs">Exécutés : {executionRate}%</span>
           </div>
           <div className="w-full bg-slate-100 h-1.5 rounded-full mt-4 overflow-hidden">
-            <div 
-              className="bg-rose-500 h-1.5 rounded-full transition-all duration-500" 
-              style={{ width: `${totalCount > 0 ? (failCount/totalCount)*100 : 0}%` }}
+            <div
+              className="bg-rose-500 h-1.5 rounded-full transition-all duration-500"
+              style={{ width: `${totalCount > 0 ? (failCount / totalCount) * 100 : 0}%` }}
             ></div>
           </div>
         </div>
       </div>
 
-      {}
+      { }
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="relative w-full md:w-96">
           <Search className="absolute left-3 top-2.5 text-slate-400" size={18} />
@@ -494,7 +531,7 @@ const ProjectTests = () => {
         </div>
       </div>
 
-      {}
+      { }
       <div className="space-y-4">
         {filteredTests.length === 0 ? (
           <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center shadow-sm">
@@ -502,7 +539,7 @@ const ProjectTests = () => {
             <h3 className="text-lg font-bold text-slate-700">Aucun cas de test trouvé</h3>
             <p className="text-slate-400 mt-1">Modifiez les filtres de recherche ou créez un nouveau cas de test.</p>
             {canCreateTest && (
-              <button 
+              <button
                 onClick={handleOpenCreateForm}
                 className="mt-4 px-4 py-2 bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors font-bold rounded-xl text-sm"
               >
@@ -514,7 +551,7 @@ const ProjectTests = () => {
           filteredTests.map((tc) => {
             const getStatusStyle = (status) => {
               switch (status) {
-                case 'Réussite': 
+                case 'Réussite':
                   return {
                     badge: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
                     cardBorder: 'border-l-4 border-l-emerald-500 border-y-slate-200 border-r-slate-200',
@@ -538,12 +575,12 @@ const ProjectTests = () => {
             const styles = getStatusStyle(tc.status);
 
             return (
-              <div 
+              <div
                 key={tc.id}
                 className={`bg-white rounded-2xl border p-6 shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row justify-between gap-6 ${styles.cardBorder}`}
               >
                 <div className="flex-1 space-y-4">
-                  {}
+                  { }
                   <div className="flex items-center gap-3 flex-wrap">
                     <span className="px-3 py-1 bg-slate-900 text-white font-mono text-xs font-bold rounded-lg shadow-sm">
                       {tc.testCaseId}
@@ -555,9 +592,27 @@ const ProjectTests = () => {
                       {styles.icon}
                       {tc.status}
                     </span>
+                    {tc.priority && (
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${tc.priority === 'Haute' ? 'bg-rose-100 text-rose-700' :
+                          tc.priority === 'Basse' ? 'bg-emerald-100 text-emerald-700' :
+                            'bg-amber-100 text-amber-700'
+                        }`}>
+                        Priorité: {tc.priority}
+                      </span>
+                    )}
+                    {tc.profile && (
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                        Profil: {tc.profile}
+                      </span>
+                    )}
+                    {tc.rubrique && (
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                        Rubrique: {tc.rubrique}
+                      </span>
+                    )}
                   </div>
 
-                  {}
+                  { }
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Description</h4>
@@ -573,7 +628,7 @@ const ProjectTests = () => {
                     </div>
                   </div>
 
-                  {}
+                  { }
                   {tc.status !== 'En attente' && (
                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 mt-2 space-y-2">
                       <div className="flex items-center gap-6 text-xs text-slate-500 flex-wrap">
@@ -584,7 +639,21 @@ const ProjectTests = () => {
                         {tc.updatedAt && (
                           <span className="flex items-center gap-1.5">
                             <Calendar size={14} className="text-slate-400" />
-                            Date : <strong className="text-slate-700">{new Date(tc.updatedAt).toLocaleDateString('fr-FR')} {new Date(tc.updatedAt).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})}</strong>
+                            Date : <strong className="text-slate-700">{new Date(tc.updatedAt).toLocaleDateString('fr-FR')} {new Date(tc.updatedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</strong>
+                          </span>
+                        )}
+                        {tc.assignedTo && (
+                          <span className="flex items-center gap-1.5">
+                            <User size={14} className="text-blue-400" />
+                            Affecté à : <strong className="text-slate-700">{tc.assignedTo}</strong>
+                          </span>
+                        )}
+                        {tc.attachment && (
+                          <span className="flex items-center gap-1.5 cursor-pointer text-blue-600 hover:underline" onClick={() => {
+                            const newWindow = window.open();
+                            newWindow.document.write(`<iframe src="${tc.attachment}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+                          }}>
+                            Fichier joint
                           </span>
                         )}
                       </div>
@@ -600,7 +669,7 @@ const ProjectTests = () => {
                   )}
                 </div>
 
-                {}
+                { }
                 <div className="flex md:flex-col justify-end items-center gap-2 border-t md:border-t-0 border-slate-100 pt-4 md:pt-0 shrink-0">
                   {canRunTest && (
                     <button
@@ -611,7 +680,7 @@ const ProjectTests = () => {
                       Lancer le test
                     </button>
                   )}
-                  
+
                   <div className="flex gap-1.5 w-full md:w-auto justify-end">
                     {canCreateTest && (
                       <>
@@ -639,16 +708,16 @@ const ProjectTests = () => {
         )}
       </div>
 
-      {}
+      { }
       {isFormOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            {}
-            <div className="flex justify-between items-center px-6 py-5 border-b border-slate-100 bg-slate-50">
+          <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[90vh]">
+            { }
+            <div className="flex justify-between items-center px-6 py-5 border-b border-slate-100 bg-slate-50 shrink-0">
               <h3 className="text-lg font-bold text-slate-800">
                 {selectedTestCase ? 'Modifier le cas de test' : 'Créer un cas de test'}
               </h3>
-              <button 
+              <button
                 onClick={() => setIsFormOpen(false)}
                 className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
               >
@@ -656,92 +725,172 @@ const ProjectTests = () => {
               </button>
             </div>
 
-            {}
-            <form onSubmit={handleFormSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-1">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
-                    ID du cas *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="ex: TC-001"
-                    value={formData.testCaseId}
-                    onChange={(e) => setFormData(prev => ({ ...prev, testCaseId: e.target.value }))}
-                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+            { }
+            <form onSubmit={handleFormSubmit} className="flex flex-col overflow-hidden">
+              <div className="p-6 space-y-6 overflow-y-auto">
+
+                {/* Section Informations générales */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-2">
+                    Informations générales
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="md:col-span-1">
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                        ID du cas *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="ex: TC-001"
+                        value={formData.testCaseId}
+                        onChange={(e) => setFormData(prev => ({ ...prev, testCaseId: e.target.value }))}
+                        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 focus:bg-white transition-colors"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                        Objet *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="ex: Connexion OAuth2"
+                        value={formData.testName}
+                        onChange={(e) => setFormData(prev => ({ ...prev, testName: e.target.value }))}
+                        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 focus:bg-white transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                        Profil
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="ex: Smoke, Régression"
+                        value={formData.profile}
+                        onChange={(e) => setFormData(prev => ({ ...prev, profile: e.target.value }))}
+                        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 focus:bg-white transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                        Rubrique
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="ex: Authentification"
+                        value={formData.rubrique}
+                        onChange={(e) => setFormData(prev => ({ ...prev, rubrique: e.target.value }))}
+                        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 focus:bg-white transition-colors"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
-                    Nom du test *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="ex: Connexion OAuth2"
-                    value={formData.testName}
-                    onChange={(e) => setFormData(prev => ({ ...prev, testName: e.target.value }))}
-                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+
+                {/* Section Description & Résultats */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-2">
+                    Détails et Résultats
+                  </h4>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                      Description *
+                    </label>
+                    <textarea
+                      required
+                      rows={3}
+                      placeholder="Décrivez les étapes ou conditions du test..."
+                      value={formData.description}
+                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                      className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-slate-50 focus:bg-white transition-colors"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                      Résultat attendu *
+                    </label>
+                    <textarea
+                      required
+                      rows={2}
+                      placeholder="Quel est le comportement attendu en cas de succès ?"
+                      value={formData.expectedResult}
+                      onChange={(e) => setFormData(prev => ({ ...prev, expectedResult: e.target.value }))}
+                      className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-emerald-50/30 focus:bg-white transition-colors"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                      Résultat Réel
+                    </label>
+                    <textarea
+                      rows={2}
+                      placeholder="Quel a été le comportement observé ?"
+                      value={formData.actualResult}
+                      onChange={(e) => setFormData(prev => ({ ...prev, actualResult: e.target.value }))}
+                      className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-slate-50 focus:bg-white transition-colors"
+                    />
+                  </div>
+                </div>
+
+                {/* Section Pièce Jointe */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-2">
+                    Pièces jointes
+                  </h4>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                      Pièce jointe (Optionnel)
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setFormData(prev => ({ ...prev, attachment: reader.result }));
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        className="flex-1 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 transition-colors file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
+                      {formData.attachment && (
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, attachment: '' }))}
+                          className="px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-xl text-sm font-bold transition-colors border border-rose-100"
+                        >
+                          Retirer
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
-                  Description *
-                </label>
-                <textarea
-                  required
-                  rows={3}
-                  placeholder="Décrivez les étapes ou conditions du test..."
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
-                  Résultat attendu *
-                </label>
-                <textarea
-                  required
-                  rows={3}
-                  placeholder="Quel est le comportement attendu en cas de succès ?"
-                  value={formData.expectedResult}
-                  onChange={(e) => setFormData(prev => ({ ...prev, expectedResult: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
-                  Résultat Réel
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Quel a été le comportement observé (optionnel à la création) ?"
-                  value={formData.actualResult}
-                  onChange={(e) => setFormData(prev => ({ ...prev, actualResult: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                />
-              </div>
-
-              {}
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              {/* Footer action buttons */}
+              <div className="flex justify-end gap-3 p-5 border-t border-slate-100 bg-slate-50 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsFormOpen(false)}
-                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-bold transition-colors text-sm"
+                  className="px-5 py-2.5 text-slate-600 hover:bg-slate-200 rounded-xl font-bold transition-colors text-sm"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-colors text-sm shadow-sm"
+                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-colors text-sm shadow-sm flex items-center gap-2"
                 >
-                  {selectedTestCase ? 'Mettre à jour' : 'Créer le test'}
+                  {selectedTestCase ? 'Enregistrer les modifications' : 'Créer le test'}
                 </button>
               </div>
             </form>
@@ -749,17 +898,17 @@ const ProjectTests = () => {
         </div>
       )}
 
-      {}
+      { }
       {isRunOpen && selectedTestCase && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            {}
+            { }
             <div className="flex justify-between items-center px-6 py-5 border-b border-slate-100 bg-slate-50">
               <div>
                 <h3 className="text-lg font-bold text-slate-800">Exécuter le test</h3>
                 <p className="text-xs text-slate-500 font-bold mt-0.5">{selectedTestCase.testCaseId} - {selectedTestCase.testName}</p>
               </div>
-              <button 
+              <button
                 onClick={() => setIsRunOpen(false)}
                 className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
               >
@@ -767,9 +916,9 @@ const ProjectTests = () => {
               </button>
             </div>
 
-            {}
+            { }
             <form onSubmit={handleRunSubmit} className="p-6 space-y-5">
-              {}
+              { }
               <div className="bg-slate-50 p-4 rounded-xl text-xs space-y-2 border border-slate-100">
                 <p className="text-slate-700">
                   <strong className="text-slate-500 font-bold uppercase tracking-wider block text-[10px] mb-0.5">Description</strong>
@@ -781,7 +930,7 @@ const ProjectTests = () => {
                 </p>
               </div>
 
-              {}
+              { }
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
                   Résultat de l'exécution *
@@ -790,11 +939,10 @@ const ProjectTests = () => {
                   <button
                     type="button"
                     onClick={() => setRunData(prev => ({ ...prev, status: 'Réussite' }))}
-                    className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-sm font-bold transition-all ${
-                      runData.status === 'Réussite' 
-                        ? 'border-emerald-500 bg-emerald-50 text-emerald-800 shadow-sm ring-1 ring-emerald-500' 
+                    className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-sm font-bold transition-all ${runData.status === 'Réussite'
+                        ? 'border-emerald-500 bg-emerald-50 text-emerald-800 shadow-sm ring-1 ring-emerald-500'
                         : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                    }`}
+                      }`}
                   >
                     <CheckCircle2 size={18} className={runData.status === 'Réussite' ? 'text-emerald-600' : 'text-slate-400'} />
                     Réussite
@@ -803,11 +951,10 @@ const ProjectTests = () => {
                   <button
                     type="button"
                     onClick={() => setRunData(prev => ({ ...prev, status: 'Non Réussite' }))}
-                    className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-sm font-bold transition-all ${
-                      runData.status === 'Non Réussite' 
-                        ? 'border-rose-500 bg-rose-50 text-rose-800 shadow-sm ring-1 ring-rose-500' 
+                    className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-sm font-bold transition-all ${runData.status === 'Non Réussite'
+                        ? 'border-rose-500 bg-rose-50 text-rose-800 shadow-sm ring-1 ring-rose-500'
                         : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                    }`}
+                      }`}
                   >
                     <XCircle size={18} className={runData.status === 'Non Réussite' ? 'text-rose-600' : 'text-slate-400'} />
                     Non Réussite
@@ -815,7 +962,20 @@ const ProjectTests = () => {
                 </div>
               </div>
 
-              {}
+              { }
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                  Résultat Réel
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Quel a été le comportement observé lors du test ?"
+                  value={runData.actualResult}
+                  onChange={(e) => setRunData(prev => ({ ...prev, actualResult: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-sans"
+                />
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
                   Commentaires / Détails {runData.status === 'Non Réussite' ? '*' : '(Optionnel)'}
@@ -830,7 +990,7 @@ const ProjectTests = () => {
                 />
               </div>
 
-              {}
+              { }
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                 <button
                   type="button"
@@ -841,11 +1001,10 @@ const ProjectTests = () => {
                 </button>
                 <button
                   type="submit"
-                  className={`px-5 py-2 text-white rounded-xl font-bold transition-colors text-sm shadow-sm ${
-                    runData.status === 'Réussite' 
-                      ? 'bg-emerald-600 hover:bg-emerald-700' 
+                  className={`px-5 py-2 text-white rounded-xl font-bold transition-colors text-sm shadow-sm ${runData.status === 'Réussite'
+                      ? 'bg-emerald-600 hover:bg-emerald-700'
                       : 'bg-rose-600 hover:bg-rose-700'
-                  }`}
+                    }`}
                 >
                   Enregistrer
                 </button>

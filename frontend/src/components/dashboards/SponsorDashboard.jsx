@@ -281,27 +281,6 @@ const SponsorDashboard = () => {
 
       {}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 rounded-2xl shadow-lg text-white">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <p className="text-emerald-50 font-medium mb-1">Budget Total Alloué</p>
-              <p className="text-3xl font-bold">{totalBudget}</p>
-            </div>
-            <div className="bg-white/20 p-3 rounded-2xl"><PieChart size={24} className="text-white" /></div>
-          </div>
-          <p className="text-sm text-emerald-100">Consommé : {consumedBudget} (45%)</p>
-        </div>
-
-        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-6 rounded-2xl shadow-lg text-white">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <p className="text-blue-50 font-medium mb-1">ROI Projeté</p>
-              <p className="text-3xl font-bold">+18.5%</p>
-            </div>
-            <div className="bg-white/20 p-3 rounded-2xl"><TrendingUp size={24} className="text-white" /></div>
-          </div>
-          <p className="text-sm text-blue-100">Sur les 2 prochains trimestres</p>
-        </div>
 
         <div className="bg-gradient-to-br from-slate-700 to-slate-900 p-6 rounded-2xl shadow-lg text-white">
           <div className="flex justify-between items-start mb-4">

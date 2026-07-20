@@ -1021,12 +1021,12 @@ export const TestCaseProvider = ({ children }) => {
     }
   };
 
-  const updateTestCaseStatus = async (id, status, comment, testerId, testerName) => {
+  const updateTestCaseStatus = async (id, status, comment, testerId, testerName, actualResult) => {
     try {
       const res = await fetch(`${API_URL}/test-cases/${id}/status`, {
         method: 'PUT',
         headers: getHeaders(),
-        body: JSON.stringify({ status, comment, testerId, testerName })
+        body: JSON.stringify({ status, comment, testerId, testerName, actualResult })
       });
       if (res.ok) {
         const updatedTestCase = await res.json();

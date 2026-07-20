@@ -24,22 +24,29 @@ class TaskController {
 
     async create(req, res) {
         try {
-            const { projectId, title, description, priority, assigneeId, status, id } = req.body;
+            const { projectId, objet, title, description, priority, assigneeId, status, id, dateDebutReel, dateFinReel, solutionResultat, attachment, reference } = req.body;
 
-                        if (!projectId || !title || !priority || !status) {
-                return res.status(400).json({ message: 'Champs obligatoires manquants (projectId, title, priority, status).' });
+            if (!projectId || (!title && !objet) || !priority || !status) {
+                return res.status(400).json({ message: 'Champs obligatoires manquants (projectId, objet/title, priority, status).' });
             }
 
-            const taskId = id || `TASK-${Date.now()}`;
+            const taskId = id || `TSK-${Date.now()}`;
+            const finalReference = reference || taskId; // Use provided reference or auto-generate
             const io = req.app.get('io');
             const task = await taskService.create({
                 id: taskId,
                 projectId,
-                title,
+                title: title || objet, // Fallback for backward compatibility
+                objet: objet || title,
                 description,
                 priority,
                 assigneeId,
-                status
+                status,
+                reference: finalReference,
+                dateDebutReel,
+                dateFinReel,
+                solutionResultat,
+                attachment
             }, io);
 
             return res.status(201).json(task);

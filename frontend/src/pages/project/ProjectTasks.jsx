@@ -38,8 +38,8 @@ const ProjectTasks = () => {
   const [isModalOpen,  setIsModalOpen]  = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [formData,     setFormData]     = useState({
-    title: '', description: '', priority: 'Moyenne', assigneeId: '', status: 'En cours',
-    reference: '', objet: '', dateDebutReel: '', dateFinReel: '', dateFin: ''
+    objet: '', description: '', priority: 'Moyenne', assigneeId: '', status: 'En cours',
+    dateDebutReel: '', dateFinReel: '', solutionResultat: '', attachment: '', reference: ''
   });
 
   
@@ -64,25 +64,27 @@ const ProjectTasks = () => {
   const handleImportWord = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
         const arrayBuffer = event.target.result;
         const result = await mammoth.extractRawText({ arrayBuffer });
         const text = result.value;
-
-
         const lines = text.split('\n');
+        const importedTasks = [];
         let currentTask = null;
 
         for (const line of lines) {
-          if (line.toLowerCase().startsWith('titre:')) {
+          const normalizedLine = line.trim();
+
+          if (normalizedLine.toLowerCase().startsWith('titre:')) {
             if (currentTask && currentTask.title) {
-              await addTask(currentTask);
+              importedTasks.push(currentTask);
             }
             currentTask = {
               projectId: project.id,
-              title: line.substring(6).trim(),
+              title: normalizedLine.substring(6).trim(),
               reference: '',
               objet: '',
               description: '',
@@ -93,45 +95,67 @@ const ProjectTasks = () => {
               dateFin: '',
               assigneeId: ''
             };
-          } else if (currentTask && line.toLowerCase().startsWith('référence:')) {
-            currentTask.reference = line.substring(10).trim();
-          } else if (currentTask && line.toLowerCase().startsWith('objet:')) {
-            currentTask.objet = line.substring(6).trim();
-          } else if (currentTask && line.toLowerCase().startsWith('description:')) {
-            currentTask.description = line.substring(12).trim();
-          } else if (currentTask && line.toLowerCase().startsWith('priorité:')) {
-            currentTask.priority = line.substring(9).trim() || 'Moyenne';
-          } else if (currentTask && line.toLowerCase().startsWith('statut:')) {
-            currentTask.status = line.substring(7).trim() || 'En cours';
-          } else if (currentTask && line.toLowerCase().startsWith('date début réel:')) {
-            currentTask.dateDebutReel = line.substring(16).trim();
-          } else if (currentTask && line.toLowerCase().startsWith('date fin réel:')) {
-            currentTask.dateFinReel = line.substring(14).trim();
-          } else if (currentTask && line.toLowerCase().startsWith('date fin:')) {
-            currentTask.dateFin = line.substring(9).trim();
+          } else if (currentTask) {
+            if (normalizedLine.toLowerCase().startsWith('référence:')) {
+              currentTask.reference = normalizedLine.substring(10).trim();
+            } else if (normalizedLine.toLowerCase().startsWith('objet:')) {
+              currentTask.objet = normalizedLine.substring(6).trim();
+            } else if (normalizedLine.toLowerCase().startsWith('description:')) {
+              currentTask.description = normalizedLine.substring(12).trim();
+            } else if (normalizedLine.toLowerCase().startsWith('assigné à:')) {
+              currentTask.assigneeId = normalizedLine.substring(11).trim();
+            } else if (normalizedLine.toLowerCase().startsWith('priorité:')) {
+              currentTask.priority = normalizedLine.substring(9).trim() || 'Moyenne';
+            } else if (normalizedLine.toLowerCase().startsWith('statut:')) {
+              currentTask.status = normalizedLine.substring(7).trim() || 'En cours';
+            } else if (normalizedLine.toLowerCase().startsWith('date début réel:')) {
+              currentTask.dateDebutReel = normalizedLine.substring(16).trim();
+            } else if (normalizedLine.toLowerCase().startsWith('date fin réel:')) {
+              currentTask.dateFinReel = normalizedLine.substring(14).trim();
+            } else if (normalizedLine.toLowerCase().startsWith('date fin:')) {
+              currentTask.dateFin = normalizedLine.substring(9).trim();
+            }
           }
         }
+
         if (currentTask && currentTask.title) {
-          await addTask(currentTask);
+          importedTasks.push(currentTask);
         }
-        
+
+        for (const task of importedTasks) {
+          await addTask(task);
+        }
+
         alert('Tâches importées avec succès.');
       } catch (err) {
         alert('Erreur lors de l\'importation du fichier Word.');
+      } finally {
+        e.target.value = null;
       }
-      e.target.value = null;
     };
+
     reader.readAsArrayBuffer(file);
   };
 
   
 
   
+  const handleFileChange = (e, setter) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setter(prev => ({ ...prev, attachment: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleAddTask = (e) => {
     e.preventDefault();
     addTask({ ...formData, projectId: project.id });
     setIsModalOpen(false);
-    setFormData({ title: '', description: '', priority: 'Moyenne', assigneeId: '', status: 'En cours', reference: '', objet: '', dateDebutReel: '', dateFinReel: '', dateFin: '' });
+    setFormData({ objet: '', description: '', priority: 'Moyenne', assigneeId: '', status: 'En cours', dateDebutReel: '', dateFinReel: '', solutionResultat: '', attachment: '', reference: '' });
   };
 
   const getAssigneeName = (id) => {
@@ -190,7 +214,11 @@ const ProjectTasks = () => {
             </button>
 
             <button
-              onClick={() => setIsModalOpen(true)}
+              onClick={() => {
+                const nextId = projectTasks.length + 1;
+                setFormData(prev => ({ ...prev, reference: `TSK-${String(nextId).padStart(3, '0')}` }));
+                setIsModalOpen(true);
+              }}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors shadow-sm"
             >
               <PlusCircle size={20} /> Nouvelle tâche
@@ -259,24 +287,57 @@ const ProjectTasks = () => {
                 {}
                 <div className="flex-1 p-3 flex flex-col gap-3 overflow-y-auto">
                   {colTasks.length > 0 ? (
-                    colTasks.map(task => (
+                    colTasks.map(task => {
+                      let percentage = 0;
+                      if (['Fait', 'Clôturée', 'Archivée'].includes(task.status)) {
+                        percentage = 100;
+                      } else if (task.dateDebutReel && task.dateFinReel) {
+                        const start = new Date(task.dateDebutReel).getTime();
+                        const end = new Date(task.dateFinReel).getTime();
+                        const now = new Date().getTime();
+                        if (end > start) {
+                          const p = Math.round(((now - start) / (end - start)) * 100);
+                          percentage = Math.max(0, Math.min(100, p));
+                        }
+                      }
+                      
+                      const isLate = task.dateFinReel && (new Date() > new Date(task.dateFinReel)) && !['Fait', 'Clôturée', 'Archivée'].includes(task.status);
+
+                      return (
                       <div
                         key={task.id}
                         draggable
                         onDragStart={(e) => handleDragStart(e, task.id)}
                         onClick={() => setSelectedTask(task)}
-                        className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer group"
+                        className={`bg-white p-4 rounded-xl border ${isLate ? 'border-red-300 shadow-sm shadow-red-100' : 'border-slate-200 shadow-sm'} hover:shadow-md hover:border-blue-300 transition-all cursor-pointer group`}
                       >
                         <div className="flex justify-between items-start mb-2">
                           <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-md ${getPriorityStyle(task.priority)}`}>
                             {task.priority}
                           </span>
-                          <span className="text-xs font-mono text-slate-400">{task.id?.split('-')[1]?.slice(-4)}</span>
+                          <span className="text-xs font-mono text-slate-400">{task.reference || task.id?.split('-')[1]?.slice(-4) || ''}</span>
                         </div>
                         <h4 className="font-bold text-slate-800 text-sm mb-1 leading-tight group-hover:text-blue-600 transition-colors">
-                          {task.title}
+                          {task.objet || task.title}
                         </h4>
                         <p className="text-xs text-slate-500 line-clamp-2 mb-3">{task.description}</p>
+                        
+                        <div className="mb-3">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase">Progression</span>
+                            <span className="text-[10px] font-bold text-blue-600">{percentage}%</span>
+                          </div>
+                          <div className="w-full bg-slate-100 rounded-full h-1.5">
+                            <div className="bg-blue-500 h-1.5 rounded-full transition-all" style={{ width: `${percentage}%` }}></div>
+                          </div>
+                        </div>
+
+                        {isLate && (
+                          <div className="flex items-center gap-1 text-[10px] font-bold text-red-600 mb-2 bg-red-50 p-1 rounded">
+                            <AlertTriangle size={12} /> EN RETARD
+                          </div>
+                        )}
+
                         <div className="flex justify-between items-center border-t border-slate-100 pt-3">
                           <div className="flex items-center gap-1.5">
                             {task.assigneeId ? (
@@ -298,7 +359,7 @@ const ProjectTasks = () => {
                           {column.id === 'Archivée'  && <Tag         size={14} className="text-slate-400" />}
                         </div>
                       </div>
-                    ))
+                    )})
                   ) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-slate-400 text-xs p-4 text-center border-2 border-dashed border-slate-200 rounded-xl opacity-60">
                       <p>Déposez des tâches ici</p>
@@ -337,42 +398,42 @@ const ProjectTasks = () => {
 
             <div className="overflow-y-auto p-6 flex-1">
               <form id="task-form" onSubmit={handleAddTask} className="space-y-5">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Titre <span className="text-red-500">*</span></label>
-                  <input
-                    type="text"
-                    className="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none font-medium"
-                    placeholder="ex: Implémenter la page de connexion..."
-                    value={formData.title}
-                    onChange={e => setFormData({ ...formData, title: e.target.value })}
-                    required
-                  />
-                </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">Date de création</label>
+                    <input
+                      type="text"
+                      className="w-full border border-slate-300 bg-slate-100 rounded-xl p-3 outline-none font-medium text-slate-500"
+                      value={new Date().toLocaleDateString('fr-FR')}
+                      readOnly
+                    />
+                  </div>
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-1">Référence</label>
                     <input
                       type="text"
-                      className="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none font-medium"
-                      placeholder="ex: REF-123"
-                      value={formData.reference}
-                      onChange={e => setFormData({ ...formData, reference: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Objet</label>
-                    <input
-                      type="text"
-                      className="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none font-medium"
-                      placeholder="ex: Module de login"
-                      value={formData.objet}
-                      onChange={e => setFormData({ ...formData, objet: e.target.value })}
+                      className="w-full border border-slate-300 bg-slate-100 rounded-xl p-3 outline-none font-medium text-slate-500"
+                      value={formData.reference || 'Générée automatiquement'}
+                      readOnly
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Objet <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    className="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                    placeholder="ex: Implémenter la page de connexion..."
+                    value={formData.objet}
+                    onChange={e => setFormData({ ...formData, objet: e.target.value })}
+                    required
+                  />
+                </div>
+
+
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-1">Date Début Réel</label>
                     <input
@@ -391,15 +452,6 @@ const ProjectTasks = () => {
                       onChange={e => setFormData({ ...formData, dateFinReel: e.target.value })}
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Date Fin (Prévue)</label>
-                    <input
-                      type="date"
-                      className="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none"
-                      value={formData.dateFin}
-                      onChange={e => setFormData({ ...formData, dateFin: e.target.value })}
-                    />
-                  </div>
                 </div>
 
                 <div>
@@ -409,6 +461,25 @@ const ProjectTasks = () => {
                     placeholder="Décrivez la tâche et les critères d'acceptation..."
                     value={formData.description}
                     onChange={e => setFormData({ ...formData, description: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Solution / Résultat</label>
+                  <textarea
+                    className="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none min-h-[80px] text-sm"
+                    placeholder="Quelle est la solution mise en place ?"
+                    value={formData.solutionResultat}
+                    onChange={e => setFormData({ ...formData, solutionResultat: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Pièces jointes</label>
+                  <input
+                    type="file"
+                    className="w-full border border-slate-300 rounded-xl p-2 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    onChange={e => handleFileChange(e, setFormData)}
                   />
                 </div>
 
@@ -464,7 +535,7 @@ const ProjectTasks = () => {
               <button
                 type="submit"
                 form="task-form"
-                disabled={!formData.title}
+                disabled={!formData.objet}
                 className="px-6 py-2.5 font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors disabled:opacity-50 shadow-sm"
               >
                 Créer la tâche
@@ -489,10 +560,7 @@ const ProjectTasks = () => {
             </div>
 
             <div className="overflow-y-auto p-6 space-y-5 flex-1">
-              <div>
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Titre</h4>
-                <p className="text-lg font-bold text-slate-800">{selectedTask.title}</p>
-              </div>
+
 
               <div>
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Description</h4>
@@ -504,16 +572,7 @@ const ProjectTasks = () => {
               <div className="grid grid-cols-2 gap-5">
                 <div>
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Référence</h4>
-                  {canMoveTask(selectedTask) ? (
-                    <input
-                      type="text"
-                      className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                      value={selectedTask.reference || ''}
-                      onChange={e => updateTask(selectedTask.id, { reference: e.target.value })}
-                    />
-                  ) : (
-                    <p className="text-sm font-semibold text-slate-800">{selectedTask.reference || '-'}</p>
-                  )}
+                  <p className="text-sm font-semibold text-slate-800">{selectedTask.reference || '-'}</p>
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Objet</h4>
@@ -561,21 +620,32 @@ const ProjectTasks = () => {
                     </p>
                   )}
                 </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Date Fin (Prévue)</h4>
-                  {canMoveTask(selectedTask) ? (
-                    <input
-                      type="date"
-                      className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                      value={selectedTask.dateFin ? selectedTask.dateFin.split('T')[0] : ''}
-                      onChange={e => updateTask(selectedTask.id, { dateFin: e.target.value })}
-                    />
-                  ) : (
-                    <p className="text-sm font-semibold text-slate-800">
-                      {selectedTask.dateFin ? new Date(selectedTask.dateFin).toLocaleDateString('fr-FR') : '-'}
-                    </p>
-                  )}
-                </div>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Solution / Résultat</h4>
+                {canMoveTask(selectedTask) ? (
+                  <textarea
+                    className="w-full border border-slate-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-h-[80px]"
+                    value={selectedTask.solutionResultat || ''}
+                    onChange={e => updateTask(selectedTask.id, { solutionResultat: e.target.value })}
+                  />
+                ) : (
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-slate-700 text-sm whitespace-pre-wrap min-h-[80px]">
+                    {selectedTask.solutionResultat || <em className="text-slate-400">Aucun résultat.</em>}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Pièces jointes</h4>
+                {selectedTask.attachment ? (
+                  <a href={selectedTask.attachment} download={`piece-jointe-${selectedTask.id}`} className="text-blue-600 hover:underline text-sm font-semibold inline-flex items-center gap-2">
+                    <Download size={16} /> Télécharger la pièce jointe
+                  </a>
+                ) : (
+                  <p className="text-sm text-slate-400">Aucune pièce jointe.</p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-5">

@@ -17,7 +17,7 @@ class TestCaseController {
 
     async create(req, res) {
         try {
-            const { projectId, testCaseId, testName, description, expectedResult, actualResult, status, comment } = req.body;
+            const { projectId, testCaseId, testName, description, expectedResult, actualResult, status, comment, priority, assignedTo, attachment, profile, rubrique } = req.body;
             if (!projectId || !testCaseId || !testName || !description || !expectedResult) {
                 return res.status(400).json({ message: 'Champs obligatoires manquants.' });
             }
@@ -31,7 +31,12 @@ class TestCaseController {
                 expectedResult,
                 actualResult,
                 status,
-                comment
+                comment,
+                priority,
+                assignedTo,
+                attachment,
+                profile,
+                rubrique
             }, io);
 
             return res.status(201).json(testCase);
@@ -44,13 +49,13 @@ class TestCaseController {
     async update(req, res) {
         try {
             const { id } = req.params;
-            const { testCaseId, testName, description, expectedResult, actualResult } = req.body;
+            const { testCaseId, testName, description, expectedResult, actualResult, priority, assignedTo, attachment, profile, rubrique } = req.body;
             if (!testCaseId || !testName || !description || !expectedResult) {
                 return res.status(400).json({ message: 'Champs obligatoires manquants.' });
             }
 
             const io = req.app.get('io');
-            const testCase = await testCaseService.update(id, { testCaseId, testName, description, expectedResult, actualResult }, io);
+            const testCase = await testCaseService.update(id, { testCaseId, testName, description, expectedResult, actualResult, priority, assignedTo, attachment, profile, rubrique }, io);
             return res.json(testCase);
         } catch (err) {
             console.error(err);
@@ -61,7 +66,7 @@ class TestCaseController {
     async updateStatus(req, res) {
         try {
             const { id } = req.params;
-            const { status, comment } = req.body;
+            const { status, comment, actualResult } = req.body;
             const testerId = req.user?.id || req.body.testerId;
             let testerName = '';
 
@@ -86,7 +91,7 @@ class TestCaseController {
             }
 
             const io = req.app.get('io');
-            const testCase = await testCaseService.updateStatus(id, status, comment, testerId, testerName, io);
+            const testCase = await testCaseService.updateStatus(id, status, comment, testerId, testerName, io, actualResult);
             return res.json(testCase);
         } catch (err) {
             console.error(err);
