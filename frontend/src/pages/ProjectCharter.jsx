@@ -6,13 +6,14 @@ import { FileText, Save, Send, Users, Activity, Flag, AlertTriangle, MessageSqua
 import Popup from '../components/Popup';
 import mammoth from 'mammoth';
 import { generateCharterPDF } from '../utils/pdfGenerator';
+import { formatUserDisplayName } from '../utils/userUtils';
 
 const ProjectCharter = () => {
   const [searchParams] = useSearchParams();
   const demandeId = searchParams.get('demandeId');
   const navigate = useNavigate();
   
-  const { demandes, updateDemandeStatus } = useDemandes();
+  const { demandes, updateDemandeStatus, updateDemande } = useDemandes();
   const { getCharterByDemandeId, saveCharter, deleteCharter } = useCharter();
   const { user } = useAuth();
   const { projects, updateProject, addProject } = useProjects();
@@ -26,6 +27,9 @@ const ProjectCharter = () => {
   
   const [formData, setFormData] = useState({
     titre: '',
+    service: '',
+    dateFin: '',
+    categoriesProjet: [],
     contexte: '',
     objectifs: '',
     perimetreInclus: '',
@@ -68,15 +72,23 @@ const ProjectCharter = () => {
 
     const existingCharter = getCharterByDemandeId(demandeId);
     if (existingCharter) {
-      setFormData(existingCharter);
+      setFormData({
+        ...existingCharter,
+        service: existingCharter.service || demande.service || '',
+        dateFin: existingCharter.dateFin || demande.delaiSouhaite || demande.dateFin || '',
+        categoriesProjet: existingCharter.categoriesProjet || demande.categoriesProjet || []
+      });
     } else {
       setFormData(prev => ({
         ...prev,
         titre: demande.titre || `Projet issu de la demande ${demande.id}`,
+        service: demande.service || '',
+        dateFin: demande.delaiSouhaite || demande.dateFin || '',
+        categoriesProjet: demande.categoriesProjet || [],
         contexte: demande.contexte || '',
         objectifs: demande.description || '',
-        chefProjetIT: user?.role === 'Project Manager' ? `${user.prenom || ''} ${user.nom || ''}`.trim() : (users.find(u => u.role === 'Project Manager') ? `${users.find(u => u.role === 'Project Manager').prenom || ''} ${users.find(u => u.role === 'Project Manager').nom || ''}`.trim() : ''),
-        equipeITChef: user?.role === 'Project Manager' ? `${user.prenom || ''} ${user.nom || ''}`.trim() : (users.find(u => u.role === 'Project Manager') ? `${users.find(u => u.role === 'Project Manager').prenom || ''} ${users.find(u => u.role === 'Project Manager').nom || ''}`.trim() : '')
+        chefProjetIT: user?.role === 'Project Manager' ? formatUserDisplayName(user) : (users.find(u => u.role === 'Project Manager') ? formatUserDisplayName(users.find(u => u.role === 'Project Manager')) : 'Project Manager (PM)'),
+        equipeITChef: user?.role === 'Project Manager' ? formatUserDisplayName(user) : (users.find(u => u.role === 'Project Manager') ? formatUserDisplayName(users.find(u => u.role === 'Project Manager')) : 'Project Manager (PM)')
       }));
     }
   }, [demande, demandeId, getCharterByDemandeId, navigate, user, users]);
@@ -103,8 +115,9 @@ const ProjectCharter = () => {
 
       if (linkedProject) {
         await updateProject(linkedProject.id, { status: 'Initiation', charterValidated: true });
+        await updateDemandeStatus(demandeId, 'En cours');
       } else {
-        await updateDemandeStatus(demandeId, 'En Développement');
+        await updateDemandeStatus(demandeId, 'En cours');
         await addProject({
           nom: demande?.nomDemandeur ? `Projet ${demande.nomDemandeur}` : (demande?.titre || `Projet issu de la demande ${demandeId}`),
           chefProjet: formData.chefProjetIT || 'Non assigné',
@@ -144,6 +157,18 @@ const ProjectCharter = () => {
     };
 
     saveCharter(charterData);
+    if (updateDemande && demandeId) {
+      try {
+        await updateDemande(demandeId, {
+          ...demande,
+          service: formData.service,
+          dateFin: formData.dateFin,
+          categoriesProjet: formData.categoriesProjet
+        });
+      } catch (err) {
+        console.error("Erreur sync demande", err);
+      }
+    }
 
     let message = '';
     let title = 'Charte Envoyée';
@@ -318,6 +343,57 @@ const ProjectCharter = () => {
                   className={`w-full px-4 py-3 border border-slate-300 rounded-xl transition-all font-medium text-slate-800 ${isEditable ? 'focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500' : 'bg-slate-50 outline-none'}`}
                   placeholder="Ex: Digitalisation des Reportings Qualité"
                 />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Service</label>
+                  <input 
+                    type="text" name="service" value={formData.service || ''} onChange={handleChange} readOnly={!isEditable}
+                    className={`w-full px-4 py-3 border border-slate-300 rounded-xl transition-all font-medium text-slate-800 ${isEditable ? 'focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500' : 'bg-slate-50 outline-none'}`}
+                    placeholder="Ex: Marketing, IT, Finance..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Date Fin Prévue</label>
+                  <input 
+                    type="date" name="dateFin" value={formData.dateFin || ''} onChange={handleChange} readOnly={!isEditable}
+                    className={`w-full px-4 py-3 border border-slate-300 rounded-xl transition-all font-medium text-slate-800 ${isEditable ? 'focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500' : 'bg-slate-50 outline-none'}`}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Catégories du Projet</label>
+                <div className="flex flex-wrap gap-4 pt-1">
+                  {['Nouveau projet', 'Amélioration', 'Maintenance', 'Urgent'].map((cat) => {
+                    const isSelected = Array.isArray(formData.categoriesProjet) 
+                      ? formData.categoriesProjet.includes(cat)
+                      : (typeof formData.categoriesProjet === 'string' ? formData.categoriesProjet.includes(cat) : false);
+                    return (
+                      <label key={cat} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          disabled={!isEditable}
+                          checked={!!isSelected}
+                          onChange={(e) => {
+                            let current = Array.isArray(formData.categoriesProjet) 
+                              ? [...formData.categoriesProjet] 
+                              : (typeof formData.categoriesProjet === 'string' ? formData.categoriesProjet.split(',').map(s=>s.trim()).filter(Boolean) : []);
+                            if (e.target.checked) {
+                              if (!current.includes(cat)) current.push(cat);
+                            } else {
+                              current = current.filter(c => c !== cat);
+                            }
+                            setFormData(prev => ({ ...prev, categoriesProjet: current }));
+                          }}
+                          className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        />
+                        <span className="text-sm font-medium text-slate-700">{cat}</span>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
 
 

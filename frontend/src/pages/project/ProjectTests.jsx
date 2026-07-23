@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import * as XLSX from 'xlsx';
-import { useTestCases, useTeam, useAuth, useProjects } from '../../context/AppContext';
+import { useTestCases, useTeam, useAuth, useProjects, useDocuments } from '../../context/AppContext';
 import {
   Plus,
   FlaskConical,
@@ -25,6 +25,7 @@ const ProjectTests = () => {
   const { user } = useAuth();
   const { getTeamByProjectId } = useTeam();
   const { updateProject } = useProjects();
+  const { addDocument } = useDocuments();
   const {
     testCases,
     fetchTestCases,
@@ -51,7 +52,6 @@ const ProjectTests = () => {
     description: '',
     expectedResult: '',
     actualResult: '',
-    priority: 'Moyenne',
     profile: '',
     rubrique: '',
     assignedTo: '',
@@ -133,7 +133,6 @@ const ProjectTests = () => {
       description: '',
       expectedResult: '',
       actualResult: '',
-      priority: 'Moyenne',
       profile: '',
       rubrique: '',
       assignedTo: '',
@@ -145,7 +144,7 @@ const ProjectTests = () => {
   const handleExportExcel = () => {
 
     const titleRow = [`Cas de test - ${project?.nom || 'Projet'}`, '', '', '', '', '', '', '', '', '', ''];
-    const headerRow = ["ID", "Cas de test", "Description", "Résultat attendu", "Résultat réel", "Statut", "Commentaire", "Priorité", "Affecté à", "Profil", "Rubrique", "Pièce jointe"];
+    const headerRow = ["ID", "Cas de test", "Description", "Résultat attendu", "Résultat réel", "Statut", "Commentaire", "Affecté à", "Profil", "Rubrique", "Pièce jointe"];
 
 
     const dataRows = testCases.map(tc => [
@@ -156,7 +155,6 @@ const ProjectTests = () => {
       tc.actualResult || '',
       tc.status,
       tc.comment || '',
-      tc.priority || 'Moyenne',
       tc.assignedTo || '',
       tc.profile || '',
       tc.rubrique || '',
@@ -180,7 +178,6 @@ const ProjectTests = () => {
       { wch: 30 }, // Résultat réel
       { wch: 15 }, // Statut
       { wch: 25 }, // commentaire
-      { wch: 15 }, // Priorité
       { wch: 20 }, // Affecté à
       { wch: 20 }, // Profil
       { wch: 20 }, // Rubrique
@@ -190,12 +187,40 @@ const ProjectTests = () => {
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Cas de Test");
+    
+    // Save to documents before writing file
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+    const contentStr = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + wbout;
+    addDocument({
+      projectId: project.id,
+      name: `Tests_${project?.nom || 'Projet'}.xlsx`,
+      type: 'Export',
+      format: 'Excel',
+      module: 'TestCase',
+      content: contentStr
+    });
+
     XLSX.writeFile(wb, `Tests_${project?.nom || 'Projet'}.xlsx`);
   };
 
   const handleImportExcel = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    
+    // Convert to base64 to save as project document
+    const base64Reader = new FileReader();
+    base64Reader.onloadend = () => {
+      addDocument({
+        projectId: project.id,
+        name: `Import_${file.name}`,
+        type: 'Import',
+        format: 'Excel',
+        module: 'TestCase',
+        content: base64Reader.result
+      });
+    };
+    base64Reader.readAsDataURL(file);
+
     const reader = new FileReader();
     reader.onload = async (evt) => {
       try {
@@ -233,7 +258,6 @@ const ProjectTests = () => {
                 if (colName === 'commentaire' || colName === 'comment') colMap.comment = index;
                 if (colName === 'testeur' || colName === 'tester') colMap.tester = index;
                 if (colName === 'pièce jointe' || colName === 'piece jointe') colMap.attachment = index;
-                if (colName === 'priorité' || colName === 'priorite' || colName === 'priority') colMap.priority = index;
                 if (colName === 'affecté à' || colName === 'affecte a' || colName === 'assigned to') colMap.assignedTo = index;
               });
               break;
@@ -262,7 +286,6 @@ const ProjectTests = () => {
                 actualResult: colMap.actual !== undefined ? String(row[colMap.actual] || '').trim() : '',
                 status: colMap.status !== undefined && row[colMap.status] ? String(row[colMap.status]).trim() : 'En attente',
                 comment: colMap.comment !== undefined ? String(row[colMap.comment] || '').trim() : '',
-                priority: colMap.priority !== undefined ? String(row[colMap.priority] || '').trim() : 'Moyenne',
                 profile: colMap.profile !== undefined ? String(row[colMap.profile] || '').trim() : '',
                 rubrique: colMap.rubrique !== undefined ? String(row[colMap.rubrique] || '').trim() : '',
                 assignedTo: colMap.assignedTo !== undefined ? String(row[colMap.assignedTo] || '').trim() : ''
@@ -295,11 +318,11 @@ const ProjectTests = () => {
       description: tc.description,
       expectedResult: tc.expectedResult,
       actualResult: tc.actualResult || '',
-      priority: tc.priority || 'Moyenne',
       profile: tc.profile || '',
       rubrique: tc.rubrique || '',
       assignedTo: tc.assignedTo || '',
-      attachment: tc.attachment || ''
+      attachment: tc.attachment || '',
+      attachmentName: ''
     });
     setIsFormOpen(true);
   };
@@ -316,6 +339,25 @@ const ProjectTests = () => {
         projectId: project.id
       });
     }
+
+    if (formData.attachment && formData.attachment.startsWith('data:')) {
+      const fileName = formData.attachmentName || `Pièce jointe - Cas de test ${formData.testCaseId}`;
+      let format = 'PDF/Fichier';
+      if (formData.attachment.includes('image')) format = 'Image';
+      else if (formData.attachment.includes('pdf')) format = 'PDF';
+      else if (formData.attachment.includes('word') || fileName.endsWith('.docx') || fileName.endsWith('.doc')) format = 'Word';
+      else if (formData.attachment.includes('sheet') || fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) format = 'Excel';
+
+      await addDocument({
+        projectId: project.id,
+        name: fileName,
+        type: 'Pièce jointe',
+        format: format,
+        module: 'TestCase',
+        content: formData.attachment
+      });
+    }
+
     setIsFormOpen(false);
   };
 
@@ -592,14 +634,6 @@ const ProjectTests = () => {
                       {styles.icon}
                       {tc.status}
                     </span>
-                    {tc.priority && (
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${tc.priority === 'Haute' ? 'bg-rose-100 text-rose-700' :
-                          tc.priority === 'Basse' ? 'bg-emerald-100 text-emerald-700' :
-                            'bg-amber-100 text-amber-700'
-                        }`}>
-                        Priorité: {tc.priority}
-                      </span>
-                    )}
                     {tc.profile && (
                       <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
                         Profil: {tc.profile}
@@ -850,13 +884,17 @@ const ProjectTests = () => {
                     <div className="flex items-center gap-3">
                       <input
                         type="file"
-                        accept="image/*,.pdf"
+                        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
                         onChange={(e) => {
                           const file = e.target.files[0];
                           if (file) {
                             const reader = new FileReader();
                             reader.onloadend = () => {
-                              setFormData(prev => ({ ...prev, attachment: reader.result }));
+                              setFormData(prev => ({
+                                ...prev,
+                                attachment: reader.result,
+                                attachmentName: file.name
+                              }));
                             };
                             reader.readAsDataURL(file);
                           }

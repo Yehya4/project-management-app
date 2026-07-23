@@ -73,12 +73,42 @@ pool.getConnection((error, connection) => {
       if (err && err.code !== 'ER_DUP_FIELDNAME') console.error(`Erreur ${query}:`, err.message);
     });
   });
+  // Add columns for projects (deployment)
+  const projectsColumns = [
+    "ALTER TABLE projects ADD COLUMN deploymentPlanFile VARCHAR(255)",
+    "ALTER TABLE projects ADD COLUMN deploymentPlanStatus VARCHAR(50) DEFAULT 'En attente'",
+    "ALTER TABLE projects ADD COLUMN deploymentValidatedBy VARCHAR(255)",
+    "ALTER TABLE projects ADD COLUMN deploymentValidatedAt VARCHAR(255)",
+    "ALTER TABLE projects ADD COLUMN deploymentComment LONGTEXT"
+  ];
 
+  projectsColumns.forEach(query => {
+    connection.query(query, (err) => {
+      if (err && err.code !== 'ER_DUP_FIELDNAME') console.error(`Erreur ${query}:`, err.message);
+    });
+  });
   connection.query(
     "DELETE FROM demandes WHERE LOWER(contexte) LIKE '%test%' OR LOWER(description) LIKE '%test%' OR LOWER(nomDemandeur) LIKE '%test%'",
     (err) => {
       if (err) console.error("Erreur suppression tests:", err.message);
       else console.log("Demandes de test supprimées.");
+    }
+  );
+
+  // Create project_documents table
+  connection.query(
+    `CREATE TABLE IF NOT EXISTS project_documents (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      projectId INT NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      type VARCHAR(50) NOT NULL,
+      format VARCHAR(50) NOT NULL,
+      content LONGTEXT,
+      module VARCHAR(50),
+      createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    (err) => {
+      if (err) console.error("Erreur création project_documents:", err.message);
     }
   );
 

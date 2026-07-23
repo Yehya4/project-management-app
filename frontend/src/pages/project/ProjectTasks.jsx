@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { useTasks, useTeam, useAuth, useProjects } from '../../context/AppContext';
+import { useTasks, useTeam, useAuth, useProjects, useDocuments } from '../../context/AppContext';
 import {
   PlusCircle, MoreHorizontal, X, Clock, CheckCircle, CheckCheck,
   Tag, User, AlertTriangle, FlaskConical, ArrowRight, Lock, Download, Upload
@@ -30,6 +30,7 @@ const ProjectTasks = () => {
   const { tasks, addTask, updateTaskStatus, updateTask } = useTasks();
   const { getTeamByProjectId } = useTeam();
   const { updateProject } = useProjects();
+  const { addDocument } = useDocuments();
   const { user } = useAuth();
 
   const projectTasks = tasks.filter(t => t.projectId === project.id);
@@ -39,7 +40,7 @@ const ProjectTasks = () => {
   const [selectedTask, setSelectedTask] = useState(null);
   const [formData,     setFormData]     = useState({
     objet: '', description: '', priority: 'Moyenne', assigneeId: '', status: 'En cours',
-    dateDebutReel: '', dateFinReel: '', solutionResultat: '', attachment: '', reference: ''
+    dateDebutReel: '', dateFinReel: '', dateFin: '', solutionResultat: '', attachment: '', reference: ''
   });
 
   
@@ -64,6 +65,20 @@ const ProjectTasks = () => {
   const handleImportWord = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    // Convert to base64 to save as project document
+    const base64Reader = new FileReader();
+    base64Reader.onloadend = () => {
+      addDocument({
+        projectId: project.id,
+        name: `Import_${file.name}`,
+        type: 'Import',
+        format: 'Word',
+        module: 'Task',
+        content: base64Reader.result
+      });
+    };
+    base64Reader.readAsDataURL(file);
 
     const reader = new FileReader();
     reader.onload = async (event) => {
@@ -145,17 +160,69 @@ const ProjectTasks = () => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setter(prev => ({ ...prev, attachment: reader.result }));
+        setter(prev => ({
+          ...prev,
+          attachment: reader.result,
+          attachmentName: file.name
+        }));
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleAddTask = (e) => {
+  const handleAddTask = async (e) => {
     e.preventDefault();
-    addTask({ ...formData, projectId: project.id });
+    await addTask({ ...formData, projectId: project.id });
+
+    if (formData.attachment && formData.attachment.startsWith('data:')) {
+      const fileName = formData.attachmentName || `Pièce jointe - Tâche ${formData.objet || 'Nouvelle'}`;
+      let format = 'PDF/Fichier';
+      if (formData.attachment.includes('image')) format = 'Image';
+      else if (formData.attachment.includes('pdf')) format = 'PDF';
+      else if (formData.attachment.includes('word') || fileName.endsWith('.docx') || fileName.endsWith('.doc')) format = 'Word';
+      else if (formData.attachment.includes('sheet') || fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) format = 'Excel';
+
+      await addDocument({
+        projectId: project.id,
+        name: fileName,
+        type: 'Pièce jointe',
+        format: format,
+        module: 'Task',
+        content: formData.attachment
+      });
+    }
+
     setIsModalOpen(false);
-    setFormData({ objet: '', description: '', priority: 'Moyenne', assigneeId: '', status: 'En cours', dateDebutReel: '', dateFinReel: '', solutionResultat: '', attachment: '', reference: '' });
+    setFormData({ objet: '', description: '', priority: 'Moyenne', assigneeId: '', status: 'En cours', dateDebutReel: '', dateFinReel: '', dateFin: '', solutionResultat: '', attachment: '', attachmentName: '', reference: '' });
+  };
+
+  const handleTaskAttachmentUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file || !selectedTask) return;
+
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64 = reader.result;
+      const fileName = file.name || `Pièce jointe - Tâche ${selectedTask.reference || selectedTask.id}`;
+      let format = 'PDF/Fichier';
+      if (base64.includes('image')) format = 'Image';
+      else if (base64.includes('pdf')) format = 'PDF';
+      else if (base64.includes('word') || fileName.endsWith('.docx') || fileName.endsWith('.doc')) format = 'Word';
+      else if (base64.includes('sheet') || fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) format = 'Excel';
+
+      await updateTask(selectedTask.id, { attachment: base64 });
+      setSelectedTask(prev => prev ? { ...prev, attachment: base64 } : null);
+
+      await addDocument({
+        projectId: project.id,
+        name: fileName,
+        type: 'Pièce jointe',
+        format: format,
+        module: 'Task',
+        content: base64
+      });
+    };
+    reader.readAsDataURL(file);
   };
 
   const getAssigneeName = (id) => {
@@ -196,7 +263,7 @@ const ProjectTasks = () => {
           <h2 className="text-2xl font-bold text-slate-800">Tâches de développement</h2>
           <p className="text-slate-500">Gérez les tâches de {project.nom}.</p>
         </div>
-        {!isPending && canManageTasks && project.status !== 'Initiation' && (
+        {!isPending && canManageTasks && (
           <div className="flex items-center gap-2">
             <input 
               type="file" 
@@ -433,7 +500,7 @@ const ProjectTasks = () => {
 
 
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-1">Date Début Réel</label>
                     <input
@@ -450,6 +517,15 @@ const ProjectTasks = () => {
                       className="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none"
                       value={formData.dateFinReel}
                       onChange={e => setFormData({ ...formData, dateFinReel: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">Date Fin Prévue</label>
+                    <input
+                      type="date"
+                      className="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none"
+                      value={formData.dateFin}
+                      onChange={e => setFormData({ ...formData, dateFin: e.target.value })}
                     />
                   </div>
                 </div>
@@ -620,6 +696,21 @@ const ProjectTasks = () => {
                     </p>
                   )}
                 </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Date Fin Prévue</h4>
+                  {canMoveTask(selectedTask) ? (
+                    <input
+                      type="date"
+                      className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                      value={selectedTask.dateFin ? selectedTask.dateFin.split('T')[0] : ''}
+                      onChange={e => updateTask(selectedTask.id, { dateFin: e.target.value })}
+                    />
+                  ) : (
+                    <p className="text-sm font-semibold text-slate-800">
+                      {selectedTask.dateFin ? new Date(selectedTask.dateFin).toLocaleDateString('fr-FR') : '-'}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div>
@@ -640,11 +731,23 @@ const ProjectTasks = () => {
               <div>
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Pièces jointes</h4>
                 {selectedTask.attachment ? (
-                  <a href={selectedTask.attachment} download={`piece-jointe-${selectedTask.id}`} className="text-blue-600 hover:underline text-sm font-semibold inline-flex items-center gap-2">
-                    <Download size={16} /> Télécharger la pièce jointe
-                  </a>
+                  <div className="mb-2">
+                    <a href={selectedTask.attachment} download={`piece-jointe-${selectedTask.id}`} className="text-blue-600 hover:underline text-sm font-semibold inline-flex items-center gap-2">
+                      <Download size={16} /> Télécharger la pièce jointe
+                    </a>
+                  </div>
                 ) : (
-                  <p className="text-sm text-slate-400">Aucune pièce jointe.</p>
+                  <p className="text-sm text-slate-400 mb-2">Aucune pièce jointe.</p>
+                )}
+                {canMoveTask(selectedTask) && (
+                  <div className="mt-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <label className="text-xs font-semibold text-slate-600 block mb-1">Ajouter / Modifier la pièce jointe</label>
+                    <input
+                      type="file"
+                      className="w-full text-xs border border-slate-300 bg-white rounded-lg p-1.5 file:mr-2 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      onChange={handleTaskAttachmentUpload}
+                    />
+                  </div>
                 )}
               </div>
 

@@ -332,3 +332,160 @@ export const generateFilePreviewPDF = (fileName, docType, projectName) => {
 
     return doc.output('bloburl');
 };
+
+export const generateTaskPDF = (task, projectName = '', shouldSave = true) => {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const startX = 20;
+  let y = 20;
+
+  doc.setFont('times', 'bold');
+  doc.setFontSize(16);
+  doc.text(`Fiche Tâche : ${task.reference || task.id}`, startX, y);
+  y += 8;
+
+  doc.setFontSize(11);
+  doc.setFont('times', 'normal');
+  doc.text(`Projet : ${projectName}`, startX, y);
+  y += 6;
+  doc.text(`Date d'export : ${new Date().toLocaleDateString('fr-FR')}`, startX, y);
+  y += 8;
+
+  doc.setLineWidth(0.5);
+  doc.line(startX, y, 190, y);
+  y += 10;
+
+  doc.setFont('times', 'bold');
+  doc.setFontSize(12);
+  doc.text('1. Informations générales', startX, y);
+  y += 7;
+
+  doc.setFont('times', 'normal');
+  doc.setFontSize(11);
+  doc.text(`Objet : ${task.objet || task.title || 'Non spécifié'}`, startX + 5, y); y += 6;
+  doc.text(`Priorité : ${task.priority || 'Moyenne'}`, startX + 5, y); y += 6;
+  doc.text(`Statut : ${task.status || 'En cours'}`, startX + 5, y); y += 6;
+  doc.text(`Assigné à : ${task.assigneeName || task.assigneeId || 'Non assigné'}`, startX + 5, y); y += 10;
+
+  doc.setFont('times', 'bold');
+  doc.setFontSize(12);
+  doc.text('2. Planning et dates', startX, y);
+  y += 7;
+  doc.setFont('times', 'normal');
+  doc.setFontSize(11);
+  doc.text(`Date de création : ${task.createdAt ? new Date(task.createdAt).toLocaleDateString('fr-FR') : '-'}`, startX + 5, y); y += 6;
+  doc.text(`Date début réel : ${task.dateDebutReel || '-'}`, startX + 5, y); y += 6;
+  doc.text(`Date fin prévu : ${task.dateFin || '-'}`, startX + 5, y); y += 6;
+  doc.text(`Date fin réel : ${task.dateFinReel || '-'}`, startX + 5, y); y += 10;
+
+  doc.setFont('times', 'bold');
+  doc.setFontSize(12);
+  doc.text('3. Description & Critères', startX, y);
+  y += 7;
+  doc.setFont('times', 'normal');
+  doc.setFontSize(11);
+  const descLines = doc.splitTextToSize(task.description || 'Aucune description.', 165);
+  doc.text(descLines, startX + 5, y);
+  y += (descLines.length * 6) + 6;
+
+  doc.setFont('times', 'bold');
+  doc.setFontSize(12);
+  doc.text('4. Solution / Résultat', startX, y);
+  y += 7;
+  doc.setFont('times', 'normal');
+  doc.setFontSize(11);
+  const solLines = doc.splitTextToSize(task.solutionResultat || 'Aucun résultat enregistré.', 165);
+  doc.text(solLines, startX + 5, y);
+
+  if (shouldSave) {
+    doc.save(`Tache_${task.reference || task.id}.pdf`);
+  } else {
+    return doc.output('bloburl');
+  }
+};
+
+export const generateTestCasePDF = (tc, projectName = '', shouldSave = true) => {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const startX = 20;
+  let y = 20;
+
+  doc.setFont('times', 'bold');
+  doc.setFontSize(16);
+  doc.text(`Fiche Cas de Test : ${tc.testCaseId}`, startX, y);
+  y += 8;
+
+  doc.setFontSize(11);
+  doc.setFont('times', 'normal');
+  doc.text(`Projet : ${projectName}`, startX, y);
+  y += 6;
+  doc.text(`Date d'export : ${new Date().toLocaleDateString('fr-FR')}`, startX, y);
+  y += 8;
+
+  doc.setLineWidth(0.5);
+  doc.line(startX, y, 190, y);
+  y += 10;
+
+  doc.setFont('times', 'bold');
+  doc.setFontSize(12);
+  doc.text('1. Informations sur le test', startX, y);
+  y += 7;
+
+  doc.setFont('times', 'normal');
+  doc.setFontSize(11);
+  doc.text(`Nom du test : ${tc.testName || 'Non spécifié'}`, startX + 5, y); y += 6;
+  doc.text(`Statut : ${tc.status || 'En attente'}`, startX + 5, y); y += 6;
+  doc.text(`Priorité : ${tc.priority || 'Moyenne'}`, startX + 5, y); y += 6;
+  doc.text(`Profil : ${tc.profile || '-'}`, startX + 5, y); y += 6;
+  doc.text(`Rubrique : ${tc.rubrique || '-'}`, startX + 5, y); y += 6;
+  doc.text(`Affecté à : ${tc.assignedTo || 'Non assigné'}`, startX + 5, y); y += 6;
+  doc.text(`Testeur ayant exécuté : ${tc.testerName || '-'}`, startX + 5, y); y += 10;
+
+  doc.setFont('times', 'bold');
+  doc.setFontSize(12);
+  doc.text('2. Description du cas de test', startX, y);
+  y += 7;
+  doc.setFont('times', 'normal');
+  doc.setFontSize(11);
+  const descLines = doc.splitTextToSize(tc.description || 'Aucune description.', 165);
+  doc.text(descLines, startX + 5, y);
+  y += (descLines.length * 6) + 6;
+
+  doc.setFont('times', 'bold');
+  doc.setFontSize(12);
+  doc.text('3. Résultat Attendu', startX, y);
+  y += 7;
+  doc.setFont('times', 'normal');
+  doc.setFontSize(11);
+  const expLines = doc.splitTextToSize(tc.expectedResult || 'Non spécifié.', 165);
+  doc.text(expLines, startX + 5, y);
+  y += (expLines.length * 6) + 6;
+
+  doc.setFont('times', 'bold');
+  doc.setFontSize(12);
+  doc.text('4. Résultat Réel & Commentaires', startX, y);
+  y += 7;
+  doc.setFont('times', 'normal');
+  doc.setFontSize(11);
+  const actLines = doc.splitTextToSize(tc.actualResult || 'Aucun résultat réel.', 165);
+  doc.text(actLines, startX + 5, y);
+  y += (actLines.length * 6) + 6;
+
+  if (tc.comment) {
+    doc.text(`Commentaire : ${tc.comment}`, startX + 5, y);
+  }
+
+  if (shouldSave) {
+    doc.save(`TestCase_${tc.testCaseId}.pdf`);
+  } else {
+    return doc.output('bloburl');
+  }
+};

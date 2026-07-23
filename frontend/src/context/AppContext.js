@@ -40,12 +40,45 @@ export const AuthProvider = ({ children }) => {
 
 
 
+
+const SocketContext = createContext();
+export const useSocket = () => useContext(SocketContext);
+
+export const SocketProvider = ({ children }) => {
+  const [socket, setSocket] = useState(null);
+  const { token, user } = useAuth();
+
+  useEffect(() => {
+    if (token) {
+      const newSocket = io('http://localhost:5000', { auth: { token } });
+      setSocket(newSocket);
+
+      if (user) {
+        newSocket.emit('register_user', {
+          userId: user.id,
+          role: user.role,
+          fullName: `${user.prenom || ''} ${user.nom || ''}`.trim()
+        });
+      }
+
+      return () => newSocket.close();
+    }
+  }, [token, user]);
+
+  return (
+    <SocketContext.Provider value={{ socket }}>
+      {children}
+    </SocketContext.Provider>
+  );
+};
+
 const UserContext = createContext();
 export const useUser = () => useContext(UserContext);
 
 export const UserProvider = ({ children }) => {
   const [users, setUsers] = useState([]);
   const { token } = useAuth();
+  const { socket } = useSocket();
 
   const API_URL = 'http://localhost:5000/api/users';
 
@@ -172,6 +205,7 @@ export const ConfigProvider = ({ children }) => {
   const [config, setConfig] = useState(DEFAULT_CONFIG);
   const [archivedConfig, setArchivedConfig] = useState(DEFAULT_CONFIG);
   const { token } = useAuth();
+  const { socket } = useSocket();
 
   const API_URL = 'http://localhost:5000/api/config';
 
@@ -378,6 +412,7 @@ export const useCharter = () => useContext(CharterContext);
 export const CharterProvider = ({ children }) => {
   const [charters, setCharters] = useState([]);
   const { token } = useAuth();
+  const { socket } = useSocket();
 
   const API_URL = 'http://localhost:5000/api/charters';
 
@@ -460,6 +495,7 @@ export const useProjects = () => useContext(ProjectContext);
 export const ProjectProvider = ({ children }) => {
   const [projects, setProjects] = useState([]);
   const { token } = useAuth();
+  const { socket } = useSocket();
 
   const API_URL = 'http://localhost:5000/api/projects';
 
@@ -471,13 +507,17 @@ export const ProjectProvider = ({ children }) => {
   useEffect(() => {
     if (token) {
       fetchProjects();
-      const socket = io('http://localhost:5000', { auth: { token } });
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (socket) {
       socket.on('project_updated', (updatedProject) => {
         setProjects(prev => prev.map(p => p.id === updatedProject.id ? { ...p, ...updatedProject } : p));
       });
-      return () => socket.close();
+      return () => socket.off('project_updated');
     }
-  }, [token]);
+  }, [socket]);
 
   const fetchProjects = async () => {
     try {
@@ -570,8 +610,8 @@ export const useNotifications = () => useContext(NotificationContext);
 
 export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
-  const [socket, setSocket] = useState(null);
-  const { user, token } = useAuth();
+  const { token } = useAuth();
+  const { socket } = useSocket();
 
   const API_URL = 'http://localhost:5000/api/notifications';
 
@@ -607,25 +647,19 @@ export const NotificationProvider = ({ children }) => {
   useEffect(() => {
     if (token) {
       fetchNotifications();
-      const newSocket = io('http://localhost:5000', { auth: { token } });
-      setSocket(newSocket);
+    }
+  }, [token]);
 
-      if (user) {
-        newSocket.emit('register_user', {
-          userId: user.id,
-          role: user.role,
-          fullName: `${user.prenom || ''} ${user.nom || ''}`.trim()
-        });
-      }
-
-      newSocket.on('new_notification', (data) => {
+  useEffect(() => {
+    if (socket) {
+      const handleNewNotification = (data) => {
         setNotifications(prev => [data, ...prev]);
         playNotificationSound();
-      });
-
-      return () => newSocket.close();
+      };
+      socket.on('new_notification', handleNewNotification);
+      return () => socket.off('new_notification', handleNewNotification);
     }
-  }, [token, user]);
+  }, [socket]);
 
   const fetchNotifications = async () => {
     try {
@@ -677,6 +711,7 @@ export const useTasks = () => useContext(TaskContext);
 export const TaskProvider = ({ children }) => {
   const [tasks, setTasks] = useState([]);
   const { token } = useAuth();
+  const { socket } = useSocket();
 
   const API_URL = 'http://localhost:5000/api/tasks';
 
@@ -688,22 +723,35 @@ export const TaskProvider = ({ children }) => {
   useEffect(() => {
     if (token) {
       fetchTasks();
-      const socket = io('http://localhost:5000', { auth: { token } });
-      socket.on('task_updated', (updatedTask) => {
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (socket) {
+      const handleTaskUpdated = (updatedTask) => {
         setTasks(prev => prev.map(t => t.id === updatedTask.id ? { ...t, ...updatedTask } : t));
-      });
-      socket.on('task_created', (newTask) => {
+      };
+      const handleTaskCreated = (newTask) => {
         setTasks(prev => {
           if (prev.some(t => t.id === newTask.id)) return prev;
           return [newTask, ...prev];
         });
-      });
-      socket.on('task_deleted', ({ id }) => {
+      };
+      const handleTaskDeleted = ({ id }) => {
         setTasks(prev => prev.filter(t => t.id !== id));
-      });
-      return () => socket.close();
+      };
+
+      socket.on('task_updated', handleTaskUpdated);
+      socket.on('task_created', handleTaskCreated);
+      socket.on('task_deleted', handleTaskDeleted);
+
+      return () => {
+        socket.off('task_updated', handleTaskUpdated);
+        socket.off('task_created', handleTaskCreated);
+        socket.off('task_deleted', handleTaskDeleted);
+      };
     }
-  }, [token]);
+  }, [socket]);
 
   const fetchTasks = async () => {
     try {
@@ -787,6 +835,7 @@ export const useTeam = () => useContext(TeamContext);
 export const TeamProvider = ({ children }) => {
   const [teams, setTeams] = useState([]); 
   const { token } = useAuth();
+  const { socket } = useSocket();
   const { users } = useUser();
   const API_URL = 'http://localhost:5000/api/projects';
 
@@ -878,8 +927,8 @@ export const useMessages = () => useContext(MessageContext);
 
 export const MessageProvider = ({ children }) => {
   const [messages, setMessages] = useState([]);
-  const [socket, setSocket] = useState(null);
   const { token, user } = useAuth();
+  const { socket } = useSocket();
   
   const API_URL = 'http://localhost:5000/api/messages';
 
@@ -891,17 +940,18 @@ export const MessageProvider = ({ children }) => {
   useEffect(() => {
     if (token) {
       fetchMessages();
-      
-      const newSocket = io('http://localhost:5000', { auth: { token } });
-      setSocket(newSocket);
-
-      newSocket.on('new_message', (message) => {
-        setMessages(prev => [...prev, message]);
-      });
-
-      return () => newSocket.close();
     }
   }, [token]);
+
+  useEffect(() => {
+    if (socket) {
+      const handleNewMessage = (message) => {
+        setMessages(prev => [...prev, message]);
+      };
+      socket.on('new_message', handleNewMessage);
+      return () => socket.off('new_message', handleNewMessage);
+    }
+  }, [socket]);
 
   const fetchMessages = async () => {
     try {
@@ -945,6 +995,7 @@ export const useTestCases = () => useContext(TestCaseContext);
 export const TestCaseProvider = ({ children }) => {
   const [testCases, setTestCases] = useState([]);
   const { token } = useAuth();
+  const { socket } = useSocket();
 
   const API_URL = 'http://localhost:5000/api';
 
@@ -954,23 +1005,31 @@ export const TestCaseProvider = ({ children }) => {
   });
 
   useEffect(() => {
-    if (token) {
-      const socketConnection = io('http://localhost:5000', { auth: { token } });
-      socketConnection.on('test_case_created', (newTestCase) => {
+    if (socket) {
+      const handleTestCaseCreated = (newTestCase) => {
         setTestCases(prev => {
           if (prev.some(t => t.id === newTestCase.id)) return prev;
           return [newTestCase, ...prev];
         });
-      });
-      socketConnection.on('test_case_updated', (updatedTestCase) => {
+      };
+      const handleTestCaseUpdated = (updatedTestCase) => {
         setTestCases(prev => prev.map(t => t.id === updatedTestCase.id ? updatedTestCase : t));
-      });
-      socketConnection.on('test_case_deleted', ({ id }) => {
+      };
+      const handleTestCaseDeleted = ({ id }) => {
         setTestCases(prev => prev.filter(t => t.id !== id));
-      });
-      return () => socketConnection.close();
+      };
+
+      socket.on('test_case_created', handleTestCaseCreated);
+      socket.on('test_case_updated', handleTestCaseUpdated);
+      socket.on('test_case_deleted', handleTestCaseDeleted);
+
+      return () => {
+        socket.off('test_case_created', handleTestCaseCreated);
+        socket.off('test_case_updated', handleTestCaseUpdated);
+        socket.off('test_case_deleted', handleTestCaseDeleted);
+      };
     }
-  }, [token]);
+  }, [socket]);
 
   const fetchTestCases = async (projectId) => {
     try {
@@ -1060,9 +1119,101 @@ export const TestCaseProvider = ({ children }) => {
 };
 
 
+const DocumentContext = createContext();
+export const useDocuments = () => useContext(DocumentContext);
+
+export const DocumentProvider = ({ children }) => {
+  const [documents, setDocuments] = useState([]);
+  const { token } = useAuth();
+  const { socket } = useSocket();
+
+  const API_URL = 'http://localhost:5000/api/documents';
+
+  const getHeaders = () => ({
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  });
+
+  useEffect(() => {
+    if (socket) {
+      const handleDocumentCreated = (newDoc) => {
+        setDocuments(prev => {
+          if (prev.some(d => d.id === newDoc.id)) return prev;
+          return [newDoc, ...prev];
+        });
+      };
+      const handleDocumentDeleted = ({ id }) => {
+        setDocuments(prev => prev.filter(d => d.id !== id));
+      };
+
+      socket.on('document_created', handleDocumentCreated);
+      socket.on('document_deleted', handleDocumentDeleted);
+
+      return () => {
+        socket.off('document_created', handleDocumentCreated);
+        socket.off('document_deleted', handleDocumentDeleted);
+      };
+    }
+  }, [socket]);
+
+  const fetchDocuments = async (projectId) => {
+    try {
+      const res = await fetch(`${API_URL}/${projectId}`, { headers: getHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setDocuments(data);
+      }
+    } catch (err) {
+      console.error('Erreur fetch documents', err);
+    }
+  };
+
+  const addDocument = async (docData) => {
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(docData)
+      });
+      if (res.ok) {
+        const newDoc = await res.json();
+        setDocuments(prev => {
+          if (prev.some(d => d.id === newDoc.id)) return prev;
+          return [newDoc, ...prev];
+        });
+        return newDoc;
+      }
+    } catch (err) {
+      console.error('Erreur ajout document', err);
+    }
+  };
+
+  const deleteDocument = async (id) => {
+    try {
+      const res = await fetch(`${API_URL}/${id}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+      });
+      if (res.ok) {
+        setDocuments(prev => prev.filter(d => d.id !== id));
+      }
+    } catch (err) {
+      console.error('Erreur suppression document', err);
+    }
+  };
+
+  return (
+    <DocumentContext.Provider value={{ documents, fetchDocuments, addDocument, deleteDocument }}>
+      {children}
+    </DocumentContext.Provider>
+  );
+};
+
+
 export const AppProvider = ({ children }) => {
   return (
     <AuthProvider>
+      <SocketProvider>
       <UserProvider>
         <ConfigProvider>
           <NotificationProvider>
@@ -1073,7 +1224,9 @@ export const AppProvider = ({ children }) => {
                     <TeamProvider>
                       <TestCaseProvider>
                         <MessageProvider>
-                          {children}
+                          <DocumentProvider>
+                            {children}
+                          </DocumentProvider>
                         </MessageProvider>
                       </TestCaseProvider>
                     </TeamProvider>
@@ -1084,6 +1237,7 @@ export const AppProvider = ({ children }) => {
           </NotificationProvider>
         </ConfigProvider>
       </UserProvider>
+      </SocketProvider>
     </AuthProvider>
   );
 };

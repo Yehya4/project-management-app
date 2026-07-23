@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Send, ArrowLeft, Save, X, Calendar, User, Briefcase, FileText, CheckCircle, Clock, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Popup from './Popup';
-import { useConfig } from '../context/AppContext';
-import { useAuth } from '../context/AppContext';
+import { useConfig, useAuth, useUser } from '../context/AppContext';
+import { formatUserDisplayName } from '../utils/userUtils';
 import mammoth from 'mammoth';
 
 
@@ -378,6 +378,7 @@ export const FormulaireDemandeSI = ({ onSubmit, onSave, initialData }) => {
 
 
 export const DemandeDetailsModal = ({ isOpen, onClose, demande }) => {
+  const { users } = useUser();
   if (!isOpen || !demande) return null;
 
   const renderArray = (arr) => {
@@ -417,11 +418,13 @@ export const DemandeDetailsModal = ({ isOpen, onClose, demande }) => {
                     ? 'bg-emerald-100 text-emerald-700'
                     : demande.statut === 'Refusée'
                       ? 'bg-rose-100 text-rose-700'
-                      : demande.statut === 'Brouillon'
-                        ? 'bg-slate-100 text-slate-700'
-                        : 'bg-amber-100 text-amber-700'
+                      : (demande.statut === 'En cours' || demande.statut === 'En Développement')
+                        ? 'bg-blue-100 text-blue-700'
+                        : demande.statut === 'Brouillon'
+                          ? 'bg-slate-100 text-slate-700'
+                          : 'bg-amber-100 text-amber-700'
                 }`}>
-                {demande.statut}
+                {demande.statut === 'En Développement' ? 'En cours' : demande.statut}
               </span>
               <div className="flex flex-col gap-1">
                 <span className="text-sm text-slate-500 flex items-center gap-1">
@@ -450,7 +453,7 @@ export const DemandeDetailsModal = ({ isOpen, onClose, demande }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-5 rounded-xl border border-slate-100">
             <div>
               <p className="text-sm font-semibold text-slate-500 mb-1 flex items-center gap-1"><User size={14} /> Demandeur</p>
-              <p className="text-slate-800 font-medium">{demande.nomDemandeur}</p>
+              <p className="text-slate-800 font-medium">{formatUserDisplayName(demande.nomDemandeur, 'User', users)}</p>
             </div>
             <div>
               <p className="text-sm font-semibold text-slate-500 mb-1 flex items-center gap-1"><Briefcase size={14} /> Fonction</p>

@@ -26,7 +26,9 @@ import ProjectCharterView from './pages/project/ProjectCharterView';
 import ProjectMessages from './pages/project/ProjectMessages';
 import ProjectCalendar from './pages/project/ProjectCalendar';
 import ProjectTests from './pages/project/ProjectTests';
+import ProjectDeployment from './pages/project/ProjectDeployment';
 import UsersPage from './pages/UsersPage';
+import SettingsPage from './pages/SettingsPage';
 import Messages from './pages/Messages';
 import './App.css';
 
@@ -98,10 +100,12 @@ function App() {
                     <Route path="documents" element={<ProjectDocuments />} />
                     <Route path="backlog" element={<ProjectBacklog />} />
                     <Route path="tests" element={<ProjectTests />} />
+                    <Route path="deployment" element={<ProjectDeployment />} />
                     <Route path="role" element={<ProjectRole />} />
                     <Route path="project-info" element={<ProjectInfo />} />
                   </Route>
                   <Route path="/users" element={<UsersPage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/messages" element={<Messages />} />
                   <Route path="/" element={<DashboardRouter />} />
                   <Route path="*" element={<Navigate to="/" replace />} />

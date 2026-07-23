@@ -44,6 +44,22 @@ class AuthService {
             });
         });
     }
+
+    verifyPassword(userId, password) {
+        return new Promise((resolve, reject) => {
+            const query = 'SELECT password FROM users WHERE id = ? AND archived = 0';
+            db.query(query, [userId], async (err, results) => {
+                if (err) return reject(err);
+                if (results.length === 0) return resolve(false);
+
+                const user = results[0];
+                if (!user.password) return resolve(false);
+
+                const isMatch = await bcrypt.compare(password, user.password);
+                resolve(isMatch);
+            });
+        });
+    }
 }
 
 module.exports = new AuthService();

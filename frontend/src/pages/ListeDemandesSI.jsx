@@ -1,20 +1,19 @@
 import React, { useState } from 'react';
 import Layout from '../components/Layout';
-import { useAuth } from '../context/AppContext';
-import { useDemandes } from '../context/AppContext';
-import { useCharter } from '../context/AppContext';
+import { useAuth, useUser, useDemandes, useProjects, useCharter } from '../context/AppContext';
 import { Link } from 'react-router-dom';
 import { CheckCircle, Clock, AlertCircle, PlusCircle, FileText, Check, X, Send, Eye, Edit2, Trash2, Download } from 'lucide-react';
-import { DemandeDetailsModal, InfosComplementairesModal } from '../components/DemandeSI';
+import { DemandeDetailsModal } from '../components/DemandeSI';
 import Popup from '../components/Popup';
 import { generateDemandePDF } from '../utils/pdfGenerator';
-import mammoth from 'mammoth';
+import { formatUserDisplayName } from '../utils/userUtils';
 
 const ListeDemandesSI = () => {
   const { user } = useAuth();
+  const { users } = useUser();
   const { demandes, addDemande, updateDemandeStatus, deleteDemande, updateDemande } = useDemandes();
+  const { projects } = useProjects();
   const [selectedDemande, setSelectedDemande] = useState(null);
-  const [selectedDemandeForInfo, setSelectedDemandeForInfo] = useState(null);
   const [popup, setPopup] = useState({ isOpen: false, title: '', message: '', type: 'success' });
 
   const handleExportPDF = async (demande) => {
@@ -80,7 +79,7 @@ const ListeDemandesSI = () => {
       );
 
 
-  const enCoursDemandes   = filteredDemandes.filter(d => d.statut && d.statut.includes('En')).length;
+  const enCoursDemandes   = filteredDemandes.filter(d => d.statut && (d.statut === 'En cours' || d.statut === 'En Développement' || d.statut === 'En attente')).length;
   const valideeDemandes   = filteredDemandes.filter(d => d.statut === 'Acceptée' || d.statut === 'Validée').length;
   const refuseeDemandes   = filteredDemandes.filter(d => d.statut === 'Refusée').length;
   const totalDemandes     = filteredDemandes.length;
@@ -176,46 +175,49 @@ const ListeDemandesSI = () => {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[700px]">
-              <thead className="bg-white">
-                <tr className="border-b border-slate-200">
-                  <th className="px-6 py-4 font-semibold text-slate-600 text-sm">Référence</th>
-                  {isReviewer && <th className="px-6 py-4 font-semibold text-slate-600 text-sm">Demandeur</th>}
-                  <th className="px-6 py-4 font-semibold text-slate-600 text-sm">Fonction Profil</th>
-                  <th className="px-6 py-4 font-semibold text-slate-600 text-sm">Domaines</th>
-                  <th className="px-6 py-4 font-semibold text-slate-600 text-sm">Date Création</th>
-                  <th className="px-6 py-4 font-semibold text-slate-600 text-sm">Date Soumission</th>
-                  <th className="px-6 py-4 font-semibold text-slate-600 text-sm">Statut</th>
-                  <th className="px-6 py-4 font-semibold text-slate-600 text-sm text-right">Actions</th>
+              <thead className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
+                <tr>
+                  <th className="px-6 py-4">Référence</th>
+                  <th className="px-6 py-4">Titre / Demandeur</th>
+                  <th className="px-6 py-4">Domaines / Service</th>
+                  <th className="px-6 py-4">Statut</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-100 text-xs">
                 {filteredDemandes.length > 0 ? (
-                  filteredDemandes.map(demande => (
-                    <tr key={demande.id} className="border-b border-slate-100 hover:bg-slate-50">
-                      <td className="px-6 py-4 text-sm font-medium text-slate-800">{demande.id}</td>
-                      {isReviewer && (
-                        <td className="px-6 py-4 text-sm text-slate-500">
-                          {demande.nomDemandeur}
+                  filteredDemandes.map(demande => {
+                    const demandeurFormatted = formatUserDisplayName(demande.nomDemandeur, 'User', users);
+                    return (
+                      <tr key={demande.id} className="hover:bg-slate-50/80 transition-colors group">
+                        <td className="px-6 py-4 font-mono font-bold text-slate-800">{demande.id}</td>
+                        <td className="px-6 py-4">
+                          <div>
+                            <p className="font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{demande.titre || `Demande ${demande.id}`}</p>
+                            <p className="text-[11px] text-slate-400">Demandeur : {demandeurFormatted}</p>
+                          </div>
                         </td>
-                      )}
-                      <td className="px-6 py-4 text-sm text-slate-500">{demande.fonction || '-'}</td>
-                      {}
-                      <td className="px-6 py-4 text-sm text-slate-500">{safeDisplayArray(demande.domaines)}</td>
-                      <td className="px-6 py-4 text-sm text-slate-500">{demande.dateCreation}</td>
-                      <td className="px-6 py-4 text-sm text-slate-500">{demande.dateSoumission || (demande.statut !== 'Brouillon' ? demande.dateCreation : '-')}</td>
-                      <td className="px-6 py-4 text-sm">
-                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                            demande.statut === 'Acceptée'
-                              ? 'bg-emerald-100 text-emerald-700'
-                              : demande.statut === 'Refusée'
-                                ? 'bg-rose-100 text-rose-700'
-                                : demande.statut === 'Brouillon'
-                                  ? 'bg-slate-100 text-slate-600'
-                                  : 'bg-amber-100 text-amber-700'
-                          }`}>
-                          {demande.statut}
-                        </span>
-                      </td>
+                        <td className="px-6 py-4">
+                          <div>
+                            <p className="font-semibold text-slate-700 text-xs">{safeDisplayArray(demande.domaines)}</p>
+                            <p className="text-[11px] text-slate-400">{demande.service || '-'}</p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
+                              demande.statut === 'Acceptée'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/70 shadow-xs'
+                                : demande.statut === 'Refusée'
+                                  ? 'bg-rose-50 text-rose-700 border border-rose-200/70 shadow-xs'
+                                  : (demande.statut === 'En cours' || demande.statut === 'En Développement')
+                                    ? 'bg-blue-50 text-blue-700 border border-blue-200/70 shadow-xs'
+                                    : demande.statut === 'Brouillon'
+                                      ? 'bg-slate-100 text-slate-600 border border-slate-200 shadow-xs'
+                                      : 'bg-amber-50 text-amber-700 border border-amber-200/70 shadow-xs'
+                            }`}>
+                            {demande.statut === 'En Développement' ? 'En cours' : demande.statut}
+                          </span>
+                        </td>
                       <td className="px-6 py-4 text-sm text-right">
                         <div className="flex items-center justify-end gap-2">
                           {isReviewer ? (
@@ -245,24 +247,28 @@ const ListeDemandesSI = () => {
                                   </button>
                                 </>
                               )}
-                              {demande.statut !== 'Brouillon' && (
-                                <>
-                                  <button
-                                    onClick={() => handleExportPDF(demande)}
-                                    className="flex items-center gap-1 px-2 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors shadow-sm border border-indigo-100 text-xs font-semibold"
-                                    title="Exporter la demande en PDF"
-                                  >
-                                    <Download size={14} /> PDF
-                                  </button>
-                                  <button
-                                    onClick={() => setSelectedDemandeForInfo(demande)}
-                                    className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors shadow-sm border border-blue-100 ml-1"
-                                    title="Infos Complémentaires"
-                                  >
-                                    <Edit2 size={16} />
-                                  </button>
-                                </>
-                              )}
+                              {demande.statut !== 'Brouillon' && (() => {
+                                const linkedProj = projects.find(p => p.demandeId === demande.id || p.id === demande.id);
+                                const targetUrl = linkedProj ? `/projects/${linkedProj.id}/charter` : `/project-charter?demandeId=${demande.id}`;
+                                return (
+                                  <>
+                                    <button
+                                      onClick={() => handleExportPDF(demande)}
+                                      className="flex items-center gap-1 px-2 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors shadow-sm border border-indigo-100 text-xs font-semibold"
+                                      title="Exporter la demande en PDF"
+                                    >
+                                      <Download size={14} /> PDF
+                                    </button>
+                                    <Link
+                                      to={targetUrl}
+                                      className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors shadow-sm border border-blue-100 ml-1 inline-flex items-center justify-center"
+                                      title="Fiche de Projet / Informations complémentaires"
+                                    >
+                                      <Edit2 size={16} />
+                                    </Link>
+                                  </>
+                                );
+                              })()}
                               {demande.statut !== 'En attente' && demande.statut !== 'Brouillon' && (
                                 <span className="text-slate-400 text-xs italic ml-2">Traité</span>
                               )}
@@ -318,7 +324,8 @@ const ListeDemandesSI = () => {
                         </div>
                       </td>
                     </tr>
-                  ))
+                    );
+                  })
                 ) : (
                   <tr>
                     <td colSpan={isReviewer ? "8" : "7"} className="py-12 text-center text-slate-500">
@@ -338,12 +345,7 @@ const ListeDemandesSI = () => {
         demande={selectedDemande} 
       />
 
-      <InfosComplementairesModal
-        isOpen={!!selectedDemandeForInfo}
-        onClose={() => setSelectedDemandeForInfo(null)}
-        demande={selectedDemandeForInfo}
-        onSave={handleSaveInfosComplementaires}
-      />
+
       
       <Popup
         isOpen={popup.isOpen}

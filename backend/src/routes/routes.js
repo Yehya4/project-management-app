@@ -13,6 +13,7 @@ const taskController = require('../controllers/taskController');
 const eventController = require('../controllers/eventController');
 const testCaseController = require('../controllers/testCaseController');
 const notificationController = require('../controllers/notificationController');
+const documentController = require('../controllers/documentController');
 
 const authenticateToken = require('../middleware/authMiddleware');
 const requireAdmin = require('../middleware/roleMiddleware');
@@ -60,6 +61,10 @@ router.delete('/events/:id', eventController.deleteEvent);
 router.get('/charters/', charterController.getAll);
 router.post('/charters/', charterController.save);
 router.delete('/charters/:demandeId', charterController.delete);
+
+router.get('/documents/:projectId', documentController.getByProjectId);
+router.post('/documents/', documentController.create);
+router.delete('/documents/:id', documentController.delete);
 
 router.get('/messages/', messageController.getAll);
 

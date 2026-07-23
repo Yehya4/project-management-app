@@ -1,30 +1,62 @@
 import React, { useState } from 'react';
-import { useDemandes, useProjects, useAuth, useTeam, useCharter } from '../context/AppContext';
+import { useDemandes, useProjects, useAuth, useTeam, useCharter, useUser } from '../context/AppContext';
 import Layout from '../components/Layout';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { FolderKanban, Activity, Clock, LayoutDashboard, FileText, LayoutGrid, List } from 'lucide-react';
+import { formatUserDisplayName } from '../utils/userUtils';
 
 const Projects = () => {
+  const navigate = useNavigate();
   const { demandes } = useDemandes();
   const { projects } = useProjects();
   const { getCharterByDemandeId } = useCharter();
   const { user } = useAuth();
+  const { users } = useUser();
   const { teams } = useTeam();
   const [viewMode, setViewMode] = useState('cards');
   
   
   
+  const parseArray = (val) => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val;
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      if (!trimmed || trimmed === '-') return [];
+      if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed)) return parsed;
+        } catch (e) {}
+      }
+      return trimmed.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    return [];
+  };
+
+  const formatDate = (val) => {
+    if (!val || val === '-') return '-';
+    if (typeof val === 'string' && val.includes('/')) return val;
+    try {
+      const d = new Date(val);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString('fr-FR');
+      }
+    } catch (e) {}
+    return val;
+  };
+
   const activeDemandeIds = projects.map(p => p.demandeId).filter(Boolean);
   
-  
-  
   const pendingDemandes = demandes.filter(d => 
-    d.statut === 'Acceptée' && !activeDemandeIds.includes(d.id)
+    ['Acceptée', 'En cours', 'En Développement'].includes(d.statut) && !activeDemandeIds.includes(d.id)
   );
 
   const unifiedProjects = [
     ...pendingDemandes.map(d => {
       const charter = getCharterByDemandeId(d.id);
+      const catList = parseArray(charter?.categoriesProjet || d.categoriesProjet);
+      const domList = parseArray(d.domaines || charter?.domaines);
       return {
         id: d.id,
         demandeId: d.id,
@@ -33,26 +65,31 @@ const Projects = () => {
         status: 'En Préparation',
         progress: 0,
         isPending: true,
-        nomDemandeur: d.nomDemandeur,
-        domaines: d.domaines,
-        dateCreation: d.dateCreation,
-        dateFin: charter?.dateFin ? new Date(charter.dateFin).toLocaleDateString('fr-FR') : '-',
-        categoriesProjet: charter?.categoriesProjet ? charter.categoriesProjet.split(',').map(s=>s.trim()) : (d.categoriesProjet || []),
+        nomDemandeur: d.nomDemandeur || charter?.nomDemandeur || '-',
+        domaines: domList,
+        dateCreation: formatDate(d.dateCreation),
+        dateFin: formatDate(charter?.dateFin || d.dateFin || d.delaiSouhaite),
+        categoriesProjet: catList,
         service: charter?.service || d.service || '-'
       };
     }),
     ...projects.map(p => {
-      const d = demandes.find(dem => dem.id === p.demandeId);
-      const charter = getCharterByDemandeId(p.demandeId);
+      const targetDemandeId = p.demandeId || p.id;
+      const d = demandes.find(dem => dem.id === targetDemandeId || dem.id === p.demandeId || dem.id === p.id);
+      const charter = getCharterByDemandeId(targetDemandeId) || getCharterByDemandeId(p.demandeId) || getCharterByDemandeId(p.id);
+
+      const catList = parseArray(charter?.categoriesProjet || d?.categoriesProjet || p.categoriesProjet);
+      const domList = parseArray(d?.domaines || charter?.domaines || p.domaines);
+
       return {
         ...p,
         isPending: false,
-        nomDemandeur: d?.nomDemandeur || '-',
-        domaines: d?.domaines || [],
-        dateCreation: d?.dateCreation || '-',
-        dateFin: charter?.dateFin ? new Date(charter.dateFin).toLocaleDateString('fr-FR') : '-',
-        categoriesProjet: charter?.categoriesProjet ? charter.categoriesProjet.split(',').map(s=>s.trim()) : (d?.categoriesProjet || []),
-        service: charter?.service || d?.service || '-'
+        nomDemandeur: d?.nomDemandeur || charter?.nomDemandeur || p.nomDemandeur || '-',
+        domaines: domList,
+        dateCreation: formatDate(p.dateCreation || d?.dateCreation),
+        dateFin: formatDate(charter?.dateFin || d?.dateFin || d?.delaiSouhaite || p.dateFin),
+        categoriesProjet: catList,
+        service: charter?.service || d?.service || p.service || '-'
       };
     })
   ];
@@ -115,71 +152,105 @@ const Projects = () => {
                 <CardWrapper 
                   key={project.id} 
                   {...wrapperProps}
-                  className={`flex flex-col p-6 border border-slate-200 rounded-3xl bg-white relative overflow-hidden transition-all duration-300 ${!isRestrictedUser ? 'hover:border-blue-500 hover:shadow-xl group cursor-pointer' : 'shadow-sm'}`}
+                  className={`flex flex-col p-5 border border-slate-200/80 rounded-3xl bg-white relative overflow-hidden transition-all duration-300 ${!isRestrictedUser ? 'hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 group cursor-pointer' : 'shadow-sm'}`}
                 >
-                  {project.isPending && (
-                    <div className="absolute top-0 right-0 bg-amber-100 text-amber-700 text-[10px] font-bold px-3 py-1 rounded-bl-xl z-10 flex items-center gap-1">
-                      <Clock size={10} /> EN PRÉPARATION
+                  {/* Header: Icon + Reference & Demandeur + Status */}
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`p-3 rounded-2xl transition-colors shrink-0 ${project.isPending ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'} ${!isRestrictedUser && (project.isPending ? 'group-hover:bg-amber-600 group-hover:text-white' : 'group-hover:bg-blue-600 group-hover:text-white')}`}>
+                        <FolderKanban size={22} strokeWidth={1.75} />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-mono font-bold text-xs text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/70 shrink-0 w-fit">
+                          {project.id}
+                        </span>
+                        <span className="text-xs text-slate-500 truncate font-medium mt-1" title={formatUserDisplayName(project.nomDemandeur, 'User', users)}>
+                          Par <strong className="text-slate-700 font-semibold">{formatUserDisplayName(project.nomDemandeur, 'User', users)}</strong>
+                        </span>
+                      </div>
                     </div>
-                  )}
-                  
-                  <div className="flex justify-between items-start mb-6">
-                    <div className={`p-4 rounded-2xl transition-colors ${project.isPending ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'} ${!isRestrictedUser && (project.isPending ? 'group-hover:bg-amber-600 group-hover:text-white' : 'group-hover:bg-blue-600 group-hover:text-white')}`}>
-                      <FolderKanban size={32} strokeWidth={1.5} />
-                    </div>
-                    {isRestrictedUser && !project.isPending && (
-                      <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-700">
+
+                    {project.isPending ? (
+                      <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-1 rounded-full shrink-0 flex items-center gap-1">
+                        <Clock size={10} /> PRÉPARATION
+                      </span>
+                    ) : (
+                      <span className="bg-indigo-50 text-indigo-700 border border-indigo-100 text-[10px] font-bold px-2 py-1 rounded-full shrink-0">
                         {project.status}
                       </span>
                     )}
                   </div>
                 
-                <div className="mb-6 flex-1">
-                  <h3 className={`font-bold text-slate-800 text-xl line-clamp-2 leading-tight mb-3 transition-colors ${!isRestrictedUser ? 'group-hover:text-blue-600' : ''}`}>
+                  {/* Project Name */}
+                  <h3 className={`font-bold text-slate-800 text-base line-clamp-2 leading-snug mb-3 transition-colors ${!isRestrictedUser ? 'group-hover:text-blue-600' : ''}`} title={project.nom}>
                     {project.nom}
                   </h3>
-                  <div className="grid grid-cols-2 gap-y-2 text-xs text-slate-600 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                    <div><span className="text-slate-400 block mb-0.5">Référence</span><span className="font-semibold">{project.id}</span></div>
-                    <div><span className="text-slate-400 block mb-0.5">Date Création</span><span className="font-semibold">{project.dateCreation}</span></div>
-                    <div><span className="text-slate-400 block mb-0.5">Demandeur</span><span className="font-semibold truncate block" title={project.nomDemandeur}>{project.nomDemandeur}</span></div>
-                    <div><span className="text-slate-400 block mb-0.5">Service</span><span className="font-semibold truncate block" title={project.service}>{project.service}</span></div>
-                    <div><span className="text-slate-400 block mb-0.5">Date Fin Prévue</span><span className="font-semibold">{project.dateFin}</span></div>
-                    <div><span className="text-slate-400 block mb-0.5">Catégories</span><span className="font-semibold truncate block" title={project.categoriesProjet?.join(', ') || '-'}>{project.categoriesProjet?.join(', ') || '-'}</span></div>
-                    <div className="col-span-2"><span className="text-slate-400 block mb-0.5">Domaines</span><span className="font-semibold">{project.domaines?.join(', ') || '-'}</span></div>
-                  </div>
-                  <p className="text-sm text-slate-500 line-clamp-2 leading-relaxed">
-                    {project.description}
-                  </p>
-                </div>
 
-                <div className="mt-auto pt-4 border-t border-slate-100">
-                  <div className="flex justify-between text-xs font-bold mb-2">
-                    <span className="text-slate-500 flex items-center gap-1">
-                      <Activity size={14} /> Progression
-                    </span>
-                    <span className={project.progress > 0 ? 'text-blue-600' : 'text-slate-400'}>
-                      {project.progress}%
-                    </span>
+                  {/* Details Container */}
+                  <div className="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-100 text-xs space-y-2 mb-4 flex-1">
+                    <div className="grid grid-cols-2 gap-2 pb-2 border-b border-slate-200/50">
+                      <div>
+                        <span className="text-slate-400 block text-[11px] mb-0.5">Chef de Projet</span>
+                        <span className="font-semibold text-slate-700 truncate block" title={formatUserDisplayName(project.chefProjet, 'PM', users)}>
+                          {formatUserDisplayName(project.chefProjet, 'PM', users)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[11px] mb-0.5">Service</span>
+                        <span className="font-semibold text-slate-700 truncate block" title={project.service}>{project.service}</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <span className="text-slate-400 block text-[11px] mb-0.5">Date Création</span>
+                        <span className="font-medium text-slate-600 block">{project.dateCreation}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[11px] mb-0.5">Catégories</span>
+                        <span className="font-semibold text-indigo-600 truncate block" title={project.categoriesProjet?.join(', ') || '-'}>
+                          {project.categoriesProjet?.join(', ') || '-'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-200/50">
+                      <span className="text-slate-400 block text-[11px] mb-0.5">Domaines</span>
+                      <span className="font-semibold text-slate-700 truncate block" title={project.domaines?.join(', ') || '-'}>
+                        {project.domaines?.join(', ') || '-'}
+                      </span>
+                    </div>
                   </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden mb-4">
-                    <div 
-                      className={`h-2 rounded-full transition-all duration-500 ${project.isPending ? 'bg-amber-400' : 'bg-blue-600'}`}
-                      style={{ width: `${project.progress}%` }}
-                    ></div>
+
+                  {/* Progress Footer */}
+                  <div className="mt-auto pt-3 border-t border-slate-100">
+                    <div className="flex justify-between items-center text-xs font-bold mb-1.5">
+                      <span className="text-slate-500 flex items-center gap-1.5 text-[11px]">
+                        <Activity size={13} className="text-blue-500" /> Progression
+                      </span>
+                      <span className={project.progress > 0 ? 'text-blue-600 font-extrabold' : 'text-slate-400'}>
+                        {project.progress}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                      <div 
+                        className={`h-2 rounded-full transition-all duration-500 ${project.isPending ? 'bg-amber-400' : 'bg-gradient-to-r from-blue-500 to-indigo-600'}`}
+                        style={{ width: `${project.progress}%` }}
+                      ></div>
+                    </div>
+                    
+                    {isRestrictedUser && (
+                      <Link
+                        to={`/project-charter?demandeId=${project.demandeId}`}
+                        className="mt-3 block w-full text-center py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold rounded-xl transition-colors border border-slate-200 text-xs flex items-center justify-center gap-1.5"
+                      >
+                        <FileText size={14} /> Voir le Project Charter
+                      </Link>
+                    )}
                   </div>
-                  
-                  {isRestrictedUser && (
-                    <Link
-                      to={`/project-charter?demandeId=${project.demandeId}`}
-                      className="block w-full text-center py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold rounded-xl transition-colors border border-slate-200 text-sm flex items-center justify-center gap-2"
-                    >
-                      <FileText size={16} /> Voir le Project Charter
-                    </Link>
-                  )}
-                </div>
-              </CardWrapper>
-            );
-          })}
+                </CardWrapper>
+              );
+            })}
             </div>
           ) : (
             <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
@@ -188,20 +259,30 @@ const Projects = () => {
                   <thead className="bg-slate-50 border-b border-slate-200">
                     <tr>
                       <th className="px-6 py-4 font-semibold text-slate-600 text-sm">Référence</th>
-                      <th className="px-6 py-4 font-semibold text-slate-600 text-sm">Projet</th>
+                      <th className="px-6 py-4 font-semibold text-slate-600 text-sm">Projet & Chef</th>
                       <th className="px-6 py-4 font-semibold text-slate-600 text-sm">Demandeur & Service</th>
                       <th className="px-6 py-4 font-semibold text-slate-600 text-sm">Domaine & Catégorie</th>
                       <th className="px-6 py-4 font-semibold text-slate-600 text-sm">Date Création</th>
                       <th className="px-6 py-4 font-semibold text-slate-600 text-sm">Statut (Stage)</th>
                       <th className="px-6 py-4 font-semibold text-slate-600 text-sm">Progression</th>
-                      <th className="px-6 py-4 font-semibold text-slate-600 text-sm text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredProjects.map(project => {
                       const isRestrictedUser = user?.role === 'User';
+                      const handleRowClick = () => {
+                        if (isRestrictedUser) {
+                          navigate(`/project-charter?demandeId=${project.demandeId}`);
+                        } else {
+                          navigate(`/projects/${project.id}/dashboard`);
+                        }
+                      };
                       return (
-                        <tr key={project.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                        <tr 
+                          key={project.id} 
+                          onClick={handleRowClick}
+                          className="border-b border-slate-100 hover:bg-blue-50/40 transition-colors cursor-pointer"
+                        >
                           <td className="px-6 py-4">
                             <span className="text-sm font-semibold text-slate-700">{project.id}</span>
                           </td>
@@ -210,15 +291,15 @@ const Projects = () => {
                               <div className={`p-2 rounded-xl ${project.isPending ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'} shrink-0`}>
                                 <FolderKanban size={20} />
                               </div>
-                              <div className="flex flex-col max-w-[200px]">
-                                <span className="font-bold text-slate-800 text-base truncate" title={project.nom}>{project.nom}</span>
-                                <span className="text-xs text-slate-500 truncate" title={project.description}>{project.description}</span>
+                              <div className="flex flex-col">
+                                <span className="font-bold text-slate-800 text-sm truncate max-w-[220px]" title={project.nom}>{project.nom}</span>
+                                <span className="text-xs text-slate-500 font-medium">PM: {formatUserDisplayName(project.chefProjet, 'PM', users)}</span>
                               </div>
                             </div>
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex flex-col">
-                              <span className="text-sm font-semibold text-slate-700">{project.nomDemandeur}</span>
+                              <span className="text-sm font-semibold text-slate-700">{formatUserDisplayName(project.nomDemandeur, 'User', users)}</span>
                               <span className="text-xs text-slate-500">{project.service}</span>
                             </div>
                           </td>
@@ -252,23 +333,6 @@ const Projects = () => {
                               </div>
                               <span className="text-xs font-bold text-slate-600 w-8">{project.progress}%</span>
                             </div>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            {isRestrictedUser ? (
-                              <Link
-                                to={`/project-charter?demandeId=${project.demandeId}`}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold rounded-lg transition-colors border border-slate-200 text-xs"
-                              >
-                                <FileText size={14} /> Voir Charter
-                              </Link>
-                            ) : (
-                              <Link
-                                to={`/projects/${project.id}/dashboard`}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold rounded-lg transition-colors border border-blue-100 text-xs"
-                              >
-                                <LayoutDashboard size={14} /> Gérer le projet
-                              </Link>
-                            )}
                           </td>
                         </tr>
                       );

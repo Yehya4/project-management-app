@@ -44,7 +44,7 @@ const ProjectCalendar = () => {
 
   const getHeaders = () => ({
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`
+    'Authorization': `Bearer ${token}` 
   });
 
   const fetchEvents = async () => {

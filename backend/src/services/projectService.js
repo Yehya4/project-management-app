@@ -32,11 +32,17 @@ class ProjectService {
                 const newId = `PRJ-${new Date().getFullYear()}-${String(count).padStart(3, '0')}`;
 
                 const { nom, chefProjet, description, demandeId } = projectData;
+                let formattedChef = chefProjet || 'Project Manager (PM)';
+                if (formattedChef.toLowerCase() === 'project manager' || formattedChef.toLowerCase() === 'chef de projet') {
+                  formattedChef = 'Project Manager (PM)';
+                } else if (!formattedChef.includes('(')) {
+                  formattedChef = `${formattedChef} (PM)`;
+                }
                 const dateCreation = new Date().toLocaleDateString('fr-FR');
                 const statut = projectData.status || 'Initiation';
 
                 const query = 'INSERT INTO projects (id, nom, chefProjet, statut, description, dateCreation, demandeId) VALUES (?, ?, ?, ?, ?, ?, ?)';
-                db.query(query, [newId, nom, chefProjet, statut, description, dateCreation, demandeId], (err) => {
+                db.query(query, [newId, nom, formattedChef, statut, description, dateCreation, demandeId], (err) => {
                     if (err) return reject(err);
                     const formatted = this.formatProject({ id: newId, ...projectData, statut, dateCreation });
                     if (io) {

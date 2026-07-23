@@ -29,11 +29,11 @@ class TestCaseService {
             db.query(query, [projectId, testCaseId, testName, description, expectedResult, actualResult || null, 'En attente', priority || 'Moyenne', assignedTo || null, attachment || null, profile || null, rubrique || null], async (err, results) => {
                 if (err) return reject(err);
 
-                                try {
+                try {
                     const insertedId = results.insertId;
                     const testCase = await this.getById(insertedId);
 
-                                        if (io) {
+                    if (io) {
                         io.emit('test_case_created', testCase);
                     }
                     await projectService.autoUpdateStatus(projectId, io);
@@ -52,7 +52,7 @@ class TestCaseService {
             db.query(query, [testCaseId, testName, description, expectedResult, actualResult || null, priority || 'Moyenne', assignedTo || null, attachment || null, profile || null, rubrique || null, id], async (err) => {
                 if (err) return reject(err);
 
-                                try {
+                try {
                     const testCase = await this.getById(id);
                     if (io) {
                         io.emit('test_case_updated', testCase);
@@ -74,7 +74,7 @@ class TestCaseService {
             db.query(query, [status, comment || null, testerId || null, testerName || null, actualResult || null, id], async (err) => {
                 if (err) return reject(err);
 
-                                try {
+                try {
                     const testCase = await this.getById(id);
                     if (io) {
                         io.emit('test_case_updated', testCase);
@@ -95,11 +95,11 @@ class TestCaseService {
             this.getById(id).then(testCase => {
                 if (!testCase) return resolve({ id });
 
-                                const query = 'DELETE FROM test_cases WHERE id = ?';
+                const query = 'DELETE FROM test_cases WHERE id = ?';
                 db.query(query, [id], async (err) => {
                     if (err) return reject(err);
 
-                                        if (io) {
+                    if (io) {
                         io.emit('test_case_deleted', { id: parseInt(id) || id });
                     }
                     await projectService.autoUpdateStatus(testCase.projectId, io);

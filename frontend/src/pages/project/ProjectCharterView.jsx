@@ -183,6 +183,17 @@ const ProjectCharterView = () => {
         >
           <div className="space-y-5">
             <Field label="Titre du Projet" value={charter.titre} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Field label="Service" value={charter.service || demande?.service} />
+              <Field 
+                label="Date Fin Prévue" 
+                value={charter.dateFin ? (typeof charter.dateFin === 'string' && charter.dateFin.includes('/') ? charter.dateFin : new Date(charter.dateFin).toLocaleDateString('fr-FR')) : (demande?.delaiSouhaite ? new Date(demande.delaiSouhaite).toLocaleDateString('fr-FR') : null)} 
+              />
+            </div>
+            <Field 
+              label="Catégories du Projet" 
+              value={Array.isArray(charter.categoriesProjet) ? charter.categoriesProjet.join(', ') : charter.categoriesProjet || (Array.isArray(demande?.categoriesProjet) ? demande.categoriesProjet.join(', ') : demande?.categoriesProjet)} 
+            />
             <Field label="Contexte" value={charter.contexte} />
             <Field label="Objectifs du Projet" value={charter.objectifs} />
           </div>

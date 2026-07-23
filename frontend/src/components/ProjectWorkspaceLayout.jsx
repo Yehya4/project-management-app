@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { NavLink, Outlet, useParams, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, Users, ArrowLeft, FileText, ListTodo, Box, UserCircle, ScrollText, MessageSquare, Calendar, FlaskConical } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Users, ArrowLeft, FileText, ListTodo, Box, UserCircle, ScrollText, MessageSquare, Calendar, FlaskConical, Rocket } from 'lucide-react';
 import { useProjects, useDemandes, useAuth, useCharter, useUser, useTasks, useTeam } from '../context/AppContext';
 
 const ProjectWorkspaceLayout = () => {
@@ -18,10 +18,10 @@ const ProjectWorkspaceLayout = () => {
     const linkedProject = projects.find(p => p.id === id || p.demandeId === id);
     if (!linkedProject) {
       const demande = demandes.find(d => d.id === id);
-      if (demande && (demande.statut === 'Acceptée' || demande.statut === 'En Développement')) {
+      if (demande && (demande.statut === 'Acceptée' || demande.statut === 'En cours' || demande.statut === 'En Développement')) {
         const charter = charters.find(c => c.demandeId === id);
         if (charter && charter.statut === 'Validé') {
-          updateDemandeStatus(id, 'En Développement');
+          updateDemandeStatus(id, 'En cours');
           addProject({
             nom: demande.nomDemandeur ? `Projet ${demande.nomDemandeur}` : (demande.titre || `Projet issu de la demande ${id}`),
             chefProjet: charter.chefProjetIT || 'Non assigné',
@@ -32,16 +32,24 @@ const ProjectWorkspaceLayout = () => {
           });
         }
       }
+    } else {
+      const demande = demandes.find(d => d.id === linkedProject.demandeId || d.id === linkedProject.id);
+      if (demande && ['Initiation', 'Développement', 'En Préparation'].includes(linkedProject.status) && demande.statut !== 'En cours') {
+        updateDemandeStatus(demande.id, 'En cours');
+      }
     }
   }, [id, projects, demandes, charters, addProject, updateDemandeStatus]);
 
   useEffect(() => {
     const linkedProject = projects.find(p => p.id === id || p.demandeId === id);
-    if (linkedProject && (linkedProject.chefProjet === 'Non assigné' || !linkedProject.chefProjet)) {
+    if (linkedProject && (!linkedProject.chefProjet || linkedProject.chefProjet === 'Non assigné' || linkedProject.chefProjet === 'Project Manager' || !linkedProject.chefProjet.includes('('))) {
       const pmUser = (user?.role === 'Project Manager' ? user : null) || users.find(u => u.role === 'Project Manager');
       if (pmUser) {
         const pmName = `${pmUser.prenom || ''} ${pmUser.nom || ''}`.trim();
-        updateProject(linkedProject.id, { chefProjet: pmName });
+        const formattedPm = pmName ? `${pmName} (PM)` : 'Project Manager (PM)';
+        if (linkedProject.chefProjet !== formattedPm) {
+          updateProject(linkedProject.id, { chefProjet: formattedPm });
+        }
       }
     }
   }, [id, projects, users, user, updateProject]);
@@ -60,15 +68,13 @@ const ProjectWorkspaceLayout = () => {
     );
 
     privilegedUsers.forEach(u => {
-      const uid = u.id?.toString();
-      if (!teamUserIds.includes(uid)) {
-        const roleInProject =
-          u.role === 'Project Manager' ? 'Chef de Projet' :
-          u.role === 'Sponsor'         ? 'Sponsor'        : 'Admin';
+      if (!teamUserIds.includes(u.id?.toString())) {
         addMemberToProject(linkedProject.id, {
           userId: u.id,
-          user: u,
-          role: roleInProject
+          nom: u.nom,
+          prenom: u.prenom,
+          role: u.role,
+          email: u.email
         });
       }
     });
@@ -80,7 +86,7 @@ const ProjectWorkspaceLayout = () => {
 
   if (!project) {
     const demande = demandes.find(d => d.id === id);
-    if (demande && (demande.statut === 'Acceptée' || demande.statut === 'En Développement')) {
+    if (demande && (demande.statut === 'Acceptée' || demande.statut === 'En cours' || demande.statut === 'En Développement')) {
       isPending = true;
       project = {
         id: demande.id,
@@ -136,6 +142,7 @@ const ProjectWorkspaceLayout = () => {
     { path: `/projects/${id}/dashboard`, name: user?.role === 'Tester' ? 'Dashboard Testeur' : 'Dashboard Développeur', icon: <LayoutDashboard size={20} /> },
     { path: `/projects/${id}/tasks`, name: 'Tâches', icon: <CheckSquare size={20} />, badge: myTasksCount > 0 ? myTasksCount : null },
     { path: `/projects/${id}/tests`, name: 'Tests', icon: <FlaskConical size={20} /> },
+    { path: `/projects/${id}/deployment`, name: 'Déploiement', icon: <Rocket size={20} /> },
     { path: `/projects/${id}/chat`, name: 'Messagerie', icon: <MessageSquare size={20} /> },
     { path: `/projects/${id}/calendar`, name: 'Calendrier', icon: <Calendar size={20} /> },
     { path: `/projects/${id}/role`, name: 'Mon Rôle', icon: <UserCircle size={20} /> }
@@ -146,6 +153,7 @@ const ProjectWorkspaceLayout = () => {
     { path: `/projects/${id}/charter`, name: 'Fiche de Projet', icon: <ScrollText size={20} /> },
     { path: `/projects/${id}/tasks`, name: 'Tâches', icon: <CheckSquare size={20} />, badge: myTasksCount > 0 ? myTasksCount : null },
     { path: `/projects/${id}/tests`, name: 'Tests', icon: <FlaskConical size={20} /> },
+    { path: `/projects/${id}/deployment`, name: 'Déploiement', icon: <Rocket size={20} /> },
     { path: `/projects/${id}/chat`, name: 'Messagerie', icon: <MessageSquare size={20} /> },
     { path: `/projects/${id}/calendar`, name: 'Calendrier', icon: <Calendar size={20} /> },
     { path: `/projects/${id}/documents`, name: 'Documents', icon: <Box size={20} /> },
