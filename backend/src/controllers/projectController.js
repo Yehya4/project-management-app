@@ -46,6 +46,20 @@ class ProjectController {
         }
     }
 
+    async updateProgress(req, res) {
+        try {
+            const io = req.app.get('io');
+            const { manualProgress } = req.body;
+            if (manualProgress === undefined || manualProgress === null) {
+                return res.status(400).json({ message: 'manualProgress requis' });
+            }
+            const result = await projectService.updateProgress(req.params.id, manualProgress, io);
+            return res.status(200).json(result);
+        } catch (error) {
+            return res.status(500).json({ message: 'Erreur mise à jour progression', error });
+        }
+    }
+
     async delete(req, res) {
         try {
             await projectService.delete(req.params.id);

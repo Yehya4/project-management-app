@@ -113,17 +113,62 @@ const getPhaseSubSteps = (phaseId, project, charter, currentIdx) => {
     let locked = false;
 
     if (isCurrent) {
-      if (order === 1) {
-        done = project.progress >= 20;
-        active = project.progress < 20;
-      } else if (order === 2) {
-        done = project.progress >= 60;
-        active = project.progress >= 20 && project.progress < 60;
-        locked = project.progress < 20;
+      if (phaseId === 'Développement') {
+        // Dev: 20% → 80%
+        if (order === 1) {
+          done = project.progress >= 40;
+          active = project.progress >= 20 && project.progress < 40;
+        } else if (order === 2) {
+          done = project.progress >= 60;
+          active = project.progress >= 40 && project.progress < 60;
+          locked = project.progress < 40;
+        } else {
+          done = project.progress >= 80;
+          active = project.progress >= 60 && project.progress < 80;
+          locked = project.progress < 60;
+        }
+      } else if (phaseId === 'Testing') {
+        // Testing: 80% → 90%
+        if (order === 1) {
+          done = project.progress >= 83;
+          active = project.progress >= 80 && project.progress < 83;
+        } else if (order === 2) {
+          done = project.progress >= 87;
+          active = project.progress >= 83 && project.progress < 87;
+          locked = project.progress < 83;
+        } else {
+          done = project.progress >= 90;
+          active = project.progress >= 87 && project.progress < 90;
+          locked = project.progress < 87;
+        }
+      } else if (phaseId === 'Déploiement') {
+        // Déploiement: 90% → 100%
+        if (order === 1) {
+          done = project.progress >= 93;
+          active = project.progress >= 90 && project.progress < 93;
+        } else if (order === 2) {
+          done = project.progress >= 97;
+          active = project.progress >= 93 && project.progress < 97;
+          locked = project.progress < 93;
+        } else {
+          done = project.progress >= 100;
+          active = project.progress >= 97 && project.progress < 100;
+          locked = project.progress < 97;
+        }
       } else {
-        done = project.progress >= 90;
-        active = project.progress >= 60 && project.progress < 90;
-        locked = project.progress < 60;
+        // Autres phases (Utilisation, etc.)
+        if (order === 1) {
+          done = project.progress >= 20;
+          active = project.progress < 20;
+        } else if (order === 2) {
+          done = project.progress >= 60;
+          active = project.progress >= 20 && project.progress < 60;
+          locked = project.progress < 20;
+        } else {
+          done = project.progress >= 90;
+          active = project.progress >= 60 && project.progress < 90;
+          locked = project.progress < 60;
+        }
       }
     } else if (!isPast) {
       locked = true;

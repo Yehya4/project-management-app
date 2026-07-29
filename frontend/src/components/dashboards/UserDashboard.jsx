@@ -56,18 +56,16 @@ const UserDashboard = () => {
 
   const totalDemandes    = myDemandes.length;
   const acceptedDemandes = myDemandes.filter(d => d.statut === 'Acceptée').length;
-  const enCoursDemandes  = myDemandes.filter(d => d.statut === 'En cours' || d.statut === 'En Développement' || d.statut === 'Validée').length;
-  const pendingDemandes  = myDemandes.filter(d => d.statut === 'En attente').length;
+  const enCoursDemandes  = myDemandes.filter(d => d.statut === 'En cours').length;
   const refusedDemandes  = myDemandes.filter(d => d.statut === 'Refusée').length;
-  const approvalRate     = totalDemandes ? Math.round(((acceptedDemandes + enCoursDemandes) / totalDemandes) * 100) : 0;
+  const approvalRate     = totalDemandes ? Math.round((acceptedDemandes / totalDemandes) * 100) : 0;
   const totalMyProjProgress = myProjects.reduce((acc, p) => acc + (p.progress || 0), 0);
   const avgMyProjProgress   = myProjects.length ? Math.round(totalMyProjProgress / myProjects.length) : 0;
 
   // Donut chart calculations
   const statusData = [
     { name: 'Acceptées', count: acceptedDemandes, color: '#10b981' },
-    { name: 'En Cours', count: enCoursDemandes, color: '#3b82f6' },
-    { name: 'En Attente', count: pendingDemandes, color: '#f59e0b' },
+    { name: 'En cours', count: enCoursDemandes, color: '#3b82f6' },
     { name: 'Refusées', count: refusedDemandes, color: '#f43f5e' }
   ];
 
@@ -228,7 +226,7 @@ const UserDashboard = () => {
             </div>
           </div>
           <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span>En attente : <strong className="text-amber-600 font-bold">{pendingDemandes}</strong></span>
+            <span>En cours : <strong className="text-blue-600 font-bold">{enCoursDemandes}</strong></span>
           </div>
         </div>
 

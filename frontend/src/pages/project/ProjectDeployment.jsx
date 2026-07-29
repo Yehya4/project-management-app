@@ -100,12 +100,13 @@ const ProjectDeployment = () => {
       const userName = `${user.prenom || ''} ${user.nom || ''}`.trim() || user.role;
       const formattedDate = new Date().toLocaleString('fr-FR');
 
-      // Update project status to Utilisation (Deployment validated)
+      // Update project status to Utilisation (Deployment validated) + force 100%
       await updateProject(project.id, {
         status: 'Utilisation',
         deploymentPlanStatus: 'Validé',
         deploymentValidatedBy: userName,
-        deploymentValidatedAt: formattedDate
+        deploymentValidatedAt: formattedDate,
+        manualProgress: 100
       });
 
       setPopup({

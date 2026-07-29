@@ -455,9 +455,14 @@ export const CharterProvider = ({ children }) => {
           }
           return [...prev, savedData];
         });
+        return savedData;
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || `Erreur serveur (${res.status})`);
       }
     } catch (err) {
       console.error('Erreur save charter', err);
+      throw err;
     }
   };
 
@@ -581,6 +586,25 @@ export const ProjectProvider = ({ children }) => {
     }
   };
 
+  const updateProjectProgress = async (id, manualProgress) => {
+    try {
+      const res = await fetch(`${API_URL}/${id}/progress`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify({ manualProgress })
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setProjects(prev => prev.map(p =>
+          p.id === id ? { ...p, ...updated } : p
+        ));
+        return updated;
+      }
+    } catch (err) {
+      console.error('Erreur mise à jour progression', err);
+    }
+  };
+
   const deleteProject = async (id) => {
     try {
       const res = await fetch(`${API_URL}/${id}`, {
@@ -596,7 +620,7 @@ export const ProjectProvider = ({ children }) => {
   };
 
   return (
-    <ProjectContext.Provider value={{ projects, addProject, updateProjectStatus, updateProject, deleteProject, fetchProjects }}>
+    <ProjectContext.Provider value={{ projects, addProject, updateProjectStatus, updateProject, updateProjectProgress, deleteProject, fetchProjects }}>
       {children}
     </ProjectContext.Provider>
   );

@@ -1,17 +1,84 @@
 const db = require('../config/db');
 
 class ProjectService {
+
+    /**
+     * Calcule la progression système basée sur les tâches/tests du projet.
+     * Retourne une valeur dans la plage de la phase actuelle.
+     */
+    async getSystemProgress(projectId, statut) {
+        return new Promise((resolve) => {
+            if (statut === 'Utilisation') return resolve(100);
+            if (statut === 'Initiation') return resolve(20);
+
+            db.query('SELECT * FROM tasks WHERE projectId = ?', [projectId], (err, tasks) => {
+                if (err || !tasks) return resolve(null);
+
+                const totalTasks = tasks.length;
+                const doneTasks = tasks.filter(t => ['Fait', 'Clôturée', 'Archivée'].includes(t.status)).length;
+                const taskRatio = totalTasks > 0 ? doneTasks / totalTasks : 0;
+
+                if (statut === 'Développement') {
+                    // 20% → 80% selon le % de tâches terminées
+                    const sysProgress = Math.round(20 + taskRatio * 60);
+                    return resolve(Math.min(80, Math.max(20, sysProgress)));
+                }
+
+                db.query('SELECT * FROM test_cases WHERE projectId = ?', [projectId], (err2, tests) => {
+                    if (err2 || !tests) return resolve(null);
+
+                    const totalTests = tests.length;
+                    const passedTests = tests.filter(t => t.status === 'Réussite').length;
+                    const testRatio = totalTests > 0 ? passedTests / totalTests : 0;
+
+                    if (statut === 'Testing') {
+                        // 80% → 90% selon le % de tests validés
+                        const sysProgress = Math.round(80 + testRatio * 10);
+                        return resolve(Math.min(90, Math.max(80, sysProgress)));
+                    }
+
+                    if (statut === 'Déploiement') {
+                        // 90% de base, gestion séparée pour 100%
+                        return resolve(90);
+                    }
+
+                    return resolve(null);
+                });
+            });
+        });
+    }
+
+    /**
+     * Formate un projet et calcule sa progression finale.
+     * progress = manualProgress dans la plage de la phase (ou valeur minimale de la phase).
+     */
     formatProject(project) {
         if (!project) return null;
         const status = project.statut || 'Initiation';
-        let progress = 0;
+        let progress = 20;
+
+        const manual = project.manualProgress != null ? parseInt(project.manualProgress) : null;
+
         switch (status) {
-            case 'Initiation':    progress = 20; break;
-            case 'Développement': progress = 40; break;
-            case 'Testing':       progress = 60; break;
-            case 'Déploiement':   progress = 80; break;
-            case 'Utilisation':   progress = 100; break;
+            case 'Initiation':
+                progress = 20;
+                break;
+            case 'Développement':
+                progress = manual != null ? Math.min(80, Math.max(20, manual)) : 20;
+                break;
+            case 'Testing':
+                progress = manual != null ? Math.min(90, Math.max(80, manual)) : 80;
+                break;
+            case 'Déploiement':
+                progress = manual != null ? Math.min(100, Math.max(90, manual)) : 90;
+                break;
+            case 'Utilisation':
+                progress = 100;
+                break;
+            default:
+                progress = 20;
         }
+
         return { ...project, status, progress };
     }
 
@@ -68,6 +135,57 @@ class ProjectService {
         });
     }
 
+    /**
+     * Met à jour la progression manuelle du projet (PM/Admin/Sponsor).
+     * Vérifie que la valeur est dans la plage autorisée selon la phase.
+     * Prend le max entre la valeur manuelle et la valeur système.
+     */
+    updateProgress(id, manualProgress, io) {
+        return new Promise((resolve, reject) => {
+            this.getById(id).then(project => {
+                if (!project) return reject(new Error('Projet non trouvé'));
+
+                const statut = project.statut || 'Initiation';
+                let minVal = 20, maxVal = 20;
+
+                switch (statut) {
+                    case 'Développement': minVal = 20; maxVal = 80; break;
+                    case 'Testing':       minVal = 80; maxVal = 90; break;
+                    case 'Déploiement':   minVal = 90; maxVal = 100; break;
+                    default:
+                        // Pas de contrôle manuel pour Initiation/Utilisation
+                        return resolve(project);
+                }
+
+                const clampedProgress = Math.min(maxVal, Math.max(minVal, parseInt(manualProgress)));
+
+                // Recalcule la progression système et prend le max
+                this.getSystemProgress(id, statut).then(sysProgress => {
+                    const finalProgress = sysProgress != null
+                        ? Math.max(clampedProgress, sysProgress)
+                        : clampedProgress;
+                    const finalManual = Math.min(maxVal, Math.max(minVal, finalProgress));
+
+                    db.query('UPDATE projects SET manualProgress = ? WHERE id = ?', [finalManual, id], (err) => {
+                        if (err) return reject(err);
+                        this.getById(id).then(updated => {
+                            if (io && updated) io.emit('project_updated', updated);
+                            resolve(updated);
+                        }).catch(reject);
+                    });
+                }).catch(() => {
+                    db.query('UPDATE projects SET manualProgress = ? WHERE id = ?', [clampedProgress, id], (err) => {
+                        if (err) return reject(err);
+                        this.getById(id).then(updated => {
+                            if (io && updated) io.emit('project_updated', updated);
+                            resolve(updated);
+                        }).catch(reject);
+                    });
+                });
+            }).catch(reject);
+        });
+    }
+
     update(id, data, io) {
         return new Promise((resolve, reject) => {
             let query = 'UPDATE projects SET ';
@@ -113,6 +231,26 @@ class ProjectService {
             if (data.charterValidated !== undefined) {
                 updates.push('charterValidated = ?');
                 values.push(data.charterValidated ? 1 : 0);
+            }
+            if (data.deploymentPlanFile !== undefined) {
+                updates.push('deploymentPlanFile = ?');
+                values.push(data.deploymentPlanFile);
+            }
+            if (data.deploymentPlanStatus !== undefined) {
+                updates.push('deploymentPlanStatus = ?');
+                values.push(data.deploymentPlanStatus);
+            }
+            if (data.deploymentValidatedBy !== undefined) {
+                updates.push('deploymentValidatedBy = ?');
+                values.push(data.deploymentValidatedBy);
+            }
+            if (data.deploymentValidatedAt !== undefined) {
+                updates.push('deploymentValidatedAt = ?');
+                values.push(data.deploymentValidatedAt);
+            }
+            if (data.manualProgress !== undefined) {
+                updates.push('manualProgress = ?');
+                values.push(data.manualProgress);
             }
 
             if (updates.length === 0) {
@@ -168,8 +306,16 @@ class ProjectService {
                 const project = pResults[0];
                 const currentStatus = project.statut || 'Initiation';
 
-                const applyStatus = (newStatus) => {
-                    db.query('UPDATE projects SET statut = ? WHERE id = ?', [newStatus, projectId], (err) => {
+                const applyStatus = (newStatus, newManualProgress) => {
+                    let setClauses = 'statut = ?';
+                    let vals = [newStatus];
+                    if (newManualProgress !== undefined) {
+                        setClauses += ', manualProgress = ?';
+                        vals.push(newManualProgress);
+                    }
+                    vals.push(projectId);
+
+                    db.query(`UPDATE projects SET ${setClauses} WHERE id = ?`, vals, (err) => {
                         if (err) return reject(err);
                         this.getById(projectId).then(updatedProject => {
                             if (io && updatedProject) io.emit('project_updated', updatedProject);
@@ -195,28 +341,53 @@ class ProjectService {
                 Promise.all([getTasks, getTestCases]).then(([tasks, testCases]) => {
                     const totalTasks = tasks.length;
                     const hasUnfinishedTasks = tasks.some(t => !['Fait', 'Clôturée', 'Archivée'].includes(t.status));
+                    const doneTasks = tasks.filter(t => ['Fait', 'Clôturée', 'Archivée'].includes(t.status)).length;
+                    const taskRatio = totalTasks > 0 ? doneTasks / totalTasks : 0;
 
                     const totalTests = testCases.length;
                     const allTestsPassed = totalTests > 0 && testCases.every(t => t.status === 'Réussite');
+                    const passedTests = testCases.filter(t => t.status === 'Réussite').length;
+                    const testRatio = totalTests > 0 ? passedTests / totalTests : 0;
 
                     let targetStatus = currentStatus;
+                    let targetManualProgress = undefined;
 
-                    if (totalTasks > 0 && hasUnfinishedTasks) {
-                        if (['Testing', 'Déploiement', 'Utilisation'].includes(currentStatus)) {
-                            targetStatus = 'Développement';
+                    if (currentStatus === 'Développement') {
+                        // Progression système automatique en développement
+                        const sysProgress = Math.min(80, Math.max(20, Math.round(20 + taskRatio * 60)));
+                        const currentManual = project.manualProgress != null ? parseInt(project.manualProgress) : 20;
+                        const newManual = Math.max(currentManual, sysProgress);
+                        if (newManual !== currentManual) {
+                            targetManualProgress = newManual;
                         }
-                    }
-                    else if (!hasUnfinishedTasks && totalTests > 0 && !allTestsPassed) {
-                        if (['Déploiement', 'Utilisation'].includes(currentStatus)) {
+                        // Transition vers Testing si toutes tâches terminées
+                        if (totalTasks > 0 && !hasUnfinishedTasks) {
                             targetStatus = 'Testing';
+                            targetManualProgress = 80; // Début Testing à 80%
+                        }
+                    } else if (currentStatus === 'Testing') {
+                        // Progression système automatique en testing
+                        const sysProgress = Math.min(90, Math.max(80, Math.round(80 + testRatio * 10)));
+                        const currentManual = project.manualProgress != null ? parseInt(project.manualProgress) : 80;
+                        const newManual = Math.max(currentManual, sysProgress);
+                        if (newManual !== currentManual) {
+                            targetManualProgress = newManual;
+                        }
+                        // Si des tâches redeviennent non terminées, revenir en Développement
+                        if (totalTasks > 0 && hasUnfinishedTasks) {
+                            targetStatus = 'Développement';
+                            targetManualProgress = 20;
+                        }
+                    } else if (currentStatus === 'Déploiement') {
+                        // Si tests non tous passés et tâches non terminées, revenir en Testing
+                        if (totalTests > 0 && !allTestsPassed && totalTasks > 0 && hasUnfinishedTasks) {
+                            targetStatus = 'Testing';
+                            targetManualProgress = 80;
                         }
                     }
-                    else if (currentStatus === 'Développement' && totalTasks > 0 && !hasUnfinishedTasks) {
-                        targetStatus = 'Testing';
-                    }
 
-                    if (targetStatus !== currentStatus) {
-                        applyStatus(targetStatus);
+                    if (targetStatus !== currentStatus || targetManualProgress !== undefined) {
+                        applyStatus(targetStatus, targetManualProgress);
                     } else {
                         resolve(null);
                     }

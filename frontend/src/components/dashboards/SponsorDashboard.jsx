@@ -60,12 +60,11 @@ const SponsorDashboard = () => {
   const avgProgress   = projects.length ? Math.round(totalProgress / projects.length) : 0;
 
   // Demandes SI Stats
-  const pendingDemandesCount = filteredDemandes.filter(d => d.statut === 'En attente').length;
+  const enCoursDemandesCount = filteredDemandes.filter(d => d.statut === 'En cours').length;
   const acceptedDemandesCount = filteredDemandes.filter(d => d.statut === 'Acceptée').length;
-  const enCoursDemandesCount  = filteredDemandes.filter(d => d.statut === 'En cours' || d.statut === 'En Développement').length;
   const refusedDemandesCount  = filteredDemandes.filter(d => d.statut === 'Refusée').length;
   const approvalRate = filteredDemandes.length
-    ? Math.round(((acceptedDemandesCount + enCoursDemandesCount) / filteredDemandes.length) * 100)
+    ? Math.round((acceptedDemandesCount / filteredDemandes.length) * 100)
     : 0;
 
   // Donut chart calculations
@@ -476,12 +475,12 @@ const SponsorDashboard = () => {
                 <span className="text-xl font-black text-emerald-700">{acceptedDemandesCount}</span>
               </div>
               <div className="p-2.5 bg-blue-50/70 border border-blue-100 rounded-2xl text-center">
-                <span className="text-[10px] font-bold text-blue-700 uppercase block">En Cours</span>
-                <span className="text-xl font-black text-blue-700">{enCoursDemandesCount}</span>
+                <span className="text-[10px] font-bold text-blue-700 uppercase block">Total</span>
+                <span className="text-xl font-bold text-blue-800 leading-tight">{filteredDemandes.length}</span>
               </div>
               <div className="p-2.5 bg-amber-50/70 border border-amber-100 rounded-2xl text-center">
-                <span className="text-[10px] font-bold text-amber-700 uppercase block">En Attente</span>
-                <span className="text-xl font-black text-amber-700">{pendingDemandesCount}</span>
+                <span className="text-[10px] font-bold text-amber-700 uppercase block">En Cours</span>
+                <span className="text-xl font-bold text-amber-800 leading-tight">{enCoursDemandesCount}</span>
               </div>
               <div className="p-2.5 bg-rose-50/70 border border-rose-100 rounded-2xl text-center">
                 <span className="text-[10px] font-bold text-rose-700 uppercase block">Refusées</span>

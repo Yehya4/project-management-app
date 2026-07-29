@@ -73,13 +73,14 @@ pool.getConnection((error, connection) => {
       if (err && err.code !== 'ER_DUP_FIELDNAME') console.error(`Erreur ${query}:`, err.message);
     });
   });
-  // Add columns for projects (deployment)
+  // Add columns for projects (deployment + manual progress)
   const projectsColumns = [
     "ALTER TABLE projects ADD COLUMN deploymentPlanFile VARCHAR(255)",
     "ALTER TABLE projects ADD COLUMN deploymentPlanStatus VARCHAR(50) DEFAULT 'En attente'",
     "ALTER TABLE projects ADD COLUMN deploymentValidatedBy VARCHAR(255)",
     "ALTER TABLE projects ADD COLUMN deploymentValidatedAt VARCHAR(255)",
-    "ALTER TABLE projects ADD COLUMN deploymentComment LONGTEXT"
+    "ALTER TABLE projects ADD COLUMN deploymentComment LONGTEXT",
+    "ALTER TABLE projects ADD COLUMN manualProgress INT DEFAULT NULL"
   ];
 
   projectsColumns.forEach(query => {
@@ -94,6 +95,19 @@ pool.getConnection((error, connection) => {
       else console.log("Demandes de test supprimées.");
     }
   );
+
+  // Add columns for charters
+  const chartersColumns = [
+    "ALTER TABLE charters ADD COLUMN categoriesProjet VARCHAR(255)",
+    "ALTER TABLE charters ADD COLUMN service VARCHAR(255)",
+    "ALTER TABLE charters ADD COLUMN dateFin VARCHAR(255)"
+  ];
+
+  chartersColumns.forEach(query => {
+    connection.query(query, (err) => {
+      if (err && err.code !== 'ER_DUP_FIELDNAME') console.error(`Erreur ${query}:`, err.message);
+    });
+  });
 
   // Create project_documents table
   connection.query(

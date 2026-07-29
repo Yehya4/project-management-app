@@ -5,10 +5,21 @@ class CharterService {
         return new Promise((resolve, reject) => {
             db.query('SELECT * FROM charters ORDER BY created_at DESC', (err, results) => {
                 if (err) return reject(err);
-                resolve(results.map(row => ({
-                    ...row,
-                    commentaires: row.commentaires ? JSON.parse(row.commentaires) : []
-                })));
+                resolve(results.map(row => {
+                    let parsedCategories = [];
+                    if (row.categoriesProjet) {
+                        try {
+                            parsedCategories = JSON.parse(row.categoriesProjet);
+                        } catch (e) {
+                            parsedCategories = row.categoriesProjet.split(',').map(s => s.trim());
+                        }
+                    }
+                    return {
+                        ...row,
+                        commentaires: row.commentaires ? JSON.parse(row.commentaires) : [],
+                        categoriesProjet: parsedCategories
+                    };
+                }));
             });
         });
     }
@@ -20,6 +31,15 @@ class CharterService {
                 const row = results[0];
                 if (row) {
                     row.commentaires = row.commentaires ? JSON.parse(row.commentaires) : [];
+                    if (row.categoriesProjet) {
+                        try {
+                            row.categoriesProjet = JSON.parse(row.categoriesProjet);
+                        } catch (e) {
+                            row.categoriesProjet = row.categoriesProjet.split(',').map(s => s.trim());
+                        }
+                    } else {
+                        row.categoriesProjet = [];
+                    }
                     resolve(row);
                 } else {
                     resolve(null);
@@ -37,11 +57,13 @@ class CharterService {
             categoriesProjet, service, dateFin
         } = charterData;
 
+        const catProjetStr = categoriesProjet ? (Array.isArray(categoriesProjet) ? JSON.stringify(categoriesProjet) : categoriesProjet) : null;
+
         await new Promise((resolve, reject) => {
             db.query('SELECT id FROM charters WHERE demandeId = ?', [demandeId], (err, results) => {
                 if (err) return reject(err);
 
-                                if (results.length > 0) {
+                if (results.length > 0) {
                     const query = `UPDATE charters SET 
                         titre=?, contexte=?, objectifs=?, perimetreInclus=?, perimetreExclu=?, 
                         sponsorIT=?, chefProjetIT=?, equipeIT=?, 
@@ -50,17 +72,17 @@ class CharterService {
                         categoriesProjet=?, service=?, dateFin=?
                         WHERE demandeId=?`;
 
-                                        const values = [
+                    const values = [
                         titre, contexte, objectifs, perimetreInclus, perimetreExclu, 
                         sponsorIT, chefProjetIT, equipeIT, 
                         sponsorMetier, chefProjetMetier, equipeMetier, utilisateursFinaux, 
                         planCom, risques, criteresSucces, statut || 'Brouillon', 
                         JSON.stringify(commentaires || []), 
-                        categoriesProjet || null, service || null, dateFin || null, 
+                        catProjetStr, service || null, dateFin || null, 
                         demandeId
                     ];
 
-                                        db.query(query, values, (err) => {
+                    db.query(query, values, (err) => {
                         if (err) return reject(err);
                         resolve();
                     });
@@ -72,13 +94,13 @@ class CharterService {
                         planCom, risques, criteresSucces, statut, commentaires, categoriesProjet, service, dateFin) 
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-                                        const values = [
+                    const values = [
                         demandeId, titre, contexte, objectifs, perimetreInclus, perimetreExclu, 
                         sponsorIT, chefProjetIT, equipeIT, 
                         sponsorMetier, chefProjetMetier, equipeMetier, utilisateursFinaux, 
                         planCom, risques, criteresSucces, statut || 'Brouillon',
                         JSON.stringify(commentaires || []),
-                        categoriesProjet || null, service || null, dateFin || null
+                        catProjetStr, service || null, dateFin || null
                     ];
 
                     db.query(query, values, (err) => {

@@ -36,9 +36,9 @@ const NouvelleDemandeSI = () => {
     try {
       const today = new Date().toLocaleDateString('fr-FR');
       if (isEditMode) {
-        await updateDemande(id, { ...formData, statut: 'En attente', dateSoumission: today });
+        await updateDemande(id, { ...formData, statut: 'En cours', dateSoumission: today });
       } else {
-        await addDemande({ ...formData, statut: 'En attente', dateSoumission: today });
+        await addDemande({ ...formData, statut: 'En cours', dateSoumission: today });
       }
       setPopupConfig({
         isOpen: true,
@@ -55,6 +55,8 @@ const NouvelleDemandeSI = () => {
       });
     }
   };
+
+
 
   const handleDemandeSave = async (formData) => {
     try {

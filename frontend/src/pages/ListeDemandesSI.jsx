@@ -41,7 +41,7 @@ const ListeDemandesSI = () => {
   const handleSubmitDraft = async (demande) => {
     try {
       const today = new Date().toLocaleDateString('fr-FR');
-      await updateDemande(demande.id, { ...demande, statut: 'En attente', dateSoumission: today });
+      await updateDemande(demande.id, { ...demande, statut: 'En cours', dateSoumission: today });
     } catch (error) {
       setPopup({ isOpen: true, title: 'Erreur', message: error.message || 'Une erreur est survenue.', type: 'error' });
     }
@@ -79,8 +79,8 @@ const ListeDemandesSI = () => {
       );
 
 
-  const enCoursDemandes   = filteredDemandes.filter(d => d.statut && (d.statut === 'En cours' || d.statut === 'En Développement' || d.statut === 'En attente')).length;
-  const valideeDemandes   = filteredDemandes.filter(d => d.statut === 'Acceptée' || d.statut === 'Validée').length;
+  const enCoursDemandes   = filteredDemandes.filter(d => d.statut === 'En cours').length;
+  const valideeDemandes   = filteredDemandes.filter(d => d.statut === 'Acceptée').length;
   const refuseeDemandes   = filteredDemandes.filter(d => d.statut === 'Refusée').length;
   const totalDemandes     = filteredDemandes.length;
 
@@ -135,10 +135,10 @@ const ListeDemandesSI = () => {
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-500 mb-2">En Attente / En Cours</p>
+                <p className="text-sm font-medium text-slate-500 mb-2">En Cours</p>
                 <p className="text-3xl font-bold text-slate-800">{enCoursDemandes}</p>
               </div>
-              <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center">
+              <div className="w-14 h-14 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center">
                 <Clock size={26} />
               </div>
             </div>
@@ -209,13 +209,13 @@ const ListeDemandesSI = () => {
                                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/70 shadow-xs'
                                 : demande.statut === 'Refusée'
                                   ? 'bg-rose-50 text-rose-700 border border-rose-200/70 shadow-xs'
-                                  : (demande.statut === 'En cours' || demande.statut === 'En Développement')
+                                  : demande.statut === 'En cours'
                                     ? 'bg-blue-50 text-blue-700 border border-blue-200/70 shadow-xs'
                                     : demande.statut === 'Brouillon'
                                       ? 'bg-slate-100 text-slate-600 border border-slate-200 shadow-xs'
                                       : 'bg-amber-50 text-amber-700 border border-amber-200/70 shadow-xs'
                             }`}>
-                            {demande.statut === 'En Développement' ? 'En cours' : demande.statut}
+                            {demande.statut}
                           </span>
                         </td>
                       <td className="px-6 py-4 text-sm text-right">
@@ -229,7 +229,7 @@ const ListeDemandesSI = () => {
                               >
                                 <Eye size={18} />
                               </button>
-                              {demande.statut === 'En attente' && (
+                              {demande.statut === 'En cours' && (
                                 <>
                                   <button
                                     onClick={() => handleAccept(demande.id)}
@@ -269,7 +269,7 @@ const ListeDemandesSI = () => {
                                   </>
                                 );
                               })()}
-                              {demande.statut !== 'En attente' && demande.statut !== 'Brouillon' && (
+                              {demande.statut !== 'En cours' && demande.statut !== 'Brouillon' && (
                                 <span className="text-slate-400 text-xs italic ml-2">Traité</span>
                               )}
                             </>

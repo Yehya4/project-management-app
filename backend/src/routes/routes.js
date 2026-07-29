@@ -33,6 +33,7 @@ router.get('/projects/', projectController.getAll);
 router.post('/projects/', projectController.create);
 router.get('/projects/members', teamController.getAllMembers);
 router.put('/projects/:id/status', projectController.updateStatus);
+router.put('/projects/:id/progress', projectController.updateProgress);
 router.put('/projects/:id', projectController.update);
 router.delete('/projects/:id', projectController.delete);
 

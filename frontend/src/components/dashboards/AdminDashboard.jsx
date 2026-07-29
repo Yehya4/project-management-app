@@ -16,12 +16,11 @@ const AdminDashboard = () => {
   const activeProjects = projects.filter(p => !['Utilisation', 'Archive', 'Archivée'].includes(p.status)).length;
   const validatedProjects = projects.filter(p => ['Utilisation', 'Archive', 'Archivée'].includes(p.status)).length;
   const filteredDemandes = demandes.filter(d => d.statut !== 'Brouillon');
-  const pendingDemandes = filteredDemandes.filter(d => d.statut === 'En attente').length;
+  const enCoursDemandes = filteredDemandes.filter(d => d.statut === 'En cours').length;
   const acceptedDemandes = filteredDemandes.filter(d => d.statut === 'Acceptée').length;
-  const enCoursDemandes = filteredDemandes.filter(d => d.statut === 'En cours' || d.statut === 'En Développement').length;
   const refusedDemandes = filteredDemandes.filter(d => d.statut === 'Refusée').length;
   
-  const approvalRate = filteredDemandes.length ? Math.round(((acceptedDemandes + enCoursDemandes) / filteredDemandes.length) * 100) : 0;
+  const approvalRate = filteredDemandes.length ? Math.round((acceptedDemandes / filteredDemandes.length) * 100) : 0;
 
   const totalProgress = projects.reduce((acc, p) => acc + (p.progress || 0), 0);
   const avgProgress = projects.length ? Math.round(totalProgress / projects.length) : 0;
@@ -148,7 +147,7 @@ const AdminDashboard = () => {
             </div>
           </div>
           <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-amber-600 font-semibold">
-            <span>{pendingDemandes} en attente</span>
+            <span>{enCoursDemandes} en cours</span>
             <ArrowUpRight size={14} />
           </div>
         </div>
@@ -269,12 +268,12 @@ const AdminDashboard = () => {
                 <span className="text-xl font-black text-emerald-700">{acceptedDemandes}</span>
               </div>
               <div className="p-2.5 bg-blue-50/70 border border-blue-100 rounded-2xl text-center">
-                <span className="text-[10px] font-bold text-blue-700 uppercase block">En Cours</span>
-                <span className="text-xl font-black text-blue-700">{enCoursDemandes}</span>
+                <span className="text-[10px] font-bold text-blue-700 uppercase block">Total</span>
+                <span className="text-xl font-bold text-blue-800 leading-tight">{filteredDemandes.length}</span>
               </div>
               <div className="p-2.5 bg-amber-50/70 border border-amber-100 rounded-2xl text-center">
-                <span className="text-[10px] font-bold text-amber-700 uppercase block">En Attente</span>
-                <span className="text-xl font-black text-amber-700">{pendingDemandes}</span>
+                <span className="text-[10px] font-bold text-amber-700 uppercase block">En Cours</span>
+                <span className="text-xl font-bold text-amber-800 leading-tight">{enCoursDemandes}</span>
               </div>
               <div className="p-2.5 bg-rose-50/70 border border-rose-100 rounded-2xl text-center">
                 <span className="text-[10px] font-bold text-rose-700 uppercase block">Refusées</span>

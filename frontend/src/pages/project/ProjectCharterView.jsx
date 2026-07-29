@@ -1,13 +1,21 @@
 import React from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
-import { useCharter, useAuth, useDemandes } from '../../context/AppContext';
+import { useCharter, useAuth, useDemandes, useProjects } from '../../context/AppContext';
 import {
   FileText, Flag, Activity, Users, Briefcase,
   CheckCircle, AlertTriangle, MessageSquare, Edit3,
-  Info, Shield, Target, Download, Upload, Save, X
+  Info, Shield, Target, Download, Upload, Save, X,
+  Gauge, Sliders, TrendingUp, CheckCircle2, Code2, PackageCheck, Rocket
 } from 'lucide-react';
 import mammoth from 'mammoth';
 import { generateCharterPDF } from '../../utils/pdfGenerator';
+
+// Config des phases de progression
+const PHASE_PROGRESS_CONFIG = {
+  'Développement': { min: 20, max: 80, color: '#8b5cf6', bg: '#f5f3ff', border: '#ddd6fe', label: 'Développement' },
+  'Testing':       { min: 80, max: 90, color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe', label: 'Testing' },
+  'Déploiement':   { min: 90, max: 100, color: '#f59e0b', bg: '#fffbeb', border: '#fde68a', label: 'Déploiement' },
+};
 
 const Section = ({ icon, color, title, children }) => (
   <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -53,9 +61,46 @@ const ProjectCharterView = () => {
   const { demandes } = useDemandes();
   const { user } = useAuth();
 
+  const { updateProjectProgress } = useProjects();
   const charter = getCharterByDemandeId(project.demandeId);
   const demande = demandes.find(d => d.id === project.demandeId);
   const isPMOrAdmin = user?.role === 'Project Manager' || user?.role === 'Sponsor' || user?.role === 'Admin';
+
+  const phaseConfig = PHASE_PROGRESS_CONFIG[project.status] || null;
+  const [sliderValue, setSliderValue] = React.useState(
+    Math.min(
+      phaseConfig?.max ?? 100,
+      Math.max(phaseConfig?.min ?? 0, project.progress || 20)
+    )
+  );
+  const [isSavingProgress, setIsSavingProgress] = React.useState(false);
+  const [progressSaved, setProgressSaved] = React.useState(false);
+
+  React.useEffect(() => {
+    if (phaseConfig) {
+      setSliderValue(Math.min(phaseConfig.max, Math.max(phaseConfig.min, project.progress || phaseConfig.min)));
+    }
+  }, [project.progress, project.status]);
+
+  const handleProgressUpdate = async () => {
+    if (!phaseConfig) return;
+    setIsSavingProgress(true);
+    try {
+      await updateProjectProgress(project.id, sliderValue);
+      setProgressSaved(true);
+      setTimeout(() => setProgressSaved(false), 2500);
+    } finally {
+      setIsSavingProgress(false);
+    }
+  };
+
+  const getProgressColor = (val) => {
+    if (val <= 30) return '#6366f1';
+    if (val <= 60) return '#8b5cf6';
+    if (val <= 80) return '#3b82f6';
+    if (val <= 90) return '#f59e0b';
+    return '#10b981';
+  };
 
   const [isEditingInfos, setIsEditingInfos] = React.useState(false);
   const [infosFormData, setInfosFormData] = React.useState({});
@@ -354,7 +399,145 @@ const ProjectCharterView = () => {
 
   return (
     <div className="space-y-10 pb-10">
-      {}
+
+      {/* ──────────────────────────────────────────────────────────────
+          SECTION CONTRÔLE DE PROGRESSION (PM / Admin / Sponsor)
+      ────────────────────────────────────────────────────────────── */}
+      {isPMOrAdmin && (
+        <div
+          className="rounded-3xl p-6 shadow-sm border"
+          style={{
+            background: phaseConfig ? `linear-gradient(135deg, ${phaseConfig.bg} 0%, #fff 100%)` : '#f8fafc',
+            borderColor: phaseConfig ? phaseConfig.border : '#e2e8f0',
+          }}
+        >
+          {/* En-tête */}
+          <div className="flex items-center gap-3 mb-5">
+            <div className="p-2.5 rounded-xl" style={{ background: phaseConfig ? phaseConfig.color + '20' : '#f1f5f9' }}>
+              <Gauge size={22} style={{ color: phaseConfig ? phaseConfig.color : '#94a3b8' }} />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
+                Contrôle de Progression
+                <span
+                  className="text-xs font-bold px-2.5 py-0.5 rounded-full"
+                  style={{ background: phaseConfig ? phaseConfig.color + '20' : '#f1f5f9', color: phaseConfig ? phaseConfig.color : '#94a3b8' }}
+                >
+                  {project.status}
+                </span>
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {phaseConfig
+                  ? `Ajustez la progression manuellement (${phaseConfig.min}% – ${phaseConfig.max}%). Le système calcule aussi automatiquement selon les tâches/tests.`
+                  : `La progression est gérée automatiquement en phase ${project.status}.`
+                }
+              </p>
+            </div>
+          </div>
+
+          {/* Barre de progression actuelle */}
+          <div className="mb-5">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-xs font-semibold text-slate-600">Progression actuelle</span>
+              <span className="text-2xl font-black tabular-nums" style={{ color: getProgressColor(project.progress) }}>
+                {project.progress}<span className="text-base text-slate-400 font-medium">%</span>
+              </span>
+            </div>
+            <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+              <div
+                className="h-3 rounded-full transition-all duration-700"
+                style={{
+                  width: `${project.progress}%`,
+                  background: `linear-gradient(90deg, ${getProgressColor(project.progress)}, ${getProgressColor(project.progress)}cc)`,
+                  boxShadow: `0 0 8px ${getProgressColor(project.progress)}55`,
+                }}
+              />
+            </div>
+            {/* Jalons */}
+            <div className="flex justify-between text-[10px] text-slate-400 mt-1 font-medium">
+              <span>0%</span>
+              <span className={project.progress >= 20 ? 'text-indigo-500 font-bold' : ''}>Initiation 20%</span>
+              <span className={project.progress >= 80 ? 'text-purple-500 font-bold' : ''}>Dev 80%</span>
+              <span className={project.progress >= 90 ? 'text-blue-500 font-bold' : ''}>Test 90%</span>
+              <span className={project.progress >= 100 ? 'text-emerald-500 font-bold' : ''}>100%</span>
+            </div>
+          </div>
+
+          {/* Slider de contrôle manuel */}
+          {phaseConfig ? (
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Sliders size={16} style={{ color: phaseConfig.color }} />
+                  <span className="text-sm font-bold text-slate-700">Ajustement manuel</span>
+                </div>
+                <span
+                  className="text-sm font-black tabular-nums px-3 py-1 rounded-full"
+                  style={{ background: phaseConfig.color + '15', color: phaseConfig.color }}
+                >
+                  {sliderValue}%
+                </span>
+              </div>
+
+              <div className="relative mb-4">
+                <input
+                  type="range"
+                  min={phaseConfig.min}
+                  max={phaseConfig.max}
+                  step={1}
+                  value={sliderValue}
+                  onChange={(e) => setSliderValue(parseInt(e.target.value))}
+                  className="w-full h-2 rounded-full outline-none cursor-pointer"
+                  style={{
+                    accentColor: phaseConfig.color,
+                    background: `linear-gradient(to right, ${phaseConfig.color} 0%, ${phaseConfig.color} ${((sliderValue - phaseConfig.min) / (phaseConfig.max - phaseConfig.min)) * 100}%, #e2e8f0 ${((sliderValue - phaseConfig.min) / (phaseConfig.max - phaseConfig.min)) * 100}%, #e2e8f0 100%)`
+                  }}
+                />
+                <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+                  <span className="font-semibold" style={{ color: phaseConfig.color }}>{phaseConfig.min}%</span>
+                  <span className="font-semibold" style={{ color: phaseConfig.color }}>{phaseConfig.max}%</span>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-500 mb-4 flex items-center gap-1.5">
+                <Info size={12} className="text-blue-400 shrink-0" />
+                La valeur affichée = max(votre saisie, calcul automatique système). Elle ne peut jamais descendre en dessous du calcul système.
+              </p>
+
+              <button
+                onClick={handleProgressUpdate}
+                disabled={isSavingProgress}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-sm transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed"
+                style={{ background: phaseConfig.color, color: '#fff' }}
+              >
+                {isSavingProgress ? (
+                  <><span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Mise à jour…</>
+                ) : progressSaved ? (
+                  <><CheckCircle2 size={18} /> Progression mise à jour !</>
+                ) : (
+                  <><TrendingUp size={18} /> Mettre à jour la progression ({sliderValue}%)</>
+                )}
+              </button>
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl p-4 border border-slate-100 text-center">
+              {project.status === 'Initiation' && (
+                <div className="flex items-center justify-center gap-2 text-indigo-600">
+                  <Rocket size={18} />
+                  <p className="text-sm font-semibold">Phase Initiation — Progression fixe à 20% (automatique)</p>
+                </div>
+              )}
+              {project.status === 'Utilisation' && (
+                <div className="flex items-center justify-center gap-2 text-emerald-600">
+                  <CheckCircle2 size={18} />
+                  <p className="text-sm font-semibold">Projet terminé — Progression à 100%</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {renderCharterContent()}
 
       {}

@@ -156,35 +156,40 @@ const ProjectCharter = () => {
       lastUpdated: new Date().toISOString()
     };
 
-    saveCharter(charterData);
-    if (updateDemande && demandeId) {
-      try {
-        await updateDemande(demandeId, {
-          ...demande,
-          service: formData.service,
-          dateFin: formData.dateFin,
-          categoriesProjet: formData.categoriesProjet
-        });
-      } catch (err) {
-        console.error("Erreur sync demande", err);
+    try {
+      await saveCharter(charterData);
+      if (updateDemande && demandeId) {
+        try {
+          await updateDemande(demandeId, {
+            ...demande,
+            service: formData.service,
+            dateFin: formData.dateFin,
+            categoriesProjet: formData.categoriesProjet
+          });
+        } catch (err) {
+          console.error("Erreur sync demande", err);
+        }
       }
+
+      let message = '';
+      let title = 'Charte Envoyée';
+      if (action === 'save') { title = 'Brouillon Enregistré'; message = 'Charte de projet enregistrée en brouillon.'; }
+      else if (action === 'sendUser') { message = 'Charte envoyée au demandeur pour revue.'; }
+      else if (action === 'sendSponsor') { message = 'Charte envoyée au Sponsor pour validation finale.'; }
+      else if (action === 'acceptDemandeur') { title = 'Charte Acceptée'; message = 'Vous avez accepté la charte. Elle est envoyée au Sponsor.'; }
+      else if (action === 'returnDemandeur') { title = 'Charte Retournée'; message = 'Charte retournée au Project Manager avec votre commentaire.'; }
+      else if (action === 'acceptSponsor') { title = 'Charte Validée'; message = 'Vous avez validé la charte de projet.'; }
+      else if (action === 'returnSponsor') { title = 'Charte Retournée'; message = 'Charte retournée au Project Manager avec votre commentaire.'; }
+
+      setPopupState({
+        isOpen: true,
+        title: title,
+        message: message
+      });
+    } catch (error) {
+      console.error("Erreur lors de l'enregistrement de la charte", error);
+      alert("Une erreur est survenue lors de l'enregistrement. Veuillez réessayer.");
     }
-
-    let message = '';
-    let title = 'Charte Envoyée';
-    if (action === 'save') { title = 'Brouillon Enregistré'; message = 'Charte de projet enregistrée en brouillon.'; }
-    else if (action === 'sendUser') { message = 'Charte envoyée au demandeur pour revue.'; }
-    else if (action === 'sendSponsor') { message = 'Charte envoyée au Sponsor pour validation finale.'; }
-    else if (action === 'acceptDemandeur') { title = 'Charte Acceptée'; message = 'Vous avez accepté la charte. Elle est envoyée au Sponsor.'; }
-    else if (action === 'returnDemandeur') { title = 'Charte Retournée'; message = 'Charte retournée au Project Manager avec votre commentaire.'; }
-    else if (action === 'acceptSponsor') { title = 'Charte Validée'; message = 'Vous avez validé la charte de projet.'; }
-    else if (action === 'returnSponsor') { title = 'Charte Retournée'; message = 'Charte retournée au Project Manager avec votre commentaire.'; }
-
-    setPopupState({
-      isOpen: true,
-      title: title,
-      message: message
-    });
   };
 
   const handlePopupClose = () => {
