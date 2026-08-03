@@ -7,7 +7,7 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import Popup from '../Popup';
 import { generateDemandePDF } from '../../utils/pdfGenerator';
-import { useAuth, useDemandes, useProjects, useUser, useCharter } from '../../context/AppContext';
+import { useAuth, useDemandes, useProjects, useUser, useCharter, useTasks, useTestCases } from '../../context/AppContext';
 import { formatUserDisplayName } from '../../utils/userUtils';
 
 const PMDashboard = () => {
@@ -18,6 +18,8 @@ const PMDashboard = () => {
   const { users } = useUser();
   const { charters } = useCharter();
   const { user } = useAuth();
+  const { tasks } = useTasks();
+  const { testCases } = useTestCases();
 
   const filteredDemandes = demandes.filter(d => d.statut !== 'Brouillon');
 
@@ -43,8 +45,8 @@ const PMDashboard = () => {
     );
   });
 
-  const activeProjects   = projects.filter(p => !['Utilisation', 'Archive', 'Archivée'].includes(p.status)).length;
-  const utilCount        = projects.filter(p => ['Utilisation', 'Archive', 'Archivée'].includes(p.status)).length;
+  const activeProjects   = projects.filter(p => !['Utilisation', 'Archive', 'Archivée', 'Terminé'].includes(p.status)).length;
+  const utilCount        = projects.filter(p => ['Utilisation', 'Archive', 'Archivée', 'Terminé'].includes(p.status)).length;
   const initiationCount  = projects.filter(p => p.status === 'Initiation' || p.status === 'En Préparation').length;
   const devCount         = projects.filter(p => ['Développement', 'En cours', 'In Progress'].includes(p.status)).length;
   const testCount        = projects.filter(p => p.status === 'Testing').length;
@@ -53,13 +55,16 @@ const PMDashboard = () => {
   const totalProgress = projects.reduce((acc, p) => acc + (p.progress || 0), 0);
   const avgProgress   = projects.length ? Math.round(totalProgress / projects.length) : 0;
 
-  // Demandes SI Stats
-  const enCoursDemandesCount  = filteredDemandes.filter(d => d.statut === 'En cours').length;
-  const acceptedDemandesCount = filteredDemandes.filter(d => d.statut === 'Acceptée').length;
-  const refusedDemandesCount  = filteredDemandes.filter(d => d.statut === 'Refusée').length;
-  const approvalRate = filteredDemandes.length
-    ? Math.round((acceptedDemandesCount / filteredDemandes.length) * 100)
-    : 0;
+  // Tasks & Tests Stats
+  const totalTasks = tasks.length;
+  const completedTasks = tasks.filter(t => t.status === 'Fait' || t.status === 'Done').length;
+  const taskCompletionRate = totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+  const totalTests = testCases.length;
+  const passedTests = testCases.filter(t => t.status === 'Passed').length;
+  const failedTests = testCases.filter(t => t.status === 'Failed').length;
+  const pendingTests = totalTests - passedTests - failedTests;
+  const testSuccessRate = totalTests ? Math.round((passedTests / totalTests) * 100) : 0;
 
   // Donut chart calculations
   const phasesData = [
@@ -85,7 +90,7 @@ const PMDashboard = () => {
     if (['Développement', 'En cours', 'In Progress'].includes(status)) return 'bg-indigo-50 text-indigo-700 border-indigo-200/70 shadow-xs';
     if (['Testing', 'Fait'].includes(status))     return 'bg-purple-50 text-purple-700 border-purple-200/70 shadow-xs';
     if (['Déploiement', 'Clôture', 'Clôturée'].includes(status)) return 'bg-amber-50 text-amber-700 border-amber-200/70 shadow-xs';
-    if (['Utilisation', 'Archive', 'Archivée'].includes(status)) return 'bg-emerald-50 text-emerald-700 border-emerald-200/70 shadow-xs';
+    if (['Utilisation', 'Archive', 'Archivée', 'Terminé'].includes(status)) return 'bg-emerald-50 text-emerald-700 border-emerald-200/70 shadow-xs';
     return 'bg-slate-100 text-slate-700 border-slate-200';
   };
 
@@ -206,39 +211,41 @@ const PMDashboard = () => {
         </div>
 
         <div 
-          onClick={() => navigate('/users')}
+          onClick={() => navigate('/projects')}
           className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm cursor-pointer hover:border-teal-500 hover:shadow-md transition-all group"
         >
           <div className="flex justify-between items-start mb-3">
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 group-hover:text-teal-600 transition-colors">Membres Équipe IT</p>
-              <p className="text-3xl font-black text-slate-800">{users.length}</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 group-hover:text-teal-600 transition-colors">Tâches de Développement</p>
+              <p className="text-3xl font-black text-slate-800">{totalTasks}</p>
             </div>
             <div className="p-3 bg-teal-50 text-teal-600 rounded-2xl group-hover:bg-teal-600 group-hover:text-white transition-colors">
-              <Users size={24} />
+              <CheckCircle size={24} />
             </div>
           </div>
           <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-teal-600 font-semibold">
-            <span>Gérer l'équipe</span>
-            <ArrowUpRight size={14} />
+            <span>Taux de complétion : {taskCompletionRate}%</span>
+            <div className="w-16 bg-slate-100 rounded-full h-1.5 ml-2 overflow-hidden">
+              <div className="bg-teal-500 h-1.5 rounded-full" style={{ width: `${taskCompletionRate}%` }} />
+            </div>
           </div>
         </div>
 
         <div 
-          onClick={() => navigate('/demande-si')}
+          onClick={() => navigate('/projects')}
           className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm cursor-pointer hover:border-amber-500 hover:shadow-md transition-all group"
         >
           <div className="flex justify-between items-start mb-3">
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 group-hover:text-amber-600 transition-colors">Demandes SI Soumises</p>
-              <p className="text-3xl font-black text-slate-800">{filteredDemandes.length}</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 group-hover:text-amber-600 transition-colors">Cas de Tests QA</p>
+              <p className="text-3xl font-black text-slate-800">{totalTests}</p>
             </div>
             <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl group-hover:bg-amber-500 group-hover:text-white transition-colors">
-              <BarChart3 size={24} />
+              <Activity size={24} />
             </div>
           </div>
           <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span>Taux d'approbation : <strong className="text-amber-600 font-bold">{approvalRate}%</strong></span>
+            <span>Taux de succès : <strong className="text-amber-600 font-bold">{testSuccessRate}%</strong></span>
             <ArrowUpRight size={14} className="text-amber-600" />
           </div>
         </div>
@@ -310,48 +317,48 @@ const PMDashboard = () => {
           </div>
         </div>
 
-        {/* Demandes SI Approval Stats Grid */}
+        {/* Tasks & Tests Stats Grid */}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div>
             <h3 className="font-bold text-slate-800 text-base mb-1 flex items-center gap-2">
-              <BarChart3 className="text-blue-600" size={18} />
-              Gouvernance & Santé des Demandes SI
+              <Activity className="text-blue-600" size={18} />
+              Performances Opérationnelles (Dev & QA)
             </h3>
-            <p className="text-xs text-slate-400 mb-4">État des soumissions et taux d'approbation</p>
+            <p className="text-xs text-slate-400 mb-4">État de livraison des tâches et des tests</p>
 
             <div className="grid grid-cols-2 gap-2 mb-4">
-              <div className="p-2.5 bg-emerald-50/70 border border-emerald-100 rounded-2xl text-center">
-                <span className="text-[10px] font-bold text-emerald-700 uppercase block">Acceptées</span>
-                <span className="text-xl font-black text-emerald-700">{acceptedDemandesCount}</span>
+              <div className="p-2.5 bg-teal-50/70 border border-teal-100 rounded-2xl text-center">
+                <span className="text-[10px] font-bold text-teal-700 uppercase block">Tâches Terminées</span>
+                <span className="text-xl font-black text-teal-700">{completedTasks}</span>
               </div>
               <div className="p-2.5 bg-blue-50/70 border border-blue-100 rounded-2xl text-center">
-                <span className="text-[10px] font-bold text-blue-700 uppercase block">Total</span>
-                <span className="text-xl font-bold text-blue-800 leading-tight">{filteredDemandes.length}</span>
+                <span className="text-[10px] font-bold text-blue-700 uppercase block">Total Tâches</span>
+                <span className="text-xl font-bold text-blue-800 leading-tight">{totalTasks}</span>
               </div>
-              <div className="p-2.5 bg-amber-50/70 border border-amber-100 rounded-2xl text-center">
-                <span className="text-[10px] font-bold text-amber-700 uppercase block">En Cours</span>
-                <span className="text-xl font-bold text-amber-800 leading-tight">{enCoursDemandesCount}</span>
+              <div className="p-2.5 bg-emerald-50/70 border border-emerald-100 rounded-2xl text-center">
+                <span className="text-[10px] font-bold text-emerald-700 uppercase block">Tests Réussis</span>
+                <span className="text-xl font-bold text-emerald-800 leading-tight">{passedTests}</span>
               </div>
               <div className="p-2.5 bg-rose-50/70 border border-rose-100 rounded-2xl text-center">
-                <span className="text-[10px] font-bold text-rose-700 uppercase block">Refusées</span>
-                <span className="text-xl font-black text-rose-700">{refusedDemandesCount}</span>
+                <span className="text-[10px] font-bold text-rose-700 uppercase block">Tests Échoués</span>
+                <span className="text-xl font-black text-rose-700">{failedTests}</span>
               </div>
             </div>
 
             <div className="space-y-3">
               <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500 font-semibold">Taux d'Approbation Global</span>
-                <span className="font-extrabold text-blue-600">{approvalRate}%</span>
+                <span className="text-slate-500 font-semibold">Taux de Succès Global (Tests)</span>
+                <span className="font-extrabold text-blue-600">{testSuccessRate}%</span>
               </div>
               <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                <div className="bg-blue-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${approvalRate}%` }} />
+                <div className="bg-blue-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${testSuccessRate}%` }} />
               </div>
             </div>
           </div>
 
           <div className="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500 flex justify-between items-center">
-            <span>Registre des demandes SI</span>
-            <span className="font-bold text-slate-700">{filteredDemandes.length} soumissions</span>
+            <span>Tests en attente</span>
+            <span className="font-bold text-slate-700">{pendingTests} tests</span>
           </div>
         </div>
       </div>

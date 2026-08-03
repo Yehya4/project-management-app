@@ -27,6 +27,7 @@ import ProjectMessages from './pages/project/ProjectMessages';
 import ProjectCalendar from './pages/project/ProjectCalendar';
 import ProjectTests from './pages/project/ProjectTests';
 import ProjectDeployment from './pages/project/ProjectDeployment';
+import ProjectUtilisation from './pages/project/ProjectUtilisation';
 import UsersPage from './pages/UsersPage';
 import SettingsPage from './pages/SettingsPage';
 import Messages from './pages/Messages';
@@ -101,6 +102,7 @@ function App() {
                     <Route path="backlog" element={<ProjectBacklog />} />
                     <Route path="tests" element={<ProjectTests />} />
                     <Route path="deployment" element={<ProjectDeployment />} />
+                    <Route path="utilisation" element={<ProjectUtilisation />} />
                     <Route path="role" element={<ProjectRole />} />
                     <Route path="project-info" element={<ProjectInfo />} />
                   </Route>

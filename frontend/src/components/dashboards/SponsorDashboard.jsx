@@ -18,6 +18,8 @@ const SponsorDashboard = () => {
   const navigate = useNavigate();
 
   const filteredDemandes = demandes.filter(d => d.statut !== 'Brouillon');
+  const acceptedDemandesCount = filteredDemandes.filter(d => d.statut === 'Acceptée').length;
+  const approvalRate = filteredDemandes.length > 0 ? Math.round((acceptedDemandesCount / filteredDemandes.length) * 100) : 0;
 
   const handleAccept = (demandeId) => updateDemandeStatus(demandeId, 'Acceptée');
   const handleRefuse = (demandeId) => updateDemandeStatus(demandeId, 'Refusée');
@@ -47,27 +49,22 @@ const SponsorDashboard = () => {
   const totalPendingActions = chartersToValidate.length + backlogsToValidate.length + archsToValidate.length;
 
   const validatedProjects = projects.filter(p =>
-    ['Utilisation', 'Archive', 'Archivée'].includes(p.status)
+    ['Utilisation', 'Archive', 'Archivée', 'Terminé'].includes(p.status)
   ).length;
 
   const initiationCount = projects.filter(p => p.status === 'Initiation' || p.status === 'En Préparation').length;
   const devCount        = projects.filter(p => ['Développement', 'En cours', 'In Progress'].includes(p.status)).length;
   const testCount       = projects.filter(p => p.status === 'Testing').length;
   const deployCount     = projects.filter(p => ['Déploiement', 'Clôture', 'Clôturée'].includes(p.status)).length;
-  const utilCount       = projects.filter(p => ['Utilisation', 'Archive', 'Archivée'].includes(p.status)).length;
+  const utilCount       = projects.filter(p => ['Utilisation', 'Archive', 'Archivée', 'Terminé'].includes(p.status)).length;
 
   const totalProgress = projects.reduce((acc, p) => acc + (p.progress || 0), 0);
   const avgProgress   = projects.length ? Math.round(totalProgress / projects.length) : 0;
 
-  // Demandes SI Stats
-  const enCoursDemandesCount = filteredDemandes.filter(d => d.statut === 'En cours').length;
-  const acceptedDemandesCount = filteredDemandes.filter(d => d.statut === 'Acceptée').length;
-  const refusedDemandesCount  = filteredDemandes.filter(d => d.statut === 'Refusée').length;
-  const approvalRate = filteredDemandes.length
-    ? Math.round((acceptedDemandesCount / filteredDemandes.length) * 100)
-    : 0;
-
-  // Donut chart calculations
+  // Health Status Calculations
+  const blockedProjectsCount = chartersToValidate.length + backlogsToValidate.length + archsToValidate.length;
+  const delayedProjectsCount = projects.filter(p => p.progress < 50 && p.status !== 'En Préparation').length;
+  const onTrackProjectsCount = projects.length - blockedProjectsCount - delayedProjectsCount;
   const phasesData = [
     { name: 'Initiation', count: initiationCount, color: '#3b82f6' },
     { name: 'Développement', count: devCount, color: '#6366f1' },
@@ -103,7 +100,7 @@ const SponsorDashboard = () => {
     if (['Développement', 'En cours', 'In Progress'].includes(status)) return 'bg-indigo-50 text-indigo-700 border-indigo-200/70 shadow-xs';
     if (['Testing', 'Fait'].includes(status))     return 'bg-purple-50 text-purple-700 border-purple-200/70 shadow-xs';
     if (['Déploiement', 'Clôture', 'Clôturée'].includes(status)) return 'bg-amber-50 text-amber-700 border-amber-200/70 shadow-xs';
-    if (['Utilisation', 'Archive', 'Archivée'].includes(status)) return 'bg-emerald-50 text-emerald-700 border-emerald-200/70 shadow-xs';
+    if (['Utilisation', 'Archive', 'Archivée', 'Terminé'].includes(status)) return 'bg-emerald-50 text-emerald-700 border-emerald-200/70 shadow-xs';
     return 'bg-slate-100 text-slate-700 border-slate-200';
   };
 
@@ -460,48 +457,60 @@ const SponsorDashboard = () => {
           </div>
         </div>
 
-        {/* Demandes SI Approval Stats Grid */}
+        {/* Project Health Status Grid */}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div>
             <h3 className="font-bold text-slate-800 text-base mb-1 flex items-center gap-2">
-              <BarChart3 className="text-indigo-600" size={18} />
-              Gouvernance & Métriques Demandes SI
+              <Activity className="text-emerald-600" size={18} />
+              Santé du Portefeuille Projets
             </h3>
-            <p className="text-xs text-slate-400 mb-4">État des soumissions et taux d'approbation</p>
+            <p className="text-xs text-slate-400 mb-4">Indicateurs de risques et de blocages</p>
 
-            <div className="grid grid-cols-2 gap-2 mb-4">
-              <div className="p-2.5 bg-emerald-50/70 border border-emerald-100 rounded-2xl text-center">
-                <span className="text-[10px] font-bold text-emerald-700 uppercase block">Acceptées</span>
-                <span className="text-xl font-black text-emerald-700">{acceptedDemandesCount}</span>
+            <div className="space-y-4 mb-4">
+              <div className="flex items-center justify-between p-3 bg-emerald-50 border border-emerald-100 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-emerald-200/50 flex items-center justify-center text-emerald-700 font-bold">
+                    <CheckCircle size={16} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-emerald-800">Dans les temps</p>
+                    <p className="text-[10px] text-emerald-600">Progression normale</p>
+                  </div>
+                </div>
+                <span className="text-xl font-black text-emerald-700">{onTrackProjectsCount > 0 ? onTrackProjectsCount : 0}</span>
               </div>
-              <div className="p-2.5 bg-blue-50/70 border border-blue-100 rounded-2xl text-center">
-                <span className="text-[10px] font-bold text-blue-700 uppercase block">Total</span>
-                <span className="text-xl font-bold text-blue-800 leading-tight">{filteredDemandes.length}</span>
+              
+              <div className="flex items-center justify-between p-3 bg-amber-50 border border-amber-100 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-amber-200/50 flex items-center justify-center text-amber-700 font-bold">
+                    <AlertCircle size={16} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-amber-800">Bloqués (Validation)</p>
+                    <p className="text-[10px] text-amber-600">En attente de signature</p>
+                  </div>
+                </div>
+                <span className="text-xl font-black text-amber-700">{blockedProjectsCount}</span>
               </div>
-              <div className="p-2.5 bg-amber-50/70 border border-amber-100 rounded-2xl text-center">
-                <span className="text-[10px] font-bold text-amber-700 uppercase block">En Cours</span>
-                <span className="text-xl font-bold text-amber-800 leading-tight">{enCoursDemandesCount}</span>
-              </div>
-              <div className="p-2.5 bg-rose-50/70 border border-rose-100 rounded-2xl text-center">
-                <span className="text-[10px] font-bold text-rose-700 uppercase block">Refusées</span>
-                <span className="text-xl font-black text-rose-700">{refusedDemandesCount}</span>
-              </div>
-            </div>
 
-            <div className="space-y-3">
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500 font-semibold">Taux d'Approbation Global</span>
-                <span className="font-extrabold text-emerald-600">{approvalRate}%</span>
-              </div>
-              <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                <div className="bg-emerald-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${approvalRate}%` }}></div>
+              <div className="flex items-center justify-between p-3 bg-rose-50 border border-rose-100 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-rose-200/50 flex items-center justify-center text-rose-700 font-bold">
+                    <Clock size={16} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-rose-800">En retard potentiel</p>
+                    <p className="text-[10px] text-rose-600">Progression lente</p>
+                  </div>
+                </div>
+                <span className="text-xl font-black text-rose-700">{delayedProjectsCount > 0 ? delayedProjectsCount : 0}</span>
               </div>
             </div>
           </div>
 
           <div className="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500 flex justify-between items-center">
-            <span>Registre des demandes SI</span>
-            <span className="font-bold text-slate-700">{filteredDemandes.length} soumissions</span>
+            <span>Taux de santé</span>
+            <span className="font-bold text-emerald-600">{projects.length > 0 ? Math.round((onTrackProjectsCount / projects.length) * 100) : 100}% OK</span>
           </div>
         </div>
       </div>

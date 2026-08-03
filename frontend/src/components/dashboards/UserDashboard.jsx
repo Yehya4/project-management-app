@@ -39,7 +39,7 @@ const UserDashboard = () => {
 
   const myProjects = projects.filter(p => {
     const d = demandes.find(dem => dem.id === (p.demandeId || p.id));
-    if (!d) return true;
+    if (!d) return false; // Fixed: only include projects linked to user's demandes
     const name = (d.nomDemandeur || '').trim().toLowerCase();
     return name === userFullName || name === userFullNameAlt || (user?.nom && name.includes(user.nom.toLowerCase()));
   });
@@ -385,6 +385,42 @@ const UserDashboard = () => {
               Mes Demandes <ArrowRight size={13} />
             </Link>
           </div>
+        </div>
+      </div>
+
+      {/* Mes Projets List */}
+      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+        <div className="flex items-center gap-2 mb-6">
+          <Briefcase className="text-blue-600" size={24} />
+          <h2 className="text-xl font-bold text-slate-800">Mes Projets en Cours d'Exécution</h2>
+        </div>
+        <div className="space-y-4">
+          {myProjects.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {myProjects.map(project => (
+                <div key={project.id} className="p-4 border border-slate-100 bg-slate-50 rounded-2xl hover:bg-white hover:border-blue-200 hover:shadow-md transition-all group cursor-pointer" onClick={() => navigate(`/projects/${project.id}/dashboard`)}>
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="font-bold text-slate-800 truncate pr-2">{project.nom}</h3>
+                    <span className="px-2.5 py-1 bg-indigo-100 text-indigo-700 rounded-md text-[10px] font-bold uppercase tracking-wide shrink-0">
+                      {project.status}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                      <div className="bg-blue-600 h-1.5 rounded-full transition-all duration-500" style={{ width: `${project.progress || 0}%` }}></div>
+                    </div>
+                    <span className="text-xs font-bold text-slate-600">{project.progress || 0}%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center text-center p-8 border-2 border-dashed border-slate-200 rounded-2xl">
+              <Briefcase className="text-slate-300 mb-3" size={32} />
+              <p className="text-slate-500 text-sm font-medium">Vous n'avez aucun projet en cours d'exécution.</p>
+              <p className="text-slate-400 text-xs mt-1">Les projets apparaîtront ici une fois vos demandes SI validées et planifiées.</p>
+            </div>
+          )}
         </div>
       </div>
 

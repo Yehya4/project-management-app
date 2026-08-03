@@ -83,7 +83,8 @@ class DemandeService {
                     if (err) return reject(err);
                     const newDemande = { id: newId, ...demandeData, statut: initialStatut, dateCreation };
 
-                                        if (io && initialStatut !== 'Brouillon') {
+                    if (io) io.emit('demande_created', newDemande);
+                    if (io && initialStatut !== 'Brouillon') {
                         const notification = {
                             id: Date.now(),
                             title: 'Nouvelle demande SI',
@@ -99,13 +100,13 @@ class DemandeService {
                         target.emit('new_notification', notification);
                     }
 
-                                        resolve(newDemande);
+                    resolve(newDemande);
                 });
             });
         });
     }
 
-    update(id, demandeData) {
+    update(id, demandeData, io) {
         return new Promise((resolve, reject) => {
             const { 
                 nomDemandeur, fonction, domaines, categoriesProjet, 
@@ -127,7 +128,9 @@ class DemandeService {
 
             db.query(query, values, (err) => {
                 if (err) return reject(err);
-                resolve({ id, ...demandeData });
+                const updatedDemande = { id, ...demandeData };
+                if (io) io.emit('demande_updated', updatedDemande);
+                resolve(updatedDemande);
             });
         });
     }
@@ -177,17 +180,20 @@ class DemandeService {
                         }
                         target.emit('new_notification', notification);
                     }
+                    
+                    io.emit('demande_updated', { id, statut });
                 }
 
-                                resolve(result);
+                resolve(result);
             });
         });
     }
 
-    delete(id) {
+    delete(id, io) {
         return new Promise((resolve, reject) => {
             db.query('DELETE FROM demandes WHERE id = ?', [id], (err) => {
                 if (err) return reject(err);
+                if (io) io.emit('demande_deleted', { id });
                 resolve({ id });
             });
         });

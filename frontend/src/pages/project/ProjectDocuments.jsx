@@ -127,7 +127,7 @@ const ProjectDocuments = () => {
   };
 
   const handleValidateArchitecture = async () => {
-    await updateProject(project.id, { architectureStatus: 'Validé', status: 'Développement', sponsorComment: null });
+    await updateProject(project.id, { architectureStatus: 'Validé', status: 'Développement', progress: 15, sponsorComment: null });
   };
 
   const handleRejectArchitecture = () => {

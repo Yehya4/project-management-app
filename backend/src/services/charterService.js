@@ -84,6 +84,7 @@ class CharterService {
 
                     db.query(query, values, (err) => {
                         if (err) return reject(err);
+                        if (io) io.emit('charter_updated', charterData);
                         resolve();
                     });
                 } else {
@@ -105,6 +106,7 @@ class CharterService {
 
                     db.query(query, values, (err) => {
                         if (err) return reject(err);
+                        if (io) io.emit('charter_created', charterData);
                         resolve();
                     });
                 }
@@ -164,10 +166,11 @@ class CharterService {
         return charterData;
     }
 
-    delete(demandeId) {
+    delete(demandeId, io) {
         return new Promise((resolve, reject) => {
             db.query('DELETE FROM charters WHERE demandeId = ?', [demandeId], (err) => {
                 if (err) return reject(err);
+                if (io) io.emit('charter_deleted', { demandeId });
                 resolve({ demandeId });
             });
         });

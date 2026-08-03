@@ -524,7 +524,7 @@ const ProjectCharterView = () => {
               {project.status === 'Initiation' && (
                 <div className="flex items-center justify-center gap-2 text-indigo-600">
                   <Rocket size={18} />
-                  <p className="text-sm font-semibold">Phase Initiation — Progression fixe à 20% (automatique)</p>
+                  <p className="text-sm font-semibold">Phase Initiation — Progression fixe à 15% (automatique)</p>
                 </div>
               )}
               {project.status === 'Utilisation' && (

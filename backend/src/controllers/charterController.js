@@ -22,7 +22,8 @@ class CharterController {
 
     async delete(req, res) {
         try {
-            await charterService.delete(req.params.demandeId);
+            const io = req.app.get('io');
+            await charterService.delete(req.params.demandeId, io);
             return res.status(200).json({ message: 'Charte supprimée' });
         } catch (error) {
             return res.status(500).json({ message: 'Erreur lors de la suppression', error });

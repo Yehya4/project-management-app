@@ -461,7 +461,7 @@ const ProjectTests = () => {
             </div>
             {isChefTesteur && (
               <button
-                onClick={() => updateProject(project.id, { status: 'Déploiement' })}
+                onClick={() => updateProject(project.id, { status: 'Déploiement', progress: 90 })}
                 className="w-full md:w-auto px-5 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-bold shadow-sm whitespace-nowrap"
               >
                 Valider pour Déploiement

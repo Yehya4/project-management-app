@@ -6,9 +6,9 @@ import {
   Clock, Zap, CheckCircle2, ChevronRight, Lock,
   CheckCheck, ArrowRight, User, Shield, Briefcase,
   Upload, ClipboardList, Box, FileSpreadsheet,
-  ChevronDown, ChevronUp
+  ChevronDown, ChevronUp, FlaskConical
 } from 'lucide-react';
-import { useCharter, useDemandes, useProjects, useAuth, useTasks } from '../../context/AppContext';
+import { useCharter, useDemandes, useProjects, useAuth, useTasks, useTestCases } from '../../context/AppContext';
 
 
 
@@ -27,7 +27,7 @@ const mapStatus = (s) => {
   if (['In Progress', 'En cours'].includes(s)) return 'Développement';
   if (['Fait'].includes(s)) return 'Testing';
   if (['Clôture', 'Clôturée'].includes(s)) return 'Déploiement';
-  if (['Archive', 'Archivée'].includes(s)) return 'Utilisation';
+  if (['Archive', 'Archivée', 'Terminé'].includes(s)) return 'Utilisation';
   return s;
 };
 
@@ -114,10 +114,10 @@ const getPhaseSubSteps = (phaseId, project, charter, currentIdx) => {
 
     if (isCurrent) {
       if (phaseId === 'Développement') {
-        // Dev: 20% → 80%
+        // Dev: 15% → 80%
         if (order === 1) {
           done = project.progress >= 40;
-          active = project.progress >= 20 && project.progress < 40;
+          active = project.progress >= 15 && project.progress < 40;
         } else if (order === 2) {
           done = project.progress >= 60;
           active = project.progress >= 40 && project.progress < 60;
@@ -158,12 +158,12 @@ const getPhaseSubSteps = (phaseId, project, charter, currentIdx) => {
       } else {
         // Autres phases (Utilisation, etc.)
         if (order === 1) {
-          done = project.progress >= 20;
-          active = project.progress < 20;
+          done = project.progress >= 15;
+          active = project.progress < 15;
         } else if (order === 2) {
           done = project.progress >= 60;
-          active = project.progress >= 20 && project.progress < 60;
-          locked = project.progress < 20;
+          active = project.progress >= 15 && project.progress < 60;
+          locked = project.progress < 15;
         } else {
           done = project.progress >= 90;
           active = project.progress >= 60 && project.progress < 90;
@@ -339,6 +339,7 @@ const ProjectOverview = () => {
   const { demandes, updateDemandeStatus } = useDemandes();
   const { addProject, updateProject } = useProjects();
   const { getTasksByProjectId } = useTasks();
+  const { testCases } = useTestCases();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -346,10 +347,17 @@ const ProjectOverview = () => {
   const isPM              = user?.role === 'Project Manager' || user?.role === 'Sponsor' || user?.role === 'Admin';
   const isCharterValidated = charter?.statut === 'Validé';
   const projectTasks      = getTasksByProjectId(project.id);
-  const doneTasksCount    = projectTasks.filter(t => ['Fait', 'Clôture', 'Clôturée', 'Archive', 'Archivée'].includes(t.status)).length;
+  const doneTasksCount    = projectTasks.filter(t => ['Fait', 'Clôture', 'Clôturée', 'Archive', 'Archivée', 'Terminé'].includes(t.status)).length;
   const pendingTasksCount = projectTasks.filter(t => t.status === 'En cours').length;
+  const taskProgress      = projectTasks.length > 0 ? Math.round((doneTasksCount / projectTasks.length) * 100) : 0;
 
-  
+  const projectTestCases = testCases.filter(t => t.projectId === project.id);
+  const passedTestsCount = projectTestCases.filter(t => t.status === 'Réussite').length;
+  const failedTestsCount = projectTestCases.filter(t => t.status === 'Non Réussite').length;
+  const testsProgress    = projectTestCases.length > 0 ? Math.round((passedTestsCount / projectTestCases.length) * 100) : 0;
+
+  const currentPhase = PHASES.find(p => p.id === project.status) || PHASES[0];
+
   const normalized = mapStatus(project.status);
   const currentIdx = LIFECYCLE.indexOf(normalized);
 
@@ -360,15 +368,10 @@ const ProjectOverview = () => {
     return 'pending';
   };
 
-  const currentPhase = PHASES.find(p => p.id === normalized) || PHASES[0];
-
-  
   const initiationSubSteps = getInitiationSubSteps(charter, project);
   const isInitiation = normalized === 'Initiation';
 
-  
   const phaseProgress = Math.round((currentIdx / (LIFECYCLE.length - 1)) * 100);
-  const taskProgress  = projectTasks.length > 0 ? Math.round((doneTasksCount / projectTasks.length) * 100) : 0;
 
   
   const pendingActions = [];
@@ -520,44 +523,80 @@ const ProjectOverview = () => {
       {}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
-        {}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-blue-50 text-blue-600 rounded-xl"><Activity size={20} /></div>
-            <h3 className="font-semibold text-slate-700">Progression</h3>
+        {/* Progression */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-3 mb-3">
+              <div 
+                className="p-2 rounded-xl"
+                style={{ background: currentPhase.bg, color: currentPhase.color }}
+              >
+                <currentPhase.icon size={20} />
+              </div>
+              <h3 className="font-semibold text-slate-700">Progression ({currentPhase.label})</h3>
+            </div>
+            <p className="text-4xl font-black text-slate-800">
+              {project.progress}<span className="text-xl text-slate-400">%</span>
+            </p>
           </div>
-          <p className="text-4xl font-black text-slate-800">
-            {project.progress}<span className="text-xl text-slate-400">%</span>
-          </p>
           <div className="w-full bg-slate-100 rounded-full h-2 mt-3">
             <div
-              className="bg-blue-600 h-2 rounded-full transition-all duration-700"
-              style={{ width: `${project.progress}%` }}
+              className="h-2 rounded-full transition-all duration-700"
+              style={{ width: `${project.progress}%`, background: currentPhase.color }}
             />
           </div>
         </div>
 
-
+        {/* Cas de tests */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl"><FlaskConical size={20} /></div>
+              <h3 className="font-semibold text-slate-700">Cas de tests</h3>
+            </div>
+            <p className="text-4xl font-black text-slate-800">
+              {passedTestsCount}<span className="text-xl font-normal text-slate-400">/{projectTestCases.length}</span>
+            </p>
+            <p className="text-xs text-slate-500 mt-1">
+              {failedTestsCount} test{failedTestsCount > 1 ? 's' : ''} échoué{failedTestsCount > 1 ? 's' : ''}
+            </p>
+          </div>
+          {projectTestCases.length > 0 ? (
+            <div className="w-full bg-slate-100 rounded-full h-1.5 mt-2">
+              <div
+                className="bg-emerald-500 h-1.5 rounded-full transition-all duration-700"
+                style={{ width: `${testsProgress}%` }}
+              />
+            </div>
+          ) : (
+            <div className="h-1.5 mt-2"></div>
+          )}
+        </div>
 
         {}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-purple-50 text-purple-600 rounded-xl"><AlertCircle size={20} /></div>
-            <h3 className="font-semibold text-slate-700">Tâches</h3>
+        {/* Tâches */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 bg-purple-50 text-purple-600 rounded-xl"><AlertCircle size={20} /></div>
+              <h3 className="font-semibold text-slate-700">Tâches</h3>
+            </div>
+            <p className="text-4xl font-black text-slate-800">
+              {doneTasksCount}<span className="text-xl font-normal text-slate-400">/{projectTasks.length}</span>
+            </p>
+            <p className="text-xs text-slate-500 mt-1">
+              {pendingTasksCount} tâche{pendingTasksCount > 1 ? 's' : ''} en cours
+            </p>
           </div>
-          <p className="text-4xl font-black text-slate-800">
-            {doneTasksCount}<span className="text-xl font-normal text-slate-400">/{projectTasks.length}</span>
-          </p>
-          <p className="text-xs text-slate-500 mt-1">
-            {pendingTasksCount} tâche{pendingTasksCount > 1 ? 's' : ''} en cours
-          </p>
-          {projectTasks.length > 0 && (
+          {projectTasks.length > 0 ? (
             <div className="w-full bg-slate-100 rounded-full h-1.5 mt-2">
               <div
                 className="bg-purple-500 h-1.5 rounded-full transition-all duration-700"
                 style={{ width: `${taskProgress}%` }}
               />
             </div>
+          ) : (
+            <div className="h-1.5 mt-2"></div>
           )}
         </div>
       </div>

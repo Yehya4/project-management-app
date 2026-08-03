@@ -9,7 +9,7 @@ class ProjectService {
     async getSystemProgress(projectId, statut) {
         return new Promise((resolve) => {
             if (statut === 'Utilisation') return resolve(100);
-            if (statut === 'Initiation') return resolve(20);
+            if (statut === 'Initiation') return resolve(15);
 
             db.query('SELECT * FROM tasks WHERE projectId = ?', [projectId], (err, tasks) => {
                 if (err || !tasks) return resolve(null);
@@ -19,9 +19,9 @@ class ProjectService {
                 const taskRatio = totalTasks > 0 ? doneTasks / totalTasks : 0;
 
                 if (statut === 'Développement') {
-                    // 20% → 80% selon le % de tâches terminées
-                    const sysProgress = Math.round(20 + taskRatio * 60);
-                    return resolve(Math.min(80, Math.max(20, sysProgress)));
+                    // 15% → 80% selon le % de tâches terminées
+                    const sysProgress = Math.round(15 + taskRatio * 65);
+                    return resolve(Math.min(80, Math.max(15, sysProgress)));
                 }
 
                 db.query('SELECT * FROM test_cases WHERE projectId = ?', [projectId], (err2, tests) => {
@@ -55,16 +55,16 @@ class ProjectService {
     formatProject(project) {
         if (!project) return null;
         const status = project.statut || 'Initiation';
-        let progress = 20;
+        let progress = 15;
 
         const manual = project.manualProgress != null ? parseInt(project.manualProgress) : null;
 
         switch (status) {
             case 'Initiation':
-                progress = 20;
+                progress = 15;
                 break;
             case 'Développement':
-                progress = manual != null ? Math.min(80, Math.max(20, manual)) : 20;
+                progress = manual != null ? Math.min(80, Math.max(15, manual)) : 15;
                 break;
             case 'Testing':
                 progress = manual != null ? Math.min(90, Math.max(80, manual)) : 80;
@@ -76,7 +76,7 @@ class ProjectService {
                 progress = 100;
                 break;
             default:
-                progress = 20;
+                progress = 15;
         }
 
         return { ...project, status, progress };
@@ -146,10 +146,10 @@ class ProjectService {
                 if (!project) return reject(new Error('Projet non trouvé'));
 
                 const statut = project.statut || 'Initiation';
-                let minVal = 20, maxVal = 20;
+                let minVal = 15, maxVal = 15;
 
                 switch (statut) {
-                    case 'Développement': minVal = 20; maxVal = 80; break;
+                    case 'Développement': minVal = 15; maxVal = 80; break;
                     case 'Testing':       minVal = 80; maxVal = 90; break;
                     case 'Déploiement':   minVal = 90; maxVal = 100; break;
                     default:
@@ -251,6 +251,26 @@ class ProjectService {
             if (data.manualProgress !== undefined) {
                 updates.push('manualProgress = ?');
                 values.push(data.manualProgress);
+            }
+            if (data.suiviPostDeploiement !== undefined) {
+                updates.push('suiviPostDeploiement = ?');
+                values.push(data.suiviPostDeploiement ? 1 : 0);
+            }
+            if (data.suiviPostDeploiementBy !== undefined) {
+                updates.push('suiviPostDeploiementBy = ?');
+                values.push(data.suiviPostDeploiementBy);
+            }
+            if (data.suiviPostDeploiementAt !== undefined) {
+                updates.push('suiviPostDeploiementAt = ?');
+                values.push(data.suiviPostDeploiementAt);
+            }
+            if (data.clotureBy !== undefined) {
+                updates.push('clotureBy = ?');
+                values.push(data.clotureBy);
+            }
+            if (data.clotureAt !== undefined) {
+                updates.push('clotureAt = ?');
+                values.push(data.clotureAt);
             }
 
             if (updates.length === 0) {

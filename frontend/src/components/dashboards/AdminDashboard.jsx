@@ -1,6 +1,6 @@
 import React from 'react';
 import { Server, ShieldCheck, FolderKanban, Users, TrendingUp, Activity, PieChart, FileText, CheckCircle2, Clock, XCircle, ArrowUpRight, BarChart2, Shield } from 'lucide-react';
-import { useUser, useAuth, useDemandes, useProjects, useCharter } from '../../context/AppContext';
+import { useUser, useAuth, useDemandes, useProjects, useCharter, useTasks, useTestCases } from '../../context/AppContext';
 import { Link, useNavigate } from 'react-router-dom';
 import Popup from '../Popup';
 
@@ -10,11 +10,22 @@ const AdminDashboard = () => {
   const { demandes } = useDemandes();
   const { projects } = useProjects();
   const { charters } = useCharter();
+  const { tasks } = useTasks();
+  const { testCases } = useTestCases();
   const navigate = useNavigate();
   const [popup, setPopup] = React.useState({ isOpen: false, title: '', message: '', type: 'success' });
 
-  const activeProjects = projects.filter(p => !['Utilisation', 'Archive', 'Archivée'].includes(p.status)).length;
-  const validatedProjects = projects.filter(p => ['Utilisation', 'Archive', 'Archivée'].includes(p.status)).length;
+  // Tasks & Tests Stats
+  const totalTasks = tasks.length;
+  const completedTasks = tasks.filter(t => t.status === 'Fait' || t.status === 'Done').length;
+  const taskCompletionRate = totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+  const totalTests = testCases.length;
+  const passedTests = testCases.filter(t => t.status === 'Passed').length;
+  const testSuccessRate = totalTests ? Math.round((passedTests / totalTests) * 100) : 0;
+
+  const activeProjects = projects.filter(p => !['Utilisation', 'Archive', 'Archivée', 'Terminé'].includes(p.status)).length;
+  const validatedProjects = projects.filter(p => ['Utilisation', 'Archive', 'Archivée', 'Terminé'].includes(p.status)).length;
   const filteredDemandes = demandes.filter(d => d.statut !== 'Brouillon');
   const enCoursDemandes = filteredDemandes.filter(d => d.statut === 'En cours').length;
   const acceptedDemandes = filteredDemandes.filter(d => d.statut === 'Acceptée').length;
@@ -25,11 +36,24 @@ const AdminDashboard = () => {
   const totalProgress = projects.reduce((acc, p) => acc + (p.progress || 0), 0);
   const avgProgress = projects.length ? Math.round(totalProgress / projects.length) : 0;
 
-  // Role Breakdown
-  const roleCounts = users.reduce((acc, u) => {
-    acc[u.role] = (acc[u.role] || 0) + 1;
-    return acc;
-  }, {});
+  const parseArray = (val) => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val;
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      if (!trimmed || trimmed === '-') return [];
+      if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed)) return parsed;
+        } catch (e) {}
+      }
+      return trimmed.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    return [];
+  };
+
+
 
   // Project Stages Breakdown
   const initiationCount = projects.filter(p => p.status === 'Initiation' || p.status === 'En Préparation').length;
@@ -298,42 +322,51 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* User Role Distribution */}
+        {/* Tasks & Tests Overview */}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div>
             <h3 className="font-bold text-slate-800 text-base mb-1 flex items-center gap-2">
-              <Shield className="text-indigo-600" size={18} />
-              Répartition des Rôles Utilisateurs
+              <Activity className="text-indigo-600" size={18} />
+              Production & Qualité
             </h3>
-            <p className="text-xs text-slate-400 mb-5">Vue des privilèges et des comptes activés</p>
+            <p className="text-xs text-slate-400 mb-5">Vue globale sur les tâches et les tests (Dev & QA)</p>
 
-            <div className="space-y-2.5">
-              <div className="flex justify-between items-center p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
-                <span className="font-semibold text-slate-700">Administrateurs</span>
-                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 font-bold rounded-md">{roleCounts['Admin'] || 0}</span>
+            <div className="space-y-4">
+              {/* Tasks Progress */}
+              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                <div className="flex justify-between items-center text-xs mb-2">
+                  <span className="font-bold text-slate-700">Tâches Terminées</span>
+                  <span className="font-black text-indigo-600">{taskCompletionRate}%</span>
+                </div>
+                <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden mb-2">
+                  <div className="bg-indigo-600 h-2 rounded-full transition-all duration-500" style={{ width: `${taskCompletionRate}%` }}></div>
+                </div>
+                <div className="flex justify-between text-[10px] text-slate-500 font-semibold">
+                  <span>{completedTasks} achevées</span>
+                  <span>{totalTasks} au total</span>
+                </div>
               </div>
-              <div className="flex justify-between items-center p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
-                <span className="font-semibold text-slate-700">Project Managers (PM)</span>
-                <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 font-bold rounded-md">{roleCounts['Project Manager'] || 0}</span>
-              </div>
-              <div className="flex justify-between items-center p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
-                <span className="font-semibold text-slate-700">Développeurs & Testeurs</span>
-                <span className="px-2 py-0.5 bg-purple-100 text-purple-700 font-bold rounded-md">
-                  {(roleCounts['Developer'] || 0) + (roleCounts['Tester'] || 0) + (roleCounts['Chef Testeur'] || 0)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
-                <span className="font-semibold text-slate-700">Sponsors & Demandeurs</span>
-                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 font-bold rounded-md">
-                  {(roleCounts['Sponsor'] || 0) + (roleCounts['User'] || 0)}
-                </span>
+
+              {/* Tests Progress */}
+              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                <div className="flex justify-between items-center text-xs mb-2">
+                  <span className="font-bold text-slate-700">Tests Réussis (Passed)</span>
+                  <span className="font-black text-emerald-600">{testSuccessRate}%</span>
+                </div>
+                <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden mb-2">
+                  <div className="bg-emerald-500 h-2 rounded-full transition-all duration-500" style={{ width: `${testSuccessRate}%` }}></div>
+                </div>
+                <div className="flex justify-between text-[10px] text-slate-500 font-semibold">
+                  <span>{passedTests} passés avec succès</span>
+                  <span>{totalTests} au total</span>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-slate-100 text-xs text-slate-500 flex justify-between items-center">
-            <span>Comptes au total</span>
-            <span className="font-bold text-slate-800">{users.length} comptes</span>
+          <div className="mt-6 pt-4 border-t border-slate-100 text-[11px] text-slate-500 flex justify-between items-center font-medium">
+            <span>Volume global traité</span>
+            <span className="text-slate-700 font-bold">{totalTasks + totalTests} items</span>
           </div>
         </div>
       </div>

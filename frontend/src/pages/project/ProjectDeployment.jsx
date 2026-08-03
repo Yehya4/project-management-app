@@ -106,7 +106,7 @@ const ProjectDeployment = () => {
         deploymentPlanStatus: 'Validé',
         deploymentValidatedBy: userName,
         deploymentValidatedAt: formattedDate,
-        manualProgress: 100
+        progress: 100
       });
 
       setPopup({

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { NavLink, Outlet, useParams, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, Users, ArrowLeft, FileText, ListTodo, Box, UserCircle, ScrollText, MessageSquare, Calendar, FlaskConical, Rocket } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Users, ArrowLeft, FileText, ListTodo, Box, UserCircle, ScrollText, MessageSquare, Calendar, FlaskConical, Rocket, CheckCircle2 } from 'lucide-react';
 import { useProjects, useDemandes, useAuth, useCharter, useUser, useTasks, useTeam } from '../context/AppContext';
 
 const ProjectWorkspaceLayout = () => {
@@ -145,6 +145,7 @@ const ProjectWorkspaceLayout = () => {
     { path: `/projects/${id}/deployment`, name: 'Déploiement', icon: <Rocket size={20} /> },
     { path: `/projects/${id}/chat`, name: 'Messagerie', icon: <MessageSquare size={20} /> },
     { path: `/projects/${id}/calendar`, name: 'Calendrier', icon: <Calendar size={20} /> },
+    { path: `/projects/${id}/utilisation`, name: 'Utilisation', icon: <CheckCircle2 size={20} /> },
     { path: `/projects/${id}/role`, name: 'Mon Rôle', icon: <UserCircle size={20} /> }
   ];
 
@@ -157,6 +158,7 @@ const ProjectWorkspaceLayout = () => {
     { path: `/projects/${id}/chat`, name: 'Messagerie', icon: <MessageSquare size={20} /> },
     { path: `/projects/${id}/calendar`, name: 'Calendrier', icon: <Calendar size={20} /> },
     { path: `/projects/${id}/documents`, name: 'Documents', icon: <Box size={20} /> },
+    { path: `/projects/${id}/utilisation`, name: 'Utilisation', icon: <CheckCircle2 size={20} /> },
     { path: `/projects/${id}/team`, name: 'Équipe', icon: <Users size={20} /> }
   ];
 

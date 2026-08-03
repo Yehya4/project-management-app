@@ -14,6 +14,7 @@ const Projects = () => {
   const { users } = useUser();
   const { teams } = useTeam();
   const [viewMode, setViewMode] = useState('cards');
+  const [statusFilter, setStatusFilter] = useState('all');
   
   
   
@@ -104,8 +105,15 @@ const Projects = () => {
       if (!d) return false;
       const fn = `${user?.prenom || ''} ${user?.nom || ''}`.trim();
       const fnAlt = `${user?.nom || ''} ${user?.prenom || ''}`.trim();
-      return d.nomDemandeur === fn || d.nomDemandeur === fnAlt;
+      if (d.nomDemandeur !== fn && d.nomDemandeur !== fnAlt) return false;
     }
+
+    if (statusFilter === 'active') {
+      if (['Archive', 'Archivée', 'Terminé'].includes(project.status)) return false;
+    } else if (statusFilter === 'completed') {
+      if (!['Archive', 'Archivée', 'Terminé'].includes(project.status)) return false;
+    }
+
     return true;
   });
 
@@ -121,7 +129,28 @@ const Projects = () => {
             <p className="text-blue-100 max-w-2xl mt-2">
               Gérez l'ensemble de vos projets en un seul endroit. De la préparation initiale avec la charte projet jusqu'au développement et le déploiement final.
             </p>
-            <div className="bg-blue-800/50 p-1 rounded-xl flex items-center shrink-0">
+            <div className="flex items-center gap-4">
+              <div className="bg-blue-800/50 p-1 rounded-xl flex items-center shrink-0">
+                <button
+                  onClick={() => setStatusFilter('all')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${statusFilter === 'all' ? 'bg-white text-blue-900 shadow-sm' : 'text-blue-200 hover:text-white'}`}
+                >
+                  Tous
+                </button>
+                <button
+                  onClick={() => setStatusFilter('active')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${statusFilter === 'active' ? 'bg-white text-blue-900 shadow-sm' : 'text-blue-200 hover:text-white'}`}
+                >
+                  En cours
+                </button>
+                <button
+                  onClick={() => setStatusFilter('completed')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${statusFilter === 'completed' ? 'bg-white text-blue-900 shadow-sm' : 'text-blue-200 hover:text-white'}`}
+                >
+                  Terminés
+                </button>
+              </div>
+              <div className="bg-blue-800/50 p-1 rounded-xl flex items-center shrink-0">
               <button
                 onClick={() => setViewMode('cards')}
                 className={`p-2 rounded-lg flex items-center transition-all ${viewMode === 'cards' ? 'bg-white text-blue-900 shadow-sm' : 'text-blue-200 hover:text-white'}`}
@@ -136,6 +165,7 @@ const Projects = () => {
               >
                 <List size={20} />
               </button>
+            </div>
             </div>
           </div>
         </div>

@@ -80,7 +80,12 @@ pool.getConnection((error, connection) => {
     "ALTER TABLE projects ADD COLUMN deploymentValidatedBy VARCHAR(255)",
     "ALTER TABLE projects ADD COLUMN deploymentValidatedAt VARCHAR(255)",
     "ALTER TABLE projects ADD COLUMN deploymentComment LONGTEXT",
-    "ALTER TABLE projects ADD COLUMN manualProgress INT DEFAULT NULL"
+    "ALTER TABLE projects ADD COLUMN manualProgress INT DEFAULT NULL",
+    "ALTER TABLE projects ADD COLUMN suiviPostDeploiement TINYINT(1) DEFAULT 0",
+    "ALTER TABLE projects ADD COLUMN suiviPostDeploiementBy VARCHAR(255)",
+    "ALTER TABLE projects ADD COLUMN suiviPostDeploiementAt VARCHAR(255)",
+    "ALTER TABLE projects ADD COLUMN clotureBy VARCHAR(255)",
+    "ALTER TABLE projects ADD COLUMN clotureAt VARCHAR(255)"
   ];
 
   projectsColumns.forEach(query => {

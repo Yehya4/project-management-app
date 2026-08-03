@@ -9,9 +9,13 @@ import {
 
 // Config des phases de progression
 const PHASE_PROGRESS_CONFIG = {
-  'Développement': { min: 20, max: 80, color: '#8b5cf6', bg: '#f5f3ff', border: '#ddd6fe', label: 'Développement', icon: Code2 },
+  'En Préparation': { min: 0, max: 15, color: '#f59e0b', bg: '#fffbeb', border: '#fde68a', label: 'Initiation', icon: Rocket },
+  'Initiation':    { min: 0, max: 15, color: '#f59e0b', bg: '#fffbeb', border: '#fde68a', label: 'Initiation', icon: Rocket },
+  'Développement': { min: 15, max: 80, color: '#8b5cf6', bg: '#f5f3ff', border: '#ddd6fe', label: 'Développement', icon: Code2 },
   'Testing':       { min: 80, max: 90, color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe', label: 'Testing',       icon: Activity },
   'Déploiement':   { min: 90, max: 100, color: '#f59e0b', bg: '#fffbeb', border: '#fde68a', label: 'Déploiement', icon: PackageCheck },
+  'Utilisation':   { min: 100, max: 100, color: '#10b981', bg: '#ecfdf5', border: '#a7f3d0', label: 'Utilisation', icon: CheckCircle2 },
+  'Terminé':       { min: 100, max: 100, color: '#059669', bg: '#d1fae5', border: '#6ee7b7', label: 'Terminé', icon: CheckCircle2 },
 };
 
 const ProjectInfo = () => {
@@ -27,7 +31,8 @@ const ProjectInfo = () => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({});
-  const [sliderValue, setSliderValue] = useState(project.progress || 20);
+  const phaseConfigInit = PHASE_PROGRESS_CONFIG[project.status];
+  const [sliderValue, setSliderValue] = useState(project.progress || (phaseConfigInit ? phaseConfigInit.min : 0));
   const [isSavingProgress, setIsSavingProgress] = useState(false);
   const [progressSaved, setProgressSaved] = useState(false);
 
@@ -180,7 +185,7 @@ const ProjectInfo = () => {
             {/* Jalons */}
             <div className="flex justify-between text-[10px] text-slate-400 mt-1 font-medium">
               <span>0%</span>
-              <span className={project.progress >= 20 ? 'text-indigo-500 font-bold' : ''}>Initiation 20%</span>
+              <span className={project.progress >= 15 ? 'text-indigo-500 font-bold' : ''}>Initiation 15%</span>
               <span className={project.progress >= 80 ? 'text-purple-500 font-bold' : ''}>Dev 80%</span>
               <span className={project.progress >= 90 ? 'text-blue-500 font-bold' : ''}>Test 90%</span>
               <span className={project.progress >= 100 ? 'text-emerald-500 font-bold' : ''}>100%</span>
@@ -259,7 +264,7 @@ const ProjectInfo = () => {
               {project.status === 'Initiation' && (
                 <div className="flex items-center justify-center gap-2 text-indigo-600">
                   <Rocket size={18} />
-                  <p className="text-sm font-semibold">Phase d'Initiation — Progression fixe à 20% (gérée par le système)</p>
+                  <p className="text-sm font-semibold">Phase d'Initiation — Progression fixe à 15% (gérée par le système)</p>
                 </div>
               )}
               {project.status === 'Utilisation' && (

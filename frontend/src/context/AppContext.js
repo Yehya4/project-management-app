@@ -287,6 +287,7 @@ export const useDemandes = () => useContext(DemandeContext);
 export const DemandeProvider = ({ children }) => {
   const [demandes, setDemandes] = useState([]);
   const { token, logout } = useAuth();
+  const { socket } = useSocket();
 
   const API_URL = 'http://localhost:5000/api/demandes';
 
@@ -300,6 +301,28 @@ export const DemandeProvider = ({ children }) => {
       fetchDemandes();
     }
   }, [token]);
+
+  useEffect(() => {
+    if (!socket) return;
+    
+    socket.on('demande_created', (newDemande) => {
+      setDemandes(prev => [newDemande, ...prev]);
+    });
+    
+    socket.on('demande_updated', (updatedData) => {
+      setDemandes(prev => prev.map(d => d.id === updatedData.id ? { ...d, ...updatedData } : d));
+    });
+    
+    socket.on('demande_deleted', ({ id }) => {
+      setDemandes(prev => prev.filter(d => d.id !== id));
+    });
+    
+    return () => {
+      socket.off('demande_created');
+      socket.off('demande_updated');
+      socket.off('demande_deleted');
+    };
+  }, [socket]);
 
   const fetchDemandes = async () => {
     try {
@@ -427,6 +450,40 @@ export const CharterProvider = ({ children }) => {
     }
   }, [token]);
 
+  useEffect(() => {
+    if (!socket) return;
+    
+    socket.on('charter_created', (newCharter) => {
+      setCharters(prev => {
+        if (!prev.find(c => c.demandeId === newCharter.demandeId)) {
+          return [newCharter, ...prev];
+        }
+        return prev;
+      });
+    });
+    
+    socket.on('charter_updated', (updatedData) => {
+      setCharters(prev => {
+        const exists = prev.find(c => c.demandeId === updatedData.demandeId);
+        if (exists) {
+          return prev.map(c => c.demandeId === updatedData.demandeId ? { ...c, ...updatedData } : c);
+        } else {
+          return [updatedData, ...prev];
+        }
+      });
+    });
+    
+    socket.on('charter_deleted', ({ demandeId }) => {
+      setCharters(prev => prev.filter(c => c.demandeId !== demandeId));
+    });
+    
+    return () => {
+      socket.off('charter_created');
+      socket.off('charter_updated');
+      socket.off('charter_deleted');
+    };
+  }, [socket]);
+
   const fetchCharters = async () => {
     try {
       const res = await fetch(API_URL, { headers: getHeaders() });
@@ -518,7 +575,14 @@ export const ProjectProvider = ({ children }) => {
   useEffect(() => {
     if (socket) {
       socket.on('project_updated', (updatedProject) => {
-        setProjects(prev => prev.map(p => p.id === updatedProject.id ? { ...p, ...updatedProject } : p));
+        setProjects(prev => {
+          const exists = prev.find(p => p.id === updatedProject.id);
+          if (exists) {
+            return prev.map(p => p.id === updatedProject.id ? { ...p, ...updatedProject } : p);
+          } else {
+            return [updatedProject, ...prev];
+          }
+        });
       });
       return () => socket.off('project_updated');
     }

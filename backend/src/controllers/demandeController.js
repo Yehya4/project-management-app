@@ -35,7 +35,8 @@ class DemandeController {
 
     async update(req, res) {
         try {
-            const updatedDemande = await demandeService.update(req.params.id, req.body);
+            const io = req.app.get('io');
+            const updatedDemande = await demandeService.update(req.params.id, req.body, io);
             return res.status(200).json(updatedDemande);
         } catch (error) {
             return res.status(500).json({ message: 'Erreur lors de la mise à jour', error });
@@ -54,7 +55,8 @@ class DemandeController {
 
     async delete(req, res) {
         try {
-            await demandeService.delete(req.params.id);
+            const io = req.app.get('io');
+            await demandeService.delete(req.params.id, io);
             return res.status(200).json({ message: 'Demande supprimée' });
         } catch (error) {
             return res.status(500).json({ message: 'Erreur lors de la suppression', error });

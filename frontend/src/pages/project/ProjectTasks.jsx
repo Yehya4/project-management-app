@@ -59,6 +59,15 @@ const ProjectTasks = () => {
   const progress   = totalTasks > 0 ? Math.round((doneCount / totalTasks) * 100) : 0;
   const allDone    = totalTasks > 0 && doneCount === totalTasks;
 
+  useEffect(() => {
+    if (allDone && project.status === 'Développement') {
+      const timer = setTimeout(() => {
+        updateProject(project.id, { status: 'Testing', progress: 80 });
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [allDone, project.status, project.id, updateProject]);
+
   const fileInputRef = React.useRef(null);
 
 
