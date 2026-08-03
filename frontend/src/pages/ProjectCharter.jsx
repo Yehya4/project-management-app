@@ -66,7 +66,6 @@ const ProjectCharter = () => {
 
   useEffect(() => {
     if (!demande) {
-      navigate(-1);
       return;
     }
 
@@ -194,7 +193,8 @@ const ProjectCharter = () => {
 
   const handlePopupClose = () => {
     setPopupState({ ...popupState, isOpen: false });
-    navigate(-1);
+    const targetId = linkedProject ? linkedProject.id : demandeId;
+    navigate(`/projects/${targetId}/dashboard`);
   };
 
   const fileInputRef = React.useRef(null);
@@ -238,7 +238,18 @@ const ProjectCharter = () => {
     saveCharter(charterData);
   };
 
-  if (!demande) return null;
+  if (!demande) {
+    return (
+      <Layout title="Charte de Projet">
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="text-center space-y-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+            <p className="text-slate-500 font-medium animate-pulse">Chargement de la demande...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout title="Charte de Projet">

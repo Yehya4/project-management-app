@@ -16,7 +16,8 @@ class CharterController {
             const charter = await charterService.save(req.body, io);
             return res.status(200).json(charter);
         } catch (error) {
-            return res.status(500).json({ message: 'Erreur', error });
+            console.error('Erreur dans charterController.save:', error);
+            return res.status(500).json({ message: 'Erreur', error: error.message || error });
         }
     }
 
