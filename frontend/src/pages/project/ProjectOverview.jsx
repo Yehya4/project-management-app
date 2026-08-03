@@ -508,13 +508,13 @@ const ProjectOverview = () => {
         {}
         <div className="px-6 pb-5">
           <div className="flex justify-between items-center mb-1.5">
-            <span className="text-xs text-slate-500 font-medium">Progression globale du cycle</span>
-            <span className="text-xs font-bold text-slate-700">{phaseProgress}%</span>
+            <span className="text-xs text-slate-500 font-medium">Progression globale du projet</span>
+            <span className="text-xs font-bold text-slate-700">{project.progress}%</span>
           </div>
           <div className="w-full bg-slate-100 rounded-full h-1.5">
             <div
               className="h-1.5 rounded-full transition-all duration-700"
-              style={{ width: `${phaseProgress}%`, background: currentPhase.color }}
+              style={{ width: `${project.progress}%`, background: currentPhase.color }}
             />
           </div>
         </div>
