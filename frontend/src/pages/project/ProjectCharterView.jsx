@@ -12,7 +12,7 @@ import { generateCharterPDF } from '../../utils/pdfGenerator';
 
 // Config des phases de progression
 const PHASE_PROGRESS_CONFIG = {
-  'Développement': { min: 20, max: 80, color: '#8b5cf6', bg: '#f5f3ff', border: '#ddd6fe', label: 'Développement' },
+  'Développement': { min: 15, max: 80, color: '#8b5cf6', bg: '#f5f3ff', border: '#ddd6fe', label: 'Développement' },
   'Testing':       { min: 80, max: 90, color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe', label: 'Testing' },
   'Déploiement':   { min: 90, max: 100, color: '#f59e0b', bg: '#fffbeb', border: '#fde68a', label: 'Déploiement' },
 };
@@ -447,19 +447,19 @@ const ProjectCharterView = () => {
               <div
                 className="h-3 rounded-full transition-all duration-700"
                 style={{
-                  width: `${project.progress}%`,
+                  width: phaseConfig 
+                    ? `${Math.max(0, Math.min(100, ((project.progress - phaseConfig.min) / (phaseConfig.max - phaseConfig.min)) * 100))}%`
+                    : `${project.progress}%`,
                   background: `linear-gradient(90deg, ${getProgressColor(project.progress)}, ${getProgressColor(project.progress)}cc)`,
                   boxShadow: `0 0 8px ${getProgressColor(project.progress)}55`,
                 }}
               />
             </div>
-            {/* Jalons */}
+            {/* Jalons de la phase */}
             <div className="flex justify-between text-[10px] text-slate-400 mt-1 font-medium">
-              <span>0%</span>
-              <span className={project.progress >= 20 ? 'text-indigo-500 font-bold' : ''}>Initiation 20%</span>
-              <span className={project.progress >= 80 ? 'text-purple-500 font-bold' : ''}>Dev 80%</span>
-              <span className={project.progress >= 90 ? 'text-blue-500 font-bold' : ''}>Test 90%</span>
-              <span className={project.progress >= 100 ? 'text-emerald-500 font-bold' : ''}>100%</span>
+              <span>{phaseConfig ? `${phaseConfig.min}%` : '0%'}</span>
+              <span className="font-bold text-slate-500">{phaseConfig ? phaseConfig.label : 'Progression Globale'}</span>
+              <span>{phaseConfig ? `${phaseConfig.max}%` : '100%'}</span>
             </div>
           </div>
 
