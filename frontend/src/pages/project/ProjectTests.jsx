@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import * as XLSX from 'xlsx';
-import { useTestCases, useTeam, useAuth, useProjects, useDocuments } from '../../context/AppContext';
+import { useTestCases, useTeam, useAuth, useProjects, useDocuments, usePopup } from '../../context/AppContext';
 import {
   Plus,
   FlaskConical,
@@ -26,6 +26,7 @@ const ProjectTests = () => {
   const { getTeamByProjectId } = useTeam();
   const { updateProject } = useProjects();
   const { addDocument } = useDocuments();
+  const { showPopup, showConfirm } = usePopup();
   const {
     testCases,
     fetchTestCases,
@@ -249,6 +250,7 @@ const ProjectTests = () => {
               headerRowIndex = i;
               rowStr.forEach((colName, index) => {
                 if (colName === 'id' || colName === 'id du cas') colMap.id = index;
+                if (colName === 'cas de test' || colName === 'objet' || colName === 'nom' || colName === 'nom cas de test') colMap.name = index;
                 if (colName === 'profil' || colName === 'profile') colMap.profile = index;
                 if (colName === 'description') colMap.description = index;
                 if (colName === 'résultat attendu' || colName === 'resultat attendu') colMap.expected = index;
@@ -269,25 +271,39 @@ const ProjectTests = () => {
           }
 
 
+          let currentProfile = wsname;
+          let currentRubrique = '';
+
           for (let i = headerRowIndex + 1; i < rows.length; i++) {
             const row = rows[i];
             if (!row || !Array.isArray(row) || row.length === 0) continue;
 
+            const idVal = colMap.id !== undefined ? String(row[colMap.id] || '').trim() : '';
             const nameVal = colMap.name !== undefined ? String(row[colMap.name] || '').trim() : '';
             const descVal = colMap.description !== undefined ? String(row[colMap.description] || '').trim() : '';
 
+            // Détecter une ligne de "Rubrique" (titre fusionné ou une seule cellule remplie sur toute la ligne)
+            const allVals = row.map(cell => String(cell || '').trim()).filter(Boolean);
+            if (allVals.length === 1) {
+              currentRubrique = allVals[0];
+              continue; // On ne crée pas de cas de test pour cette ligne
+            }
+
             if (nameVal || descVal) {
+              const explicitProfile = colMap.profile !== undefined ? String(row[colMap.profile] || '').trim() : '';
+              const explicitRubrique = colMap.rubrique !== undefined ? String(row[colMap.rubrique] || '').trim() : '';
+
               await addTestCase({
                 projectId: project.id,
-                testCaseId: colMap.id !== undefined && row[colMap.id] ? String(row[colMap.id]).trim() : `TC-${Date.now()}-${totalImportedCount}`,
+                testCaseId: idVal || `TC-${Date.now()}-${totalImportedCount}`,
                 testName: nameVal || 'Test importé',
                 description: descVal || 'Aucune description fournie',
                 expectedResult: colMap.expected !== undefined ? String(row[colMap.expected] || '').trim() : '',
                 actualResult: colMap.actual !== undefined ? String(row[colMap.actual] || '').trim() : '',
                 status: colMap.status !== undefined && row[colMap.status] ? String(row[colMap.status]).trim() : 'En attente',
                 comment: colMap.comment !== undefined ? String(row[colMap.comment] || '').trim() : '',
-                profile: colMap.profile !== undefined ? String(row[colMap.profile] || '').trim() : '',
-                rubrique: colMap.rubrique !== undefined ? String(row[colMap.rubrique] || '').trim() : '',
+                profile: explicitProfile || currentProfile,
+                rubrique: explicitRubrique || currentRubrique,
                 assignedTo: colMap.assignedTo !== undefined ? String(row[colMap.assignedTo] || '').trim() : ''
               });
               totalImportedCount++;
@@ -296,13 +312,25 @@ const ProjectTests = () => {
         }
 
         if (totalImportedCount === 0) {
-          alert('Aucun cas de test valide trouvé. Vérifiez que votre fichier contient au moins les colonnes "Cas de test", "Nom du test" ou "Description" dans l\'une de ses feuilles.');
+          showPopup({
+            title: "Importation échouée",
+            message: "Aucun cas de test valide trouvé. Vérifiez que votre fichier contient au moins les colonnes 'Cas de test', 'Nom du test' ou 'Description' dans l'une de ses feuilles.",
+            type: "warning"
+          });
         } else {
-          alert(`${totalImportedCount} cas de test importé(s) avec succès.`);
+          showPopup({
+            title: "Succès",
+            message: `${totalImportedCount} cas de test importé(s) avec succès.`,
+            type: "success"
+          });
         }
       } catch (error) {
         console.error('Erreur import Excel:', error);
-        alert('Impossible de lire ce fichier Excel. Veuillez vérifier qu\'il n\'est pas corrompu et qu\'il correspond au format attendu.');
+        showPopup({
+          title: "Erreur",
+          message: "Impossible de lire ce fichier Excel. Veuillez vérifier qu'il n'est pas corrompu et qu'il correspond au format attendu.",
+          type: "error"
+        });
       } finally {
         e.target.value = null; // reset
       }
@@ -376,7 +404,11 @@ const ProjectTests = () => {
     if (!selectedTestCase) return;
 
     if (runData.status === 'Non Réussite' && !runData.comment.trim()) {
-      alert('Un commentaire est obligatoire lorsque le test échoue.');
+      showPopup({
+        title: "Commentaire requis",
+        message: "Un commentaire est obligatoire lorsque le test échoue.",
+        type: "warning"
+      });
       return;
     }
 
@@ -396,9 +428,14 @@ const ProjectTests = () => {
   };
 
   const handleDeleteClick = async (id) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce cas de test ?')) {
-      await deleteTestCase(id);
-    }
+    showConfirm({
+      title: "Supprimer le cas de test ?",
+      message: "Êtes-vous sûr de vouloir supprimer ce cas de test ? Cette action est irréversible.",
+      type: "error",
+      onConfirm: async () => {
+        await deleteTestCase(id);
+      }
+    });
   };
 
   return (
@@ -623,40 +660,42 @@ const ProjectTests = () => {
               >
                 <div className="flex-1 space-y-4">
                   { }
-                  <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex flex-wrap items-center gap-3 mb-4">
                     <span className="px-3 py-1 bg-slate-900 text-white font-mono text-xs font-bold rounded-lg shadow-sm">
                       {tc.testCaseId}
-                    </span>
-                    <span className="text-base font-bold text-slate-800">
-                      {tc.testName}
                     </span>
                     <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold flex items-center gap-1.5 ${styles.badge}`}>
                       {styles.icon}
                       {tc.status}
                     </span>
-                    {tc.profile && (
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                        Profil: {tc.profile}
-                      </span>
-                    )}
-                    {tc.rubrique && (
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200">
-                        Rubrique: {tc.rubrique}
-                      </span>
-                    )}
                   </div>
 
-                  { }
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Test Details Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
                     <div>
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Cas de test</h4>
+                      <p className="text-slate-800 font-bold text-sm leading-relaxed">{tc.testName || <span className="italic text-slate-400">Non renseigné</span>}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Profil</h4>
+                      <p className="text-slate-700 text-sm leading-relaxed">{tc.profile || <span className="italic text-slate-400">Non renseigné</span>}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Rubrique</h4>
+                      <p className="text-slate-700 text-sm leading-relaxed">{tc.rubrique || <span className="italic text-slate-400">Non renseigné</span>}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="md:col-span-1">
                       <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Description</h4>
-                      <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-line">{tc.description}</p>
+                      <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-line">{tc.description || <span className="italic text-slate-400">Non renseignée</span>}</p>
                     </div>
-                    <div>
+                    <div className="md:col-span-1">
                       <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Résultat attendu</h4>
-                      <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-line">{tc.expectedResult}</p>
+                      <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-line">{tc.expectedResult || <span className="italic text-slate-400">Non renseigné</span>}</p>
                     </div>
-                    <div>
+                    <div className="md:col-span-1">
                       <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Résultat Réel</h4>
                       <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-line">{tc.actualResult || <span className="italic text-slate-400">Non renseigné</span>}</p>
                     </div>
@@ -784,7 +823,7 @@ const ProjectTests = () => {
                     </div>
                     <div className="md:col-span-2">
                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
-                        Objet *
+                        Cas de test *
                       </label>
                       <input
                         type="text"

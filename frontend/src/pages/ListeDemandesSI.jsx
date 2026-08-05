@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import Layout from '../components/Layout';
-import { useAuth, useUser, useDemandes, useProjects, useCharter } from '../context/AppContext';
+import { useAuth, useUser, useDemandes, useProjects, useCharter, usePopup } from '../context/AppContext';
 import { Link } from 'react-router-dom';
-import { CheckCircle, Clock, AlertCircle, PlusCircle, FileText, Check, X, Send, Eye, Edit2, Trash2, Download } from 'lucide-react';
+import { CheckCircle, Clock, AlertCircle, PlusCircle, FileText, Check, X, Send, Eye, Edit2, Trash2, Download, LayoutDashboard } from 'lucide-react';
 import { DemandeDetailsModal } from '../components/DemandeSI';
-import Popup from '../components/Popup';
 import { generateDemandePDF } from '../utils/pdfGenerator';
 import { formatUserDisplayName } from '../utils/userUtils';
 
@@ -13,56 +12,66 @@ const ListeDemandesSI = () => {
   const { users } = useUser();
   const { demandes, addDemande, updateDemandeStatus, deleteDemande, updateDemande } = useDemandes();
   const { projects } = useProjects();
+  const { showPopup, showConfirm } = usePopup();
   const [selectedDemande, setSelectedDemande] = useState(null);
-  const [popup, setPopup] = useState({ isOpen: false, title: '', message: '', type: 'success' });
 
   const handleExportPDF = async (demande) => {
     try {
-      setPopup({ isOpen: true, title: 'Exportation en cours', message: 'Veuillez patienter pendant la génération du PDF...', type: 'info' });
       await generateDemandePDF(demande);
-      setPopup({ isOpen: true, title: 'Succès', message: `Le PDF de la demande ${demande.id} a été exporté avec succès.`, type: 'success' });
-    } catch (error) {
-      setPopup({ isOpen: true, title: 'Erreur', message: 'Une erreur est survenue lors de l\'exportation du PDF.', type: 'error' });
+    } catch (err) {
+      showPopup({ title: 'Erreur', message: 'Erreur lors de la génération du PDF.', type: 'error' });
     }
   };
 
-
-
   const isReviewer = user?.role === 'Project Manager' || user?.role === 'Sponsor' || user?.role === 'Admin';
 
-  const handleAccept = (demandeId) => {
-    updateDemandeStatus(demandeId, 'Acceptée');
+  const handleAccept = async (id) => {
+    try {
+      await updateDemandeStatus(id, 'Acceptée');
+      showPopup({ title: 'Succès', message: 'Demande acceptée avec succès.', type: 'success' });
+    } catch (error) {
+      showPopup({ title: 'Erreur', message: error.message || 'Une erreur est survenue.', type: 'error' });
+    }
   };
 
-  const handleRefuse = (demandeId) => {
-    updateDemandeStatus(demandeId, 'Refusée');
+  const handleRefuse = async (id) => {
+    try {
+      await updateDemandeStatus(id, 'Refusée');
+      showPopup({ title: 'Succès', message: 'Demande refusée.', type: 'success' });
+    } catch (error) {
+      showPopup({ title: 'Erreur', message: error.message || 'Une erreur est survenue.', type: 'error' });
+    }
   };
 
   const handleSubmitDraft = async (demande) => {
     try {
       const today = new Date().toLocaleDateString('fr-FR');
       await updateDemande(demande.id, { ...demande, statut: 'En cours', dateSoumission: today });
+      showPopup({ title: 'Succès', message: 'Brouillon soumis avec succès.', type: 'success' });
     } catch (error) {
-      setPopup({ isOpen: true, title: 'Erreur', message: error.message || 'Une erreur est survenue.', type: 'error' });
+      showPopup({ title: 'Erreur', message: error.message || 'Une erreur est survenue.', type: 'error' });
     }
   };
 
   const handleDeleteDraft = (demandeId) => {
-    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce brouillon ?")) {
-      deleteDemande(demandeId);
-    }
+    showConfirm({
+      title: "Supprimer le brouillon ?",
+      message: "Êtes-vous sûr de vouloir supprimer ce brouillon ? Cette action est irréversible.",
+      type: "error",
+      onConfirm: () => {
+        deleteDemande(demandeId);
+      }
+    });
   };
 
   const handleSaveInfosComplementaires = async (demandeId, updatedDemande) => {
     try {
       await updateDemande(demandeId, updatedDemande);
-      setPopup({ isOpen: true, title: 'Succès', message: 'Informations complémentaires enregistrées avec succès.', type: 'success' });
+      showPopup({ title: 'Succès', message: 'Informations complémentaires enregistrées avec succès.', type: 'success' });
     } catch (err) {
-      setPopup({ isOpen: true, title: 'Erreur', message: 'Erreur lors de l\'enregistrement des informations.', type: 'error' });
+      showPopup({ title: 'Erreur', message: 'Erreur lors de l\'enregistrement des informations.', type: 'error' });
     }
   };
-
-
 
   const currentUserFullName = user
     ? `${user.prenom || ''} ${user.nom || ''}`.trim()
@@ -72,15 +81,19 @@ const ListeDemandesSI = () => {
     : '';
 
   const filteredDemandes = isReviewer
-    ? demandes.filter(d => d.statut !== 'Brouillon')
+    ? demandes.filter(d => 
+        d.statut !== 'Brouillon' || 
+        d.nomDemandeur === currentUserFullName || 
+        d.nomDemandeur === currentUserFullNameAlt
+      )
     : demandes.filter(d =>
         d.nomDemandeur === currentUserFullName ||
         d.nomDemandeur === currentUserFullNameAlt
       );
 
 
-  const enCoursDemandes   = filteredDemandes.filter(d => d.statut === 'En cours').length;
-  const valideeDemandes   = filteredDemandes.filter(d => d.statut === 'Acceptée').length;
+  const enCoursDemandes   = filteredDemandes.filter(d => d.statut === 'En cours' && !projects.some(p => p.demandeId === d.id || p.id === d.id)).length;
+  const valideeDemandes   = filteredDemandes.filter(d => d.statut === 'Acceptée' || projects.some(p => p.demandeId === d.id || p.id === d.id)).length;
   const refuseeDemandes   = filteredDemandes.filter(d => d.statut === 'Refusée').length;
   const totalDemandes     = filteredDemandes.length;
 
@@ -188,6 +201,8 @@ const ListeDemandesSI = () => {
                 {filteredDemandes.length > 0 ? (
                   filteredDemandes.map(demande => {
                     const demandeurFormatted = formatUserDisplayName(demande.nomDemandeur, 'User', users);
+                    const linkedProj = projects.find(p => p.demandeId === demande.id || p.id === demande.id);
+                    const displayStatut = linkedProj ? 'Acceptée' : demande.statut;
                     return (
                       <tr key={demande.id} className="hover:bg-slate-50/80 transition-colors group">
                         <td className="px-6 py-4 font-mono font-bold text-slate-800">{demande.id}</td>
@@ -205,22 +220,22 @@ const ListeDemandesSI = () => {
                         </td>
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
-                              demande.statut === 'Acceptée'
+                              displayStatut === 'Acceptée'
                                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/70 shadow-xs'
-                                : demande.statut === 'Refusée'
+                                : displayStatut === 'Refusée'
                                   ? 'bg-rose-50 text-rose-700 border border-rose-200/70 shadow-xs'
-                                  : demande.statut === 'En cours'
+                                  : displayStatut === 'En cours'
                                     ? 'bg-blue-50 text-blue-700 border border-blue-200/70 shadow-xs'
-                                    : demande.statut === 'Brouillon'
+                                    : displayStatut === 'Brouillon'
                                       ? 'bg-slate-100 text-slate-600 border border-slate-200 shadow-xs'
                                       : 'bg-amber-50 text-amber-700 border border-amber-200/70 shadow-xs'
                             }`}>
-                            {demande.statut}
+                            {displayStatut}
                           </span>
                         </td>
                       <td className="px-6 py-4 text-sm text-right">
                         <div className="flex items-center justify-end gap-2">
-                          {isReviewer ? (
+                          {demande.statut === 'Brouillon' ? (
                             <>
                               <button
                                 onClick={() => setSelectedDemande(demande)}
@@ -229,7 +244,38 @@ const ListeDemandesSI = () => {
                               >
                                 <Eye size={18} />
                               </button>
-                              {demande.statut === 'En cours' && (
+                              <button
+                                onClick={() => handleSubmitDraft(demande)}
+                                className="flex items-center gap-1 px-2 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors shadow-sm border border-blue-100 text-xs font-semibold mr-1"
+                                title="Soumettre la demande"
+                              >
+                                <Send size={14} /> Soumettre
+                              </button>
+                              <Link
+                                to={`/demande-si/edit/${demande.id}`}
+                                className="p-1.5 bg-amber-50 text-amber-600 rounded-lg hover:bg-amber-100 transition-colors shadow-sm border border-amber-100 mr-1"
+                                title="Modifier le brouillon"
+                              >
+                                <Edit2 size={16} />
+                              </Link>
+                              <button
+                                onClick={() => handleDeleteDraft(demande.id)}
+                                className="p-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-colors shadow-sm border border-rose-100"
+                                title="Supprimer le brouillon"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </>
+                          ) : isReviewer ? (
+                            <>
+                              <button
+                                onClick={() => setSelectedDemande(demande)}
+                                className="p-1.5 bg-slate-50 text-slate-600 rounded-lg hover:bg-slate-100 transition-colors shadow-sm border border-slate-100"
+                                title="Voir détails"
+                              >
+                                <Eye size={18} />
+                              </button>
+                              {demande.statut === 'En cours' && !linkedProj && (
                                 <>
                                   <button
                                     onClick={() => handleAccept(demande.id)}
@@ -247,8 +293,7 @@ const ListeDemandesSI = () => {
                                   </button>
                                 </>
                               )}
-                              {demande.statut !== 'Brouillon' && (() => {
-                                const linkedProj = projects.find(p => p.demandeId === demande.id || p.id === demande.id);
+                              {(() => {
                                 const targetUrl = linkedProj ? `/projects/${linkedProj.id}/charter` : `/project-charter?demandeId=${demande.id}`;
                                 return (
                                   <>
@@ -259,19 +304,18 @@ const ListeDemandesSI = () => {
                                     >
                                       <Download size={14} /> PDF
                                     </button>
-                                    <Link
-                                      to={targetUrl}
-                                      className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors shadow-sm border border-blue-100 ml-1 inline-flex items-center justify-center"
-                                      title="Fiche de Projet / Informations complémentaires"
-                                    >
-                                      <Edit2 size={16} />
-                                    </Link>
+                                    {linkedProj && (
+                                      <Link
+                                        to={`/projects/${linkedProj.id}`}
+                                        className="flex items-center gap-1 px-2 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors shadow-sm border border-blue-100 text-xs font-semibold ml-1"
+                                        title="Accéder au tableau de bord du projet"
+                                      >
+                                        <LayoutDashboard size={14} /> Dashboard
+                                      </Link>
+                                    )}
                                   </>
                                 );
                               })()}
-                              {demande.statut !== 'En cours' && demande.statut !== 'Brouillon' && (
-                                <span className="text-slate-400 text-xs italic ml-2">Traité</span>
-                              )}
                             </>
                           ) : (
                             <>
@@ -282,42 +326,14 @@ const ListeDemandesSI = () => {
                               >
                                 <Eye size={18} />
                               </button>
-                              {demande.statut === 'Brouillon' && (
-                                <>
-                                  <button
-                                    onClick={() => handleSubmitDraft(demande)}
-                                    className="flex items-center gap-1 px-2 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors shadow-sm border border-blue-100 text-xs font-semibold mr-1"
-                                    title="Soumettre la demande"
-                                  >
-                                    <Send size={14} /> Soumettre
-                                  </button>
-                                  <Link
-                                    to={`/demande-si/edit/${demande.id}`}
-                                    className="p-1.5 bg-amber-50 text-amber-600 rounded-lg hover:bg-amber-100 transition-colors shadow-sm border border-amber-100 mr-1"
-                                    title="Modifier le brouillon"
-                                  >
-                                    <Edit2 size={16} />
-                                  </Link>
-                                  <button
-                                    onClick={() => handleDeleteDraft(demande.id)}
-                                    className="p-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-colors shadow-sm border border-rose-100"
-                                    title="Supprimer le brouillon"
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
-                                </>
-                              )}
-                              {demande.statut !== 'Brouillon' && (
-                                <>
-                                  <button
-                                    onClick={() => handleExportPDF(demande)}
-                                    className="flex items-center gap-1 px-2 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors shadow-sm border border-indigo-100 text-xs font-semibold"
-                                    title="Exporter la demande en PDF"
-                                  >
-                                    <Download size={14} /> PDF
-                                  </button>
-
-                                </>
+                              {linkedProj && (
+                                <Link
+                                  to={`/projects/${linkedProj.id}`}
+                                  className="flex items-center gap-1 px-2 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors shadow-sm border border-blue-100 text-xs font-semibold ml-1"
+                                  title="Accéder au tableau de bord du projet"
+                                >
+                                  <LayoutDashboard size={14} /> Dashboard
+                                </Link>
                               )}
                             </>
                           )}
@@ -343,16 +359,6 @@ const ListeDemandesSI = () => {
         isOpen={!!selectedDemande} 
         onClose={() => setSelectedDemande(null)} 
         demande={selectedDemande} 
-      />
-
-
-      
-      <Popup
-        isOpen={popup.isOpen}
-        title={popup.title}
-        message={popup.message}
-        type={popup.type}
-        onClose={() => setPopup(p => ({ ...p, isOpen: false }))}
       />
     </Layout>
   );

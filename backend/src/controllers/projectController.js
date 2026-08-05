@@ -63,8 +63,19 @@ class ProjectController {
 
     async delete(req, res) {
         try {
-            await projectService.delete(req.params.id);
+            const io = req.app.get('io');
+            await projectService.delete(req.params.id, io);
             return res.status(200).json({ message: 'Projet supprimé' });
+        } catch (error) {
+            return res.status(500).json({ message: 'Erreur', error });
+        }
+    }
+
+    async restore(req, res) {
+        try {
+            const io = req.app.get('io');
+            await projectService.restore(req.params.id, io);
+            return res.status(200).json({ message: 'Projet restauré' });
         } catch (error) {
             return res.status(500).json({ message: 'Erreur', error });
         }

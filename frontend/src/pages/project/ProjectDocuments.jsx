@@ -692,7 +692,7 @@ const ProjectDocuments = () => {
                 <div className="flex items-center justify-end gap-2">
                   {isPM && (
                     <button
-                      onClick={() => navigate(`/project-charter?demandeId=${project.demandeId}`)}
+                      onClick={() => navigate(`/projects/${project.id}/charter-edit?demandeId=${project.demandeId}`, { state: { returnTo: `/projects/${project.id}/charter` } })}
                       className="p-2 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 text-blue-600 transition-colors"
                       title="Éditer / Voir"
                     ><Edit2 size={16} /></button>

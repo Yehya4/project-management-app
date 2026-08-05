@@ -34,7 +34,16 @@ class EventService {
 
     deleteEvent(id) {
         return new Promise((resolve, reject) => {
-            db.query('DELETE FROM project_events WHERE id = ?', [id], (err) => {
+            db.query('UPDATE project_events SET is_archived = 1 WHERE id = ?', [id], (err) => {
+                if (err) return reject(err);
+                resolve({ id });
+            });
+        });
+    }
+
+    restoreEvent(id) {
+        return new Promise((resolve, reject) => {
+            db.query('UPDATE project_events SET is_archived = 0 WHERE id = ?', [id], (err) => {
                 if (err) return reject(err);
                 resolve({ id });
             });

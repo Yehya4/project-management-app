@@ -8,8 +8,8 @@ class ProjectService {
      */
     async getSystemProgress(projectId, statut) {
         return new Promise((resolve) => {
-            if (statut === 'Utilisation') return resolve(100);
-            if (statut === 'Initiation') return resolve(15);
+            if (['Utilisation', 'Terminé', 'Archive', 'Archivée'].includes(statut)) return resolve(100);
+            if (statut === 'Initiation') return resolve(null);
 
             db.query('SELECT * FROM tasks WHERE projectId = ?', [projectId], (err, tasks) => {
                 if (err || !tasks) return resolve(null);
@@ -38,7 +38,7 @@ class ProjectService {
                     }
 
                     if (statut === 'Déploiement') {
-                        // 90% de base, gestion séparée pour 100%
+                        // 90% de base
                         return resolve(90);
                     }
 
@@ -55,28 +55,35 @@ class ProjectService {
     formatProject(project) {
         if (!project) return null;
         const status = project.statut || 'Initiation';
-        let progress = 15;
+        let progress = 0;
 
         const manual = project.manualProgress != null ? parseInt(project.manualProgress) : null;
 
         switch (status) {
             case 'Initiation':
-                progress = 15;
+                // 0% → 15%, contrôlé manuellement par PM/Admin/Sponsor
+                progress = manual != null ? Math.min(15, Math.max(0, manual)) : 0;
                 break;
             case 'Développement':
+                // 15% → 80%
                 progress = manual != null ? Math.min(80, Math.max(15, manual)) : 15;
                 break;
             case 'Testing':
+                // 80% → 90%
                 progress = manual != null ? Math.min(90, Math.max(80, manual)) : 80;
                 break;
             case 'Déploiement':
+                // 90% → 100%
                 progress = manual != null ? Math.min(100, Math.max(90, manual)) : 90;
                 break;
             case 'Utilisation':
+            case 'Terminé':
+            case 'Archive':
+            case 'Archivée':
                 progress = 100;
                 break;
             default:
-                progress = 15;
+                progress = 0;
         }
 
         return { ...project, status, progress };
@@ -108,10 +115,10 @@ class ProjectService {
                 const dateCreation = new Date().toLocaleDateString('fr-FR');
                 const statut = projectData.status || 'Initiation';
 
-                const query = 'INSERT INTO projects (id, nom, chefProjet, statut, description, dateCreation, demandeId) VALUES (?, ?, ?, ?, ?, ?, ?)';
-                db.query(query, [newId, nom, formattedChef, statut, description, dateCreation, demandeId], (err) => {
+                const query = 'INSERT INTO projects (id, nom, chefProjet, statut, description, dateCreation, demandeId, manualProgress) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+                db.query(query, [newId, nom, formattedChef, statut, description, dateCreation, demandeId, 0], (err) => {
                     if (err) return reject(err);
-                    const formatted = this.formatProject({ id: newId, ...projectData, statut, dateCreation });
+                    const formatted = this.formatProject({ id: newId, ...projectData, statut, dateCreation, manualProgress: 0 });
                     if (io) {
                         io.emit('project_updated', formatted);
                     }
@@ -146,14 +153,15 @@ class ProjectService {
                 if (!project) return reject(new Error('Projet non trouvé'));
 
                 const statut = project.statut || 'Initiation';
-                let minVal = 15, maxVal = 15;
+                let minVal = 0, maxVal = 0;
 
                 switch (statut) {
-                    case 'Développement': minVal = 15; maxVal = 80; break;
-                    case 'Testing':       minVal = 80; maxVal = 90; break;
+                    case 'Initiation':    minVal = 0;  maxVal = 15;  break;
+                    case 'Développement': minVal = 15; maxVal = 80;  break;
+                    case 'Testing':       minVal = 80; maxVal = 90;  break;
                     case 'Déploiement':   minVal = 90; maxVal = 100; break;
                     default:
-                        // Pas de contrôle manuel pour Initiation/Utilisation
+                        // Utilisation = 100%, pas de contrôle manuel
                         return resolve(project);
                 }
 
@@ -299,10 +307,89 @@ class ProjectService {
         });
     }
 
-    delete(id) {
+    async getSystemProgress(projectId, statut) {
+        return new Promise((resolve) => {
+            if (statut === 'Utilisation') return resolve(100);
+
+            db.query('SELECT * FROM projects WHERE id = ?', [projectId], (errProj, projs) => {
+                if (errProj || !projs || projs.length === 0) return resolve(null);
+                const project = projs[0];
+
+                if (statut === 'Initiation') {
+                    db.query('SELECT statut FROM charters WHERE demandeId = ?', [project.demandeId], (errChart, charters) => {
+                        const charter = charters && charters[0];
+                        let points = 0;
+                        if (charter) {
+                            points += 1; // Charter créé
+                            if (charter.statut !== 'Brouillon' && charter.statut !== 'Envoyé au Demandeur' && charter.statut !== 'Retourné par le Demandeur') {
+                                points += 1; // Demandeur accepté
+                            }
+                            if (charter.statut === 'Validé') {
+                                points += 1; // Sponsor validé
+                            }
+                        }
+                        if (project.atelierCadrage === 'Validé') points += 1;
+                        if (project.backlogStatus === 'Validé') points += 1;
+                        if (project.architectureStatus === 'Validé') points += 1;
+
+                        const sysProgress = Math.round((points / 6) * 15);
+                        return resolve(sysProgress);
+                    });
+                    return;
+                }
+
+                if (statut === 'Déploiement') {
+                    if (project.deploymentPlanStatus === 'Validé') return resolve(100);
+                    if (project.deploymentPlanStatus === 'Soumis') return resolve(95);
+                    return resolve(90);
+                }
+
+                db.query('SELECT * FROM tasks WHERE projectId = ?', [projectId], (err, tasks) => {
+                    if (err || !tasks) return resolve(null);
+
+                    const totalTasks = tasks.length;
+                    const doneTasks = tasks.filter(t => ['Fait', 'Clôturée', 'Archivée'].includes(t.status)).length;
+                    const taskRatio = totalTasks > 0 ? doneTasks / totalTasks : 0;
+
+                    if (statut === 'Développement') {
+                        const sysProgress = Math.round(15 + taskRatio * 65);
+                        return resolve(Math.min(80, Math.max(15, sysProgress)));
+                    }
+
+                    db.query('SELECT * FROM test_cases WHERE projectId = ?', [projectId], (err2, tests) => {
+                        if (err2 || !tests) return resolve(null);
+
+                        const totalTests = tests.length;
+                        const passedTests = tests.filter(t => t.status === 'Réussite').length;
+                        const testRatio = totalTests > 0 ? passedTests / totalTests : 0;
+
+                        if (statut === 'Testing') {
+                            const sysProgress = Math.round(80 + testRatio * 10);
+                            return resolve(Math.min(90, Math.max(80, sysProgress)));
+                        }
+
+                        return resolve(null);
+                    });
+                });
+            });
+        });
+    }
+
+    delete(id, io) {
         return new Promise((resolve, reject) => {
-            db.query('DELETE FROM projects WHERE id = ?', [id], (err) => {
+            db.query('UPDATE projects SET is_archived = 1 WHERE id = ?', [id], (err) => {
                 if (err) return reject(err);
+                if (io) io.emit('project_deleted', { id, archived: true });
+                resolve({ id });
+            });
+        });
+    }
+
+    restore(id, io) {
+        return new Promise((resolve, reject) => {
+            db.query('UPDATE projects SET is_archived = 0 WHERE id = ?', [id], (err) => {
+                if (err) return reject(err);
+                if (io) io.emit('project_restored', { id });
                 resolve({ id });
             });
         });
@@ -344,73 +431,74 @@ class ProjectService {
                     });
                 };
 
-                const getTasks = new Promise((resTasks, rejTasks) => {
-                    db.query('SELECT * FROM tasks WHERE projectId = ?', [projectId], (err, results) => {
-                        if (err) return rejTasks(err);
-                        resTasks(results);
+                this.getSystemProgress(projectId, currentStatus).then(sysProgress => {
+                    const getTasks = new Promise((resTasks, rejTasks) => {
+                        db.query('SELECT * FROM tasks WHERE projectId = ?', [projectId], (err, results) => {
+                            if (err) return rejTasks(err);
+                            resTasks(results);
+                        });
                     });
-                });
 
-                const getTestCases = new Promise((resTests, rejTests) => {
-                    db.query('SELECT * FROM test_cases WHERE projectId = ?', [projectId], (err, results) => {
-                        if (err) return rejTests(err);
-                        resTests(results);
+                    const getTestCases = new Promise((resTests, rejTests) => {
+                        db.query('SELECT * FROM test_cases WHERE projectId = ?', [projectId], (err, results) => {
+                            if (err) return rejTests(err);
+                            resTests(results);
+                        });
                     });
-                });
 
-                Promise.all([getTasks, getTestCases]).then(([tasks, testCases]) => {
-                    const totalTasks = tasks.length;
-                    const hasUnfinishedTasks = tasks.some(t => !['Fait', 'Clôturée', 'Archivée'].includes(t.status));
-                    const doneTasks = tasks.filter(t => ['Fait', 'Clôturée', 'Archivée'].includes(t.status)).length;
-                    const taskRatio = totalTasks > 0 ? doneTasks / totalTasks : 0;
+                    Promise.all([getTasks, getTestCases]).then(([tasks, testCases]) => {
+                        const totalTasks = tasks.length;
+                        const hasUnfinishedTasks = tasks.some(t => !['Fait', 'Clôturée', 'Archivée'].includes(t.status));
+                        const totalTests = testCases.length;
+                        const allTestsPassed = totalTests > 0 && testCases.every(t => t.status === 'Réussite');
 
-                    const totalTests = testCases.length;
-                    const allTestsPassed = totalTests > 0 && testCases.every(t => t.status === 'Réussite');
-                    const passedTests = testCases.filter(t => t.status === 'Réussite').length;
-                    const testRatio = totalTests > 0 ? passedTests / totalTests : 0;
+                        let targetStatus = currentStatus;
+                        let targetManualProgress = undefined;
 
-                    let targetStatus = currentStatus;
-                    let targetManualProgress = undefined;
+                        // Check system progress update for the current status
+                        if (sysProgress != null) {
+                            let minVal = 0, maxVal = 100;
+                            if (currentStatus === 'Initiation') { minVal = 0; maxVal = 15; }
+                            else if (currentStatus === 'Développement') { minVal = 15; maxVal = 80; }
+                            else if (currentStatus === 'Testing') { minVal = 80; maxVal = 90; }
+                            else if (currentStatus === 'Déploiement') { minVal = 90; maxVal = 100; }
 
-                    if (currentStatus === 'Développement') {
-                        // Progression système automatique en développement
-                        const sysProgress = Math.min(80, Math.max(20, Math.round(20 + taskRatio * 60)));
-                        const currentManual = project.manualProgress != null ? parseInt(project.manualProgress) : 20;
-                        const newManual = Math.max(currentManual, sysProgress);
-                        if (newManual !== currentManual) {
-                            targetManualProgress = newManual;
+                            const currentManual = project.manualProgress != null ? parseInt(project.manualProgress) : minVal;
+                            const newManual = Math.min(maxVal, Math.max(currentManual, sysProgress));
+                            if (newManual !== currentManual) {
+                                targetManualProgress = newManual;
+                            }
                         }
-                        // Transition vers Testing si toutes tâches terminées
-                        if (totalTasks > 0 && !hasUnfinishedTasks) {
-                            targetStatus = 'Testing';
-                            targetManualProgress = 80; // Début Testing à 80%
-                        }
-                    } else if (currentStatus === 'Testing') {
-                        // Progression système automatique en testing
-                        const sysProgress = Math.min(90, Math.max(80, Math.round(80 + testRatio * 10)));
-                        const currentManual = project.manualProgress != null ? parseInt(project.manualProgress) : 80;
-                        const newManual = Math.max(currentManual, sysProgress);
-                        if (newManual !== currentManual) {
-                            targetManualProgress = newManual;
-                        }
-                        // Si des tâches redeviennent non terminées, revenir en Développement
-                        if (totalTasks > 0 && hasUnfinishedTasks) {
-                            targetStatus = 'Développement';
-                            targetManualProgress = 20;
-                        }
-                    } else if (currentStatus === 'Déploiement') {
-                        // Si tests non tous passés et tâches non terminées, revenir en Testing
-                        if (totalTests > 0 && !allTestsPassed && totalTasks > 0 && hasUnfinishedTasks) {
-                            targetStatus = 'Testing';
-                            targetManualProgress = 80;
-                        }
-                    }
 
-                    if (targetStatus !== currentStatus || targetManualProgress !== undefined) {
-                        applyStatus(targetStatus, targetManualProgress);
-                    } else {
-                        resolve(null);
-                    }
+                        // Auto phase transitions
+                        if (currentStatus === 'Initiation') {
+                            if (project.architectureStatus === 'Validé') {
+                                targetStatus = 'Développement';
+                                targetManualProgress = 15;
+                            }
+                        } else if (currentStatus === 'Développement') {
+                            if (totalTasks > 0 && !hasUnfinishedTasks) {
+                                targetStatus = 'Testing';
+                                targetManualProgress = 80;
+                            }
+                        } else if (currentStatus === 'Testing') {
+                            if (totalTasks > 0 && hasUnfinishedTasks) {
+                                targetStatus = 'Développement';
+                                targetManualProgress = 15;
+                            }
+                        } else if (currentStatus === 'Déploiement') {
+                            if (totalTests > 0 && !allTestsPassed && totalTasks > 0 && hasUnfinishedTasks) {
+                                targetStatus = 'Testing';
+                                targetManualProgress = 80;
+                            }
+                        }
+
+                        if (targetStatus !== currentStatus || targetManualProgress !== undefined) {
+                            applyStatus(targetStatus, targetManualProgress);
+                        } else {
+                            resolve(null);
+                        }
+                    }).catch(reject);
                 }).catch(reject);
             });
         });

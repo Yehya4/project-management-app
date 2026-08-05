@@ -155,11 +155,33 @@ class TaskService {
     delete(id, io) {
         return new Promise((resolve, reject) => {
             this.getById(id).then(taskData => {
-                db.query('DELETE FROM tasks WHERE id = ?', [id], async (err) => {
+                db.query('UPDATE tasks SET is_archived = 1 WHERE id = ?', [id], async (err) => {
                     if (err) return reject(err);
 
-                                        if (io) {
-                        io.emit('task_deleted', { id });
+                    if (io) {
+                        io.emit('task_deleted', { id, archived: true });
+                    }
+                    if (taskData) {
+                        try {
+                            await projectService.autoUpdateStatus(taskData.projectId, io);
+                        } catch (projectErr) {
+                            console.error(projectErr);
+                        }
+                    }
+                    resolve({ id });
+                });
+            }).catch(reject);
+        });
+    }
+
+    restore(id, io) {
+        return new Promise((resolve, reject) => {
+            this.getById(id).then(taskData => {
+                db.query('UPDATE tasks SET is_archived = 0 WHERE id = ?', [id], async (err) => {
+                    if (err) return reject(err);
+
+                    if (io) {
+                        io.emit('task_restored', { id });
                     }
                     if (taskData) {
                         try {

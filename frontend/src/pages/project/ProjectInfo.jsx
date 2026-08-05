@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useOutletContext, Link } from 'react-router-dom';
+import { useOutletContext, Link, useNavigate } from 'react-router-dom';
 import { useCharter, useAuth, useProjects } from '../../context/AppContext';
 import {
   FileText, Target, Info, CheckCircle, Edit3, Save, X,
@@ -28,6 +28,7 @@ const ProjectInfo = () => {
   
   const isEditable = user && ['Project Manager', 'Sponsor', 'Admin'].includes(user.role);
   const canControlProgress = user && ['Project Manager', 'Sponsor', 'Admin'].includes(user.role);
+  const navigate = useNavigate();
 
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({});
@@ -286,12 +287,12 @@ const ProjectInfo = () => {
             <p className="text-sm">La fiche de projet s'appuie sur le Project Charter, qui n'est pas encore créé.</p>
           </div>
           {isEditable && (
-            <Link
-              to={`/project-charter?demandeId=${project.demandeId}`}
+            <button
+              onClick={() => navigate(`/projects/${project.id}/charter-edit?demandeId=${project.demandeId}`, { state: { returnTo: `/projects/${project.id}/charter` } })}
               className="mt-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-semibold shadow-sm transition-colors flex items-center gap-2"
             >
               <Edit3 size={16} /> Créer la Charte
-            </Link>
+            </button>
           )}
         </div>
       ) : (

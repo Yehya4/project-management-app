@@ -2,12 +2,12 @@ import React from 'react';
 import {
   FolderKanban, Users, TrendingUp, Check, X, BarChart3, PieChart, Activity,
   CheckCircle, Clock, AlertCircle, FileText, ArrowRight, Shield, Zap,
-  ArrowUpRight, ChevronRight, Eye, Briefcase
+  ArrowUpRight, ChevronRight, Eye, Briefcase, Building
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import Popup from '../Popup';
 import { generateDemandePDF } from '../../utils/pdfGenerator';
-import { useAuth, useDemandes, useProjects, useUser, useCharter, useTasks, useTestCases } from '../../context/AppContext';
+import { useAuth, useDemandes, useProjects, useUser, useCharter, useTasks, useTestCases, useConfig } from '../../context/AppContext';
 import { formatUserDisplayName } from '../../utils/userUtils';
 
 const PMDashboard = () => {
@@ -55,10 +55,57 @@ const PMDashboard = () => {
   const totalProgress = projects.reduce((acc, p) => acc + (p.progress || 0), 0);
   const avgProgress   = projects.length ? Math.round(totalProgress / projects.length) : 0;
 
-  // Tasks & Tests Stats
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter(t => t.status === 'Fait' || t.status === 'Done').length;
   const taskCompletionRate = totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+  const { config } = useConfig();
+  const parseArray = (val) => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val;
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      if (!trimmed || trimmed === '-') return [];
+      if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed)) return parsed;
+        } catch (e) {}
+      }
+      return trimmed.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    return [];
+  };
+
+  const categoryStats = {};
+  const serviceStats = {};
+
+  (config.categoriesProjet || []).forEach(c => categoryStats[c] = 0);
+  (config.servicesProjet || []).forEach(s => serviceStats[s] = 0);
+
+  projects.forEach(p => {
+    const targetId = p.demandeId || p.id;
+    const d = demandes.find(dem => dem.id === targetId || dem.id === p.demandeId || dem.id === p.id);
+    const charter = charters.find(c => c.demandeId === targetId || c.demandeId === p.demandeId || c.demandeId === p.id);
+    
+    const categories = parseArray(charter?.categoriesProjet || d?.categoriesProjet || p.categoriesProjet);
+    const service = charter?.service || d?.service || p.service;
+
+    if (categories.length === 0) {
+      categoryStats['Non spécifié'] = (categoryStats['Non spécifié'] || 0) + 1;
+    } else {
+      categories.forEach(cat => {
+        categoryStats[cat] = (categoryStats[cat] || 0) + 1;
+      });
+    }
+
+    if (!service || service.trim() === '' || service.trim() === '-') {
+      serviceStats['Non spécifié'] = (serviceStats['Non spécifié'] || 0) + 1;
+    } else {
+      const sTrim = service.trim();
+      serviceStats[sTrim] = (serviceStats[sTrim] || 0) + 1;
+    }
+  });
 
   const totalTests = testCases.length;
   const passedTests = testCases.filter(t => t.status === 'Passed').length;
@@ -363,6 +410,105 @@ const PMDashboard = () => {
         </div>
       </div>
 
+      {/* New Category and Services Stats Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8 mt-8">
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-300 hover:border-slate-300">
+          <div>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center border border-purple-100 shadow-xs shrink-0">
+                <PieChart size={20} />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800 text-base leading-snug">
+                  Projets par Catégorie de Projet
+                </h3>
+                <p className="text-[11px] text-slate-400">Rempli depuis les informations complémentaires</p>
+              </div>
+            </div>
+            <div className="space-y-2 mt-5">
+              {Object.keys(categoryStats).length > 0 ? (
+                Object.entries(categoryStats)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([cat, count]) => {
+                    const pct = projects.length ? Math.round((count / projects.length) * 100) : 0;
+                    return (
+                      <div key={cat} className="group/item p-2.5 hover:bg-slate-50 rounded-2xl border border-transparent hover:border-slate-100 transition-all duration-300">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="font-bold text-slate-700 text-[13px] group-hover/item:text-purple-600 transition-colors">{cat}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-black text-slate-800 text-[13px]">{count}</span>
+                            <span className="inline-flex items-center rounded-full bg-purple-50 border border-purple-100/50 px-2 py-0.5 text-[10px] font-bold text-purple-700">
+                              {pct}%
+                            </span>
+                          </div>
+                        </div>
+                        <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden shadow-inner relative">
+                          <div 
+                            className="bg-gradient-to-r from-purple-400 to-fuchsia-600 h-2 rounded-full transition-all duration-700 ease-out relative" 
+                            style={{ width: `${pct}%` }}
+                          >
+                            <div className="absolute right-0 top-0 bottom-0 w-1 bg-white/40 animate-pulse" />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+              ) : (
+                <p className="text-xs text-slate-400 italic text-center py-4">Aucune donnée disponible</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-300 hover:border-slate-300">
+          <div>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center border border-emerald-100 shadow-xs shrink-0">
+                <Building size={20} />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800 text-base leading-snug">
+                  Projets par Service de Projet
+                </h3>
+                <p className="text-[11px] text-slate-400">Services liés aux projets du portefeuille</p>
+              </div>
+            </div>
+            <div className="space-y-2 mt-5">
+              {Object.keys(serviceStats).length > 0 ? (
+                Object.entries(serviceStats)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([srv, count]) => {
+                    const pct = projects.length ? Math.round((count / projects.length) * 100) : 0;
+                    return (
+                      <div key={srv} className="group/item p-2.5 hover:bg-slate-50 rounded-2xl border border-transparent hover:border-slate-100 transition-all duration-300">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="font-bold text-slate-700 text-[13px] group-hover/item:text-emerald-600 transition-colors">{srv}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-black text-slate-800 text-[13px]">{count}</span>
+                            <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-100/50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                              {pct}%
+                            </span>
+                          </div>
+                        </div>
+                        <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden shadow-inner relative">
+                          <div 
+                            className="bg-gradient-to-r from-emerald-400 to-teal-600 h-2 rounded-full transition-all duration-700 ease-out relative" 
+                            style={{ width: `${pct}%` }}
+                          >
+                            <div className="absolute right-0 top-0 bottom-0 w-1 bg-white/40 animate-pulse" />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+              ) : (
+                <p className="text-xs text-slate-400 italic text-center py-4">Aucune donnée disponible</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+      
       {/* Projects Overview List */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden transition-all hover:shadow-md">
         <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">

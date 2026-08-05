@@ -47,53 +47,25 @@ const Projects = () => {
     return val;
   };
 
-  const activeDemandeIds = projects.map(p => p.demandeId).filter(Boolean);
-  
-  const pendingDemandes = demandes.filter(d => 
-    ['Acceptée', 'En cours', 'En Développement'].includes(d.statut) && !activeDemandeIds.includes(d.id)
-  );
+  const unifiedProjects = projects.map(p => {
+    const targetDemandeId = p.demandeId || p.id;
+    const d = demandes.find(dem => dem.id === targetDemandeId || dem.id === p.demandeId || dem.id === p.id);
+    const charter = getCharterByDemandeId(targetDemandeId) || getCharterByDemandeId(p.demandeId) || getCharterByDemandeId(p.id);
 
-  const unifiedProjects = [
-    ...pendingDemandes.map(d => {
-      const charter = getCharterByDemandeId(d.id);
-      const catList = parseArray(charter?.categoriesProjet || d.categoriesProjet);
-      const domList = parseArray(d.domaines || charter?.domaines);
-      return {
-        id: d.id,
-        demandeId: d.id,
-        nom: d.titre || `Projet en préparation (${d.id})`,
-        description: d.description || 'Aucune description fournie.',
-        status: 'En Préparation',
-        progress: 0,
-        isPending: true,
-        nomDemandeur: d.nomDemandeur || charter?.nomDemandeur || '-',
-        domaines: domList,
-        dateCreation: formatDate(d.dateCreation),
-        dateFin: formatDate(charter?.dateFin || d.dateFin || d.delaiSouhaite),
-        categoriesProjet: catList,
-        service: charter?.service || d.service || '-'
-      };
-    }),
-    ...projects.map(p => {
-      const targetDemandeId = p.demandeId || p.id;
-      const d = demandes.find(dem => dem.id === targetDemandeId || dem.id === p.demandeId || dem.id === p.id);
-      const charter = getCharterByDemandeId(targetDemandeId) || getCharterByDemandeId(p.demandeId) || getCharterByDemandeId(p.id);
+    const catList = parseArray(charter?.categoriesProjet || d?.categoriesProjet || p.categoriesProjet);
+    const domList = parseArray(d?.domaines || charter?.domaines || p.domaines);
 
-      const catList = parseArray(charter?.categoriesProjet || d?.categoriesProjet || p.categoriesProjet);
-      const domList = parseArray(d?.domaines || charter?.domaines || p.domaines);
-
-      return {
-        ...p,
-        isPending: false,
-        nomDemandeur: d?.nomDemandeur || charter?.nomDemandeur || p.nomDemandeur || '-',
-        domaines: domList,
-        dateCreation: formatDate(p.dateCreation || d?.dateCreation),
-        dateFin: formatDate(charter?.dateFin || d?.dateFin || d?.delaiSouhaite || p.dateFin),
-        categoriesProjet: catList,
-        service: charter?.service || d?.service || p.service || '-'
-      };
-    })
-  ];
+    return {
+      ...p,
+      isPending: false,
+      nomDemandeur: d?.nomDemandeur || charter?.nomDemandeur || p.nomDemandeur || '-',
+      domaines: domList,
+      dateCreation: formatDate(p.dateCreation || d?.dateCreation),
+      dateFin: formatDate(charter?.dateFin || d?.dateFin || d?.delaiSouhaite || p.dateFin),
+      categoriesProjet: catList,
+      service: charter?.service || d?.service || p.service || '-'
+    };
+  });
 
   
   const filteredProjects = unifiedProjects.filter(project => {

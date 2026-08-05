@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
+import { CheckCircle, XCircle, Info, AlertTriangle, X } from 'lucide-react';
 
 
 
@@ -197,6 +198,9 @@ export const useConfig = () => useContext(ConfigContext);
 const DEFAULT_CONFIG = {
   domaines: [],
   categoriesProjet: [],
+  categories: [],
+  services: [],
+  servicesProjet: [],
   natureBesoin: [],
   benefices: []
 };
@@ -306,21 +310,35 @@ export const DemandeProvider = ({ children }) => {
     if (!socket) return;
     
     socket.on('demande_created', (newDemande) => {
-      setDemandes(prev => [newDemande, ...prev]);
+      setDemandes(prev => {
+        if (prev.some(d => d.id === newDemande.id)) {
+          return prev;
+        }
+        return [newDemande, ...prev];
+      });
     });
     
     socket.on('demande_updated', (updatedData) => {
       setDemandes(prev => prev.map(d => d.id === updatedData.id ? { ...d, ...updatedData } : d));
     });
     
-    socket.on('demande_deleted', ({ id }) => {
-      setDemandes(prev => prev.filter(d => d.id !== id));
+    socket.on('demande_deleted', ({ id, archived }) => {
+      if (archived) {
+        setDemandes(prev => prev.map(d => d.id === id ? { ...d, is_archived: 1 } : d));
+      } else {
+        setDemandes(prev => prev.filter(d => d.id !== id));
+      }
+    });
+
+    socket.on('demande_restored', ({ id }) => {
+      setDemandes(prev => prev.map(d => d.id === id ? { ...d, is_archived: 0 } : d));
     });
     
     return () => {
       socket.off('demande_created');
       socket.off('demande_updated');
       socket.off('demande_deleted');
+      socket.off('demande_restored');
     };
   }, [socket]);
 
@@ -356,7 +374,10 @@ export const DemandeProvider = ({ children }) => {
         throw new Error(errorData.message || `Erreur serveur (${res.status})`);
       }
       const data = await res.json();
-      setDemandes(prev => [data, ...prev]);
+      setDemandes(prev => {
+        if (prev.some(d => d.id === data.id)) return prev;
+        return [data, ...prev];
+      });
       return data;
     } catch (err) {
       console.error('Erreur ajout demande', err);
@@ -412,15 +433,41 @@ export const DemandeProvider = ({ children }) => {
         headers: getHeaders()
       });
       if (res.ok) {
-        setDemandes(prev => prev.filter(d => d.id !== id));
+        setDemandes(prev => prev.map(d => d.id === id ? { ...d, is_archived: 1 } : d));
       }
     } catch (err) {
       console.error('Erreur suppression demande', err);
     }
   };
 
+  const restoreDemande = async (id) => {
+    try {
+      const res = await fetch(`${API_URL}/${id}/restore`, {
+        method: 'PUT',
+        headers: getHeaders()
+      });
+      if (res.ok) {
+        setDemandes(prev => prev.map(d => d.id === id ? { ...d, is_archived: 0 } : d));
+      }
+    } catch (err) {
+      console.error('Erreur restauration demande', err);
+    }
+  };
+
+  const activeDemandes = demandes.filter(d => !d.is_archived);
+  const archivedDemandes = demandes.filter(d => d.is_archived);
+
   return (
-    <DemandeContext.Provider value={{ demandes, addDemande, updateDemande, updateDemandeStatus, deleteDemande, fetchDemandes }}>
+    <DemandeContext.Provider value={{ 
+      demandes: activeDemandes, 
+      archivedDemandes, 
+      addDemande, 
+      updateDemande, 
+      updateDemandeStatus, 
+      deleteDemande, 
+      restoreDemande,
+      fetchDemandes 
+    }}>
       {children}
     </DemandeContext.Provider>
   );
@@ -473,14 +520,23 @@ export const CharterProvider = ({ children }) => {
       });
     });
     
-    socket.on('charter_deleted', ({ demandeId }) => {
-      setCharters(prev => prev.filter(c => c.demandeId !== demandeId));
+    socket.on('charter_deleted', ({ demandeId, archived }) => {
+      if (archived) {
+        setCharters(prev => prev.map(c => c.demandeId === demandeId ? { ...c, is_archived: 1 } : c));
+      } else {
+        setCharters(prev => prev.filter(c => c.demandeId !== demandeId));
+      }
+    });
+
+    socket.on('charter_restored', ({ demandeId }) => {
+      setCharters(prev => prev.map(c => c.demandeId === demandeId ? { ...c, is_archived: 0 } : c));
     });
     
     return () => {
       socket.off('charter_created');
       socket.off('charter_updated');
       socket.off('charter_deleted');
+      socket.off('charter_restored');
     };
   }, [socket]);
 
@@ -534,15 +590,40 @@ export const CharterProvider = ({ children }) => {
         headers: getHeaders()
       });
       if (res.ok) {
-        setCharters(prev => prev.filter(c => c.demandeId !== demandeId));
+        setCharters(prev => prev.map(c => c.demandeId === demandeId ? { ...c, is_archived: 1 } : c));
       }
     } catch (err) {
       console.error('Erreur suppression charter', err);
     }
   };
 
+  const restoreCharter = async (demandeId) => {
+    try {
+      const res = await fetch(`${API_URL}/${demandeId}/restore`, {
+        method: 'PUT',
+        headers: getHeaders()
+      });
+      if (res.ok) {
+        setCharters(prev => prev.map(c => c.demandeId === demandeId ? { ...c, is_archived: 0 } : c));
+      }
+    } catch (err) {
+      console.error('Erreur restauration charter', err);
+    }
+  };
+
+  const activeCharters = charters.filter(c => !c.is_archived);
+  const archivedCharters = charters.filter(c => c.is_archived);
+
   return (
-    <CharterContext.Provider value={{ charters, saveCharter, getCharterByDemandeId, fetchCharters, deleteCharter }}>
+    <CharterContext.Provider value={{ 
+      charters: activeCharters, 
+      archivedCharters, 
+      saveCharter, 
+      getCharterByDemandeId, 
+      fetchCharters, 
+      deleteCharter,
+      restoreCharter
+    }}>
       {children}
     </CharterContext.Provider>
   );
@@ -584,7 +665,21 @@ export const ProjectProvider = ({ children }) => {
           }
         });
       });
-      return () => socket.off('project_updated');
+      socket.on('project_deleted', ({ id, archived }) => {
+        if (archived) {
+          setProjects(prev => prev.map(p => p.id === id ? { ...p, is_archived: 1 } : p));
+        } else {
+          setProjects(prev => prev.filter(p => p.id !== id));
+        }
+      });
+      socket.on('project_restored', ({ id }) => {
+        setProjects(prev => prev.map(p => p.id === id ? { ...p, is_archived: 0 } : p));
+      });
+      return () => {
+        socket.off('project_updated');
+        socket.off('project_deleted');
+        socket.off('project_restored');
+      };
     }
   }, [socket]);
 
@@ -609,7 +704,10 @@ export const ProjectProvider = ({ children }) => {
       });
       if (res.ok) {
         const data = await res.json();
-        setProjects(prev => [data, ...prev]);
+        setProjects(prev => {
+          if (prev.some(p => p.id === data.id)) return prev;
+          return [data, ...prev];
+        });
       }
     } catch (err) {
       console.error('Erreur ajout project', err);
@@ -676,15 +774,42 @@ export const ProjectProvider = ({ children }) => {
         headers: getHeaders()
       });
       if (res.ok) {
-        setProjects(prev => prev.filter(p => p.id !== id));
+        setProjects(prev => prev.map(p => p.id === id ? { ...p, is_archived: 1 } : p));
       }
     } catch (err) {
       console.error('Erreur suppression projet', err);
     }
   };
 
+  const restoreProject = async (id) => {
+    try {
+      const res = await fetch(`${API_URL}/${id}/restore`, {
+        method: 'PUT',
+        headers: getHeaders()
+      });
+      if (res.ok) {
+        setProjects(prev => prev.map(p => p.id === id ? { ...p, is_archived: 0 } : p));
+      }
+    } catch (err) {
+      console.error('Erreur restauration projet', err);
+    }
+  };
+
+  const activeProjects = projects.filter(p => !p.is_archived);
+  const archivedProjects = projects.filter(p => p.is_archived);
+
   return (
-    <ProjectContext.Provider value={{ projects, addProject, updateProjectStatus, updateProject, updateProjectProgress, deleteProject, fetchProjects }}>
+    <ProjectContext.Provider value={{ 
+      projects: activeProjects, 
+      archivedProjects, 
+      addProject, 
+      updateProjectStatus, 
+      updateProject, 
+      updateProjectProgress, 
+      deleteProject, 
+      restoreProject,
+      fetchProjects 
+    }}>
       {children}
     </ProjectContext.Provider>
   );
@@ -825,18 +950,27 @@ export const TaskProvider = ({ children }) => {
           return [newTask, ...prev];
         });
       };
-      const handleTaskDeleted = ({ id }) => {
-        setTasks(prev => prev.filter(t => t.id !== id));
+      const handleTaskDeleted = ({ id, archived }) => {
+        if (archived) {
+          setTasks(prev => prev.map(t => t.id === id ? { ...t, is_archived: 1 } : t));
+        } else {
+          setTasks(prev => prev.filter(t => t.id !== id));
+        }
+      };
+      const handleTaskRestored = ({ id }) => {
+        setTasks(prev => prev.map(t => t.id === id ? { ...t, is_archived: 0 } : t));
       };
 
       socket.on('task_updated', handleTaskUpdated);
       socket.on('task_created', handleTaskCreated);
       socket.on('task_deleted', handleTaskDeleted);
+      socket.on('task_restored', handleTaskRestored);
 
       return () => {
         socket.off('task_updated', handleTaskUpdated);
         socket.off('task_created', handleTaskCreated);
         socket.off('task_deleted', handleTaskDeleted);
+        socket.off('task_restored', handleTaskRestored);
       };
     }
   }, [socket]);
@@ -907,8 +1041,49 @@ export const TaskProvider = ({ children }) => {
     return tasks.filter(t => t.projectId === projectId);
   };
 
+  const deleteTask = async (id) => {
+    try {
+      const res = await fetch(`${API_URL}/${id}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+      });
+      if (res.ok) {
+        setTasks(prev => prev.map(t => t.id === id ? { ...t, is_archived: 1 } : t));
+      }
+    } catch (err) {
+      console.error('Erreur suppression tâche', err);
+    }
+  };
+
+  const restoreTask = async (id) => {
+    try {
+      const res = await fetch(`${API_URL}/${id}/restore`, {
+        method: 'PUT',
+        headers: getHeaders()
+      });
+      if (res.ok) {
+        setTasks(prev => prev.map(t => t.id === id ? { ...t, is_archived: 0 } : t));
+      }
+    } catch (err) {
+      console.error('Erreur restauration tâche', err);
+    }
+  };
+
+  const activeTasks = tasks.filter(t => !t.is_archived);
+  const archivedTasks = tasks.filter(t => t.is_archived);
+
   return (
-    <TaskContext.Provider value={{ tasks, addTask, updateTaskStatus, updateTask, getTasksByProjectId, fetchTasks }}>
+    <TaskContext.Provider value={{ 
+      tasks: activeTasks, 
+      archivedTasks, 
+      addTask, 
+      updateTaskStatus, 
+      updateTask, 
+      getTasksByProjectId, 
+      fetchTasks, 
+      deleteTask,
+      restoreTask
+    }}>
       {children}
     </TaskContext.Provider>
   );
@@ -1103,18 +1278,27 @@ export const TestCaseProvider = ({ children }) => {
       const handleTestCaseUpdated = (updatedTestCase) => {
         setTestCases(prev => prev.map(t => t.id === updatedTestCase.id ? updatedTestCase : t));
       };
-      const handleTestCaseDeleted = ({ id }) => {
-        setTestCases(prev => prev.filter(t => t.id !== id));
+      const handleTestCaseDeleted = ({ id, archived }) => {
+        if (archived) {
+          setTestCases(prev => prev.map(t => t.id === id ? { ...t, is_archived: 1 } : t));
+        } else {
+          setTestCases(prev => prev.filter(t => t.id !== id));
+        }
+      };
+      const handleTestCaseRestored = ({ id }) => {
+        setTestCases(prev => prev.map(t => t.id === id ? { ...t, is_archived: 0 } : t));
       };
 
       socket.on('test_case_created', handleTestCaseCreated);
       socket.on('test_case_updated', handleTestCaseUpdated);
       socket.on('test_case_deleted', handleTestCaseDeleted);
+      socket.on('test_case_restored', handleTestCaseRestored);
 
       return () => {
         socket.off('test_case_created', handleTestCaseCreated);
         socket.off('test_case_updated', handleTestCaseUpdated);
         socket.off('test_case_deleted', handleTestCaseDeleted);
+        socket.off('test_case_restored', handleTestCaseRestored);
       };
     }
   }, [socket]);
@@ -1192,15 +1376,41 @@ export const TestCaseProvider = ({ children }) => {
         headers: getHeaders()
       });
       if (res.ok) {
-        setTestCases(prev => prev.filter(t => t.id !== id));
+        setTestCases(prev => prev.map(t => t.id === id ? { ...t, is_archived: 1 } : t));
       }
     } catch (err) {
       console.error('Erreur suppression cas de test', err);
     }
   };
 
+  const restoreTestCase = async (id) => {
+    try {
+      const res = await fetch(`${API_URL}/test-cases/${id}/restore`, {
+        method: 'PUT',
+        headers: getHeaders()
+      });
+      if (res.ok) {
+        setTestCases(prev => prev.map(t => t.id === id ? { ...t, is_archived: 0 } : t));
+      }
+    } catch (err) {
+      console.error('Erreur restauration cas de test', err);
+    }
+  };
+
+  const activeTestCases = testCases.filter(t => !t.is_archived);
+  const archivedTestCases = testCases.filter(t => t.is_archived);
+
   return (
-    <TestCaseContext.Provider value={{ testCases, fetchTestCases, addTestCase, updateTestCase, updateTestCaseStatus, deleteTestCase }}>
+    <TestCaseContext.Provider value={{ 
+      testCases: activeTestCases, 
+      archivedTestCases, 
+      fetchTestCases, 
+      addTestCase, 
+      updateTestCase, 
+      updateTestCaseStatus, 
+      deleteTestCase,
+      restoreTestCase 
+    }}>
       {children}
     </TestCaseContext.Provider>
   );
@@ -1230,16 +1440,25 @@ export const DocumentProvider = ({ children }) => {
           return [newDoc, ...prev];
         });
       };
-      const handleDocumentDeleted = ({ id }) => {
-        setDocuments(prev => prev.filter(d => d.id !== id));
+      const handleDocumentDeleted = ({ id, archived }) => {
+        if (archived) {
+          setDocuments(prev => prev.map(d => d.id === id ? { ...d, is_archived: 1 } : d));
+        } else {
+          setDocuments(prev => prev.filter(d => d.id !== id));
+        }
+      };
+      const handleDocumentRestored = ({ id }) => {
+        setDocuments(prev => prev.map(d => d.id === id ? { ...d, is_archived: 0 } : d));
       };
 
       socket.on('document_created', handleDocumentCreated);
       socket.on('document_deleted', handleDocumentDeleted);
+      socket.on('document_restored', handleDocumentRestored);
 
       return () => {
         socket.off('document_created', handleDocumentCreated);
         socket.off('document_deleted', handleDocumentDeleted);
+        socket.off('document_restored', handleDocumentRestored);
       };
     }
   }, [socket]);
@@ -1283,20 +1502,188 @@ export const DocumentProvider = ({ children }) => {
         headers: getHeaders()
       });
       if (res.ok) {
-        setDocuments(prev => prev.filter(d => d.id !== id));
+        setDocuments(prev => prev.map(d => d.id === id ? { ...d, is_archived: 1 } : d));
       }
     } catch (err) {
       console.error('Erreur suppression document', err);
     }
   };
 
+  const restoreDocument = async (id) => {
+    try {
+      const res = await fetch(`${API_URL}/${id}/restore`, {
+        method: 'PUT',
+        headers: getHeaders()
+      });
+      if (res.ok) {
+        setDocuments(prev => prev.map(d => d.id === id ? { ...d, is_archived: 0 } : d));
+      }
+    } catch (err) {
+      console.error('Erreur restauration document', err);
+    }
+  };
+
+  const activeDocuments = documents.filter(d => !d.is_archived);
+  const archivedDocuments = documents.filter(d => d.is_archived);
+
   return (
-    <DocumentContext.Provider value={{ documents, fetchDocuments, addDocument, deleteDocument }}>
+    <DocumentContext.Provider value={{ 
+      documents: activeDocuments, 
+      archivedDocuments, 
+      fetchDocuments, 
+      addDocument, 
+      deleteDocument,
+      restoreDocument 
+    }}>
       {children}
     </DocumentContext.Provider>
   );
 };
 
+
+const PopupComponent = ({ popupState, onClose }) => {
+  const { title, message, type, onConfirm, onCancel, confirmText, cancelText, isConfirm } = popupState;
+
+  const icons = {
+    success: <CheckCircle className="text-emerald-500 w-12 h-12" />,
+    error: <XCircle className="text-rose-500 w-12 h-12" />,
+    info: <Info className="text-blue-500 w-12 h-12" />,
+    warning: <AlertTriangle className="text-amber-500 w-12 h-12" />
+  };
+
+  const bgColors = {
+    success: 'bg-emerald-50',
+    error: 'bg-rose-50',
+    info: 'bg-blue-50',
+    warning: 'bg-amber-50'
+  };
+
+  const buttonColors = {
+    success: 'bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500',
+    error: 'bg-rose-600 hover:bg-rose-700 focus:ring-rose-500',
+    info: 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500',
+    warning: 'bg-amber-600 hover:bg-amber-700 focus:ring-amber-500'
+  };
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      <div 
+        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-200" 
+        onClick={() => {
+          if (onCancel) onCancel();
+          onClose();
+        }}
+      />
+      
+      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200 border border-slate-100">
+        <button 
+          onClick={() => {
+            if (onCancel) onCancel();
+            onClose();
+          }}
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-full hover:bg-slate-100"
+        >
+          <X size={20} />
+        </button>
+
+        <div className="p-8 text-center">
+          <div className={`mx-auto w-20 h-20 rounded-full ${bgColors[type]} flex items-center justify-center mb-6`}>
+            {icons[type]}
+          </div>
+          
+          <h3 className="text-xl font-bold text-slate-800 mb-2">
+            {title}
+          </h3>
+          
+          <p className="text-slate-500 text-sm mb-8 whitespace-pre-wrap">
+            {message}
+          </p>
+
+          <div className="flex gap-3">
+            {isConfirm && (
+              <button
+                onClick={() => {
+                  if (onCancel) onCancel();
+                  onClose();
+                }}
+                className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-slate-300"
+              >
+                {cancelText || 'Annuler'}
+              </button>
+            )}
+            <button
+              onClick={() => {
+                if (onConfirm) onConfirm();
+                onClose();
+              }}
+              className={`flex-1 py-3 px-4 text-white rounded-xl font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 ${buttonColors[type]}`}
+            >
+              {confirmText || 'Continuer'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const PopupContext = createContext();
+export const usePopup = () => useContext(PopupContext);
+
+export const PopupProvider = ({ children }) => {
+  const [popupState, setPopupState] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'success',
+    onConfirm: null,
+    onCancel: null,
+    confirmText: '',
+    cancelText: '',
+    isConfirm: false
+  });
+
+  const showPopup = ({ title, message, type = 'success', onConfirm = null }) => {
+    setPopupState({
+      isOpen: true,
+      title,
+      message,
+      type,
+      onConfirm,
+      onCancel: null,
+      confirmText: 'Continuer',
+      cancelText: '',
+      isConfirm: false
+    });
+  };
+
+  const showConfirm = ({ title, message, type = 'warning', onConfirm, onCancel = null, confirmText = 'Confirmer', cancelText = 'Annuler' }) => {
+    setPopupState({
+      isOpen: true,
+      title,
+      message,
+      type,
+      onConfirm,
+      onCancel,
+      confirmText,
+      cancelText,
+      isConfirm: true
+    });
+  };
+
+  const closePopup = () => {
+    setPopupState(prev => ({ ...prev, isOpen: false }));
+  };
+
+  return (
+    <PopupContext.Provider value={{ showPopup, showConfirm, closePopup }}>
+      {children}
+      {popupState.isOpen && (
+        <PopupComponent popupState={popupState} onClose={closePopup} />
+      )}
+    </PopupContext.Provider>
+  );
+};
 
 export const AppProvider = ({ children }) => {
   return (
@@ -1313,7 +1700,9 @@ export const AppProvider = ({ children }) => {
                       <TestCaseProvider>
                         <MessageProvider>
                           <DocumentProvider>
-                            {children}
+                            <PopupProvider>
+                              {children}
+                            </PopupProvider>
                           </DocumentProvider>
                         </MessageProvider>
                       </TestCaseProvider>

@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { useTasks, useTeam, useAuth, useProjects, useDocuments } from '../../context/AppContext';
+import { useTasks, useTeam, useAuth, useProjects, useDocuments, usePopup } from '../../context/AppContext';
 import {
   PlusCircle, MoreHorizontal, X, Clock, CheckCircle, CheckCheck,
-  Tag, User, AlertTriangle, FlaskConical, ArrowRight, Lock, Download, Upload
+  Tag, User, AlertTriangle, FlaskConical, ArrowRight, Lock, Download, Upload, FileSpreadsheet
 } from 'lucide-react';
-import mammoth from 'mammoth';
-
-
+import * as XLSX from 'xlsx-js-style';
 
 const COLUMNS = [
   { id: 'En cours',  title: 'En cours',  color: 'border-blue-400',   dot: 'bg-blue-400'   },
@@ -32,6 +30,7 @@ const ProjectTasks = () => {
   const { updateProject } = useProjects();
   const { addDocument } = useDocuments();
   const { user } = useAuth();
+  const { showPopup } = usePopup();
 
   const projectTasks = tasks.filter(t => t.projectId === project.id);
   const teamMembers  = getTeamByProjectId(project.id) || [];
@@ -68,100 +67,252 @@ const ProjectTasks = () => {
     }
   }, [allDone, project.status, project.id, updateProject]);
 
-  const fileInputRef = React.useRef(null);
 
 
-  const handleImportWord = (e) => {
+  const handleDownloadExcelTemplate = () => {
+    const ws_data = [
+      ['INSTRUCTIONS D\'IMPORTATION DES TÂCHES'],
+      ['1. TOUTES les colonnes sont obligatoires. Aucune cellule ne doit être vide.'],
+      ['2. Les valeurs pour Priorité doivent être exactes : Basse, Moyenne, Haute, Critique.'],
+      ['3. Les valeurs pour Statut doivent être exactes : En cours, Fait, Clôturée, Archivée.'],
+      [],
+      ['Reference *', 'Objet *', 'Description *', 'Priorite *', 'Statut *', 'Assignation (ID Utilisateur) *', 'Date Debut Reel (YYYY-MM-DD) *', 'Date Fin Reel (YYYY-MM-DD) *', 'Date Fin Prevue (YYYY-MM-DD) *', 'Solution / Resultat *'],
+      ['TSK-001', 'Ma première tâche', 'Description détaillée de la tâche', 'Moyenne', 'En cours', 'ID_123', '2024-01-01', '2024-01-15', '2024-01-20', 'Solution appliquée']
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    
+    // Style professionnel
+    for (let key in ws) {
+      if (key[0] === '!') continue;
+      
+      const rowNum = parseInt(key.replace(/[a-zA-Z]/g, ''));
+      
+      let style = {
+        font: { name: "Arial", sz: 11, color: { rgb: "000000" } },
+        alignment: { vertical: "center", wrapText: true },
+        border: {
+           top: { style: "thin", color: { auto: 1 } },
+           bottom: { style: "thin", color: { auto: 1 } },
+           left: { style: "thin", color: { auto: 1 } },
+           right: { style: "thin", color: { auto: 1 } }
+        }
+      };
+
+      if (rowNum === 1) { 
+        style = {
+          font: { name: "Arial", sz: 14, bold: true, color: { rgb: "FFFFFF" } },
+          fill: { fgColor: { rgb: "1F4E78" } },
+          alignment: { vertical: "center", horizontal: "center" }
+        };
+      } else if (rowNum >= 2 && rowNum <= 4) { 
+        style = {
+          font: { name: "Arial", sz: 11, color: { rgb: "1F4E78" }, italic: true, bold: true },
+          fill: { fgColor: { rgb: "DDEBF7" } },
+          alignment: { vertical: "center" }
+        };
+      } else if (rowNum === 6) { 
+        style = {
+          font: { name: "Arial", sz: 12, bold: true, color: { rgb: "FFFFFF" } },
+          fill: { fgColor: { rgb: "00B050" } },
+          alignment: { vertical: "center", horizontal: "center", wrapText: true },
+          border: {
+           top: { style: "medium", color: { auto: 1 } },
+           bottom: { style: "medium", color: { auto: 1 } },
+           left: { style: "medium", color: { auto: 1 } },
+           right: { style: "medium", color: { auto: 1 } }
+          }
+        };
+      } else if (rowNum === 7) { 
+        style = {
+          font: { name: "Arial", sz: 11, color: { rgb: "808080" }, italic: true },
+          fill: { fgColor: { rgb: "F2F2F2" } },
+          alignment: { vertical: "center", wrapText: true },
+          border: {
+           top: { style: "thin", color: { auto: 1 } },
+           bottom: { style: "thin", color: { auto: 1 } },
+           left: { style: "thin", color: { auto: 1 } },
+           right: { style: "thin", color: { auto: 1 } }
+          }
+        };
+      }
+      ws[key].s = style;
+    }
+
+    // Fusions des cellules d'instructions
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 9 } },
+      { s: { r: 2, c: 0 }, e: { r: 2, c: 9 } },
+      { s: { r: 3, c: 0 }, e: { r: 3, c: 9 } }
+    ];
+
+    // Largeurs de colonnes
+    ws['!cols'] = [
+      { wch: 15 }, // Reference
+      { wch: 40 }, // Objet
+      { wch: 50 }, // Description
+      { wch: 20 }, // Priorite
+      { wch: 20 }, // Statut
+      { wch: 25 }, // Assignation
+      { wch: 25 }, // Date debut reel
+      { wch: 25 }, // Date fin reel
+      { wch: 25 }, // Date fin prevue
+      { wch: 40 }  // Solution
+    ];
+    
+    // Configurer la hauteur des lignes
+    ws['!rows'] = [
+      { hpt: 35 }, // Ligne 1
+      { hpt: 25 }, // Ligne 2
+      { hpt: 25 }, // Ligne 3
+      { hpt: 25 }, // Ligne 4
+      { hpt: 15 }, // Ligne 5 (vide)
+      { hpt: 30 }, // Ligne 6 (Headers)
+      { hpt: 45 }  // Ligne 7 (Exemple)
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template Taches");
+    XLSX.writeFile(wb, "Template_Import_Taches.xlsx");
+  };
+
+  const excelInputRef = React.useRef(null);
+
+  const handleImportExcel = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
-    // Convert to base64 to save as project document
-    const base64Reader = new FileReader();
-    base64Reader.onloadend = () => {
-      addDocument({
-        projectId: project.id,
-        name: `Import_${file.name}`,
-        type: 'Import',
-        format: 'Word',
-        module: 'Task',
-        content: base64Reader.result
-      });
-    };
-    base64Reader.readAsDataURL(file);
 
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
-        const arrayBuffer = event.target.result;
-        const result = await mammoth.extractRawText({ arrayBuffer });
-        const text = result.value;
-        const lines = text.split('\n');
-        const importedTasks = [];
-        let currentTask = null;
+        const data = new Uint8Array(event.target.result);
+        const wb = XLSX.read(data, { type: 'array' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
-        for (const line of lines) {
-          const normalizedLine = line.trim();
+        if (rows.length === 0) {
+          showPopup({ title: 'Erreur', message: 'Le fichier Excel est vide.', type: 'error' });
+          return;
+        }
 
-          if (normalizedLine.toLowerCase().startsWith('titre:')) {
-            if (currentTask && currentTask.title) {
-              importedTasks.push(currentTask);
-            }
-            currentTask = {
-              projectId: project.id,
-              title: normalizedLine.substring(6).trim(),
-              reference: '',
-              objet: '',
-              description: '',
-              priority: 'Moyenne',
-              status: 'En cours',
-              dateDebutReel: '',
-              dateFinReel: '',
-              dateFin: '',
-              assigneeId: ''
-            };
-          } else if (currentTask) {
-            if (normalizedLine.toLowerCase().startsWith('référence:')) {
-              currentTask.reference = normalizedLine.substring(10).trim();
-            } else if (normalizedLine.toLowerCase().startsWith('objet:')) {
-              currentTask.objet = normalizedLine.substring(6).trim();
-            } else if (normalizedLine.toLowerCase().startsWith('description:')) {
-              currentTask.description = normalizedLine.substring(12).trim();
-            } else if (normalizedLine.toLowerCase().startsWith('assigné à:')) {
-              currentTask.assigneeId = normalizedLine.substring(11).trim();
-            } else if (normalizedLine.toLowerCase().startsWith('priorité:')) {
-              currentTask.priority = normalizedLine.substring(9).trim() || 'Moyenne';
-            } else if (normalizedLine.toLowerCase().startsWith('statut:')) {
-              currentTask.status = normalizedLine.substring(7).trim() || 'En cours';
-            } else if (normalizedLine.toLowerCase().startsWith('date début réel:')) {
-              currentTask.dateDebutReel = normalizedLine.substring(16).trim();
-            } else if (normalizedLine.toLowerCase().startsWith('date fin réel:')) {
-              currentTask.dateFinReel = normalizedLine.substring(14).trim();
-            } else if (normalizedLine.toLowerCase().startsWith('date fin:')) {
-              currentTask.dateFin = normalizedLine.substring(9).trim();
-            }
+        // Trouver la ligne d'en-têtes
+        let headerRowIndex = -1;
+        let headers = [];
+        for (let i = 0; i < Math.min(rows.length, 20); i++) {
+          const rowStr = (rows[i] || []).map(h => String(h || '').toLowerCase().trim());
+          if (rowStr.some(h => h.includes('objet')) && rowStr.some(h => h.includes('statut'))) {
+            headerRowIndex = i;
+            headers = rowStr;
+            break;
           }
         }
 
-        if (currentTask && currentTask.title) {
-          importedTasks.push(currentTask);
+        if (headerRowIndex === -1) {
+          showPopup({ title: 'Erreur', message: 'La ligne d\'en-têtes (avec la colonne "Objet") est introuvable.', type: 'error' });
+          return;
         }
 
-        for (const task of importedTasks) {
-          await addTask(task);
+        const refIdx = headers.findIndex(h => h.includes('reference') || h.includes('référence'));
+        const objIdx = headers.findIndex(h => h.includes('objet') || h.includes('nom') || h.includes('tache') || h.includes('tâche'));
+        const descIdx = headers.findIndex(h => h.includes('description'));
+        const prioIdx = headers.findIndex(h => h.includes('priorite') || h.includes('priorité'));
+        const statIdx = headers.findIndex(h => h.includes('statut'));
+        const asgIdx = headers.findIndex(h => h.includes('assignation') || h.includes('assigne'));
+        const dDebIdx = headers.findIndex(h => h.includes('debut') || h.includes('début'));
+        const dFinRIdx = headers.findIndex(h => h.includes('fin reel') || h.includes('fin réel'));
+        const dFinPIdx = headers.findIndex(h => h.includes('fin prevue') || h.includes('fin prévue'));
+        const solIdx = headers.findIndex(h => h.includes('solution') || h.includes('resultat') || h.includes('résultat'));
+
+        let importedCount = 0;
+        let errors = [];
+
+        for (let i = headerRowIndex + 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || !Array.isArray(row) || row.length === 0) continue;
+
+          // Ignorer les lignes totalement vides
+          if (row.every(cell => !String(cell || '').trim())) continue;
+
+          const objet = String(row[objIdx] || '').trim();
+          const reference = refIdx !== -1 ? String(row[refIdx] || '').trim() : '';
+          const description = descIdx !== -1 ? String(row[descIdx] || '').trim() : '';
+          const rawPriority = prioIdx !== -1 ? String(row[prioIdx] || '').trim() : '';
+          const rawStatus = statIdx !== -1 ? String(row[statIdx] || '').trim() : '';
+          const assigneeId = asgIdx !== -1 ? String(row[asgIdx] || '').trim() : '';
+          const dateDebutReel = dDebIdx !== -1 ? String(row[dDebIdx] || '').trim() : '';
+          const dateFinReel = dFinRIdx !== -1 ? String(row[dFinRIdx] || '').trim() : '';
+          const dateFin = dFinPIdx !== -1 ? String(row[dFinPIdx] || '').trim() : '';
+          const solutionResultat = solIdx !== -1 ? String(row[solIdx] || '').trim() : '';
+
+          let missingFields = [];
+          if (!reference) missingFields.push('Reference');
+          if (!objet) missingFields.push('Objet');
+          if (!description) missingFields.push('Description');
+          if (!rawPriority) missingFields.push('Priorité');
+          if (!rawStatus) missingFields.push('Statut');
+          if (!assigneeId) missingFields.push('Assignation');
+          if (!dateDebutReel) missingFields.push('Date Début Réel');
+          if (!dateFinReel) missingFields.push('Date Fin Réel');
+          if (!dateFin) missingFields.push('Date Fin Prévue');
+          if (!solutionResultat) missingFields.push('Solution');
+
+          if (missingFields.length > 0) {
+            errors.push(`Ligne ${i + 1} ignorée (Champs manquants : ${missingFields.join(', ')}).`);
+            continue; 
+          }
+
+          let priority = 'Moyenne';
+          if (!['Basse', 'Moyenne', 'Haute', 'Critique'].includes(rawPriority)) {
+            errors.push(`Ligne ${i + 1} : Priorité "${rawPriority}" non reconnue (mise à Moyenne).`);
+          } else {
+            priority = rawPriority;
+          }
+
+          let status = 'En cours';
+          if (!['En cours', 'Fait', 'Clôturée', 'Archivée'].includes(rawStatus)) {
+            errors.push(`Ligne ${i + 1} : Statut "${rawStatus}" non reconnu (mis à En cours).`);
+          } else {
+            status = rawStatus;
+          }
+
+          await addTask({
+            projectId: project.id,
+            reference: reference || `TSK-${Date.now()}-${importedCount}`,
+            objet,
+            description,
+            priority,
+            status,
+            assigneeId,
+            dateDebutReel,
+            dateFinReel,
+            dateFin,
+            solutionResultat
+          });
+          importedCount++;
         }
 
-        alert('Tâches importées avec succès.');
+        if (errors.length > 0) {
+          showPopup({ 
+            title: 'Importation terminée avec remarques', 
+            message: `${importedCount} tâche(s) importée(s).\n\nAnomalies détectées :\n${errors.slice(0, 5).join('\n')}${errors.length > 5 ? '\n...et autres erreurs.' : ''}`, 
+            type: 'warning' 
+          });
+        } else if (importedCount > 0) {
+          showPopup({ title: 'Succès', message: `${importedCount} tâche(s) importée(s) parfaitement sans erreur !`, type: 'success' });
+        } else {
+          showPopup({ title: 'Attention', message: "Aucune tâche valide n'a été importée.", type: 'warning' });
+        }
       } catch (err) {
-        alert('Erreur lors de l\'importation du fichier Word.');
+        console.error(err);
+        showPopup({ title: 'Erreur', message: 'Erreur lors de l\'importation du fichier Excel.', type: 'error' });
       } finally {
         e.target.value = null;
       }
     };
-
     reader.readAsArrayBuffer(file);
   };
 
-  
 
   
   const handleFileChange = (e, setter) => {
@@ -273,21 +424,30 @@ const ProjectTasks = () => {
           <p className="text-slate-500">Gérez les tâches de {project.nom}.</p>
         </div>
         {!isPending && canManageTasks && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <button
+              onClick={handleDownloadExcelTemplate}
+              className="flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl font-semibold hover:bg-emerald-100 transition-colors shadow-sm shrink-0"
+              title="Télécharger le modèle Excel"
+            >
+              <Download size={18} /> <span className="hidden lg:inline">Modèle Excel</span>
+            </button>
+
             <input 
               type="file" 
-              accept=".docx" 
-              ref={fileInputRef} 
-              onChange={handleImportWord} 
+              accept=".xlsx,.xls" 
+              ref={excelInputRef} 
+              onChange={handleImportExcel} 
               className="hidden" 
             />
             <button
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => excelInputRef.current?.click()}
               className="flex items-center gap-2 px-3 py-2 bg-slate-100 border border-slate-300 text-slate-700 rounded-xl font-semibold hover:bg-slate-200 transition-colors shadow-sm shrink-0"
-              title="Importer depuis Word"
+              title="Importer depuis Excel"
             >
-              <Upload size={18} /> <span className="hidden md:inline">Importer</span>
+              <FileSpreadsheet size={18} /> <span className="hidden lg:inline">Import Excel</span>
             </button>
+
 
             <button
               onClick={() => {

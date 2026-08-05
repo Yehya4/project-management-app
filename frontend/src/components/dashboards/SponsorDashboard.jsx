@@ -6,7 +6,7 @@ import {
   Box, Eye, RefreshCw, Zap, ArrowUpRight, ChevronRight
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth, useDemandes, useProjects, useCharter, useUser } from '../../context/AppContext';
+import { useAuth, useDemandes, useProjects, useCharter, useUser, useConfig } from '../../context/AppContext';
 import { formatUserDisplayName } from '../../utils/userUtils';
 
 const SponsorDashboard = () => {
@@ -18,7 +18,57 @@ const SponsorDashboard = () => {
   const navigate = useNavigate();
 
   const filteredDemandes = demandes.filter(d => d.statut !== 'Brouillon');
-  const acceptedDemandesCount = filteredDemandes.filter(d => d.statut === 'Acceptée').length;
+
+  const parseArray = (val) => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val;
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      if (!trimmed || trimmed === '-') return [];
+      if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed)) return parsed;
+        } catch (e) {}
+      }
+      return trimmed.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    return [];
+  };
+
+  const { config } = useConfig();
+
+  const domainStats = {};
+  const categoryStats = {};
+
+  (config.domaines || []).forEach(d => domainStats[d] = 0);
+  (config.categoriesProjet || []).forEach(c => categoryStats[c] = 0);
+
+  projects.forEach(p => {
+    const targetId = p.demandeId || p.id;
+    const d = demandes.find(dem => dem.id === targetId || dem.id === p.demandeId || dem.id === p.id);
+    const charter = charters.find(c => c.demandeId === targetId || c.demandeId === p.demandeId || c.demandeId === p.id);
+    
+    const domains = parseArray(d?.domaines || charter?.domaines || p.domaines);
+    const categories = parseArray(charter?.categoriesProjet || d?.categoriesProjet || p.categoriesProjet);
+
+    if (domains.length === 0) {
+      domainStats['Non spécifié'] = (domainStats['Non spécifié'] || 0) + 1;
+    } else {
+      domains.forEach(dom => {
+        domainStats[dom] = (domainStats[dom] || 0) + 1;
+      });
+    }
+
+    if (categories.length === 0) {
+      categoryStats['Non spécifié'] = (categoryStats['Non spécifié'] || 0) + 1;
+    } else {
+      categories.forEach(cat => {
+        categoryStats[cat] = (categoryStats[cat] || 0) + 1;
+      });
+    }
+  });
+  const acceptedDemandesCount = filteredDemandes.filter(d => d.statut === 'Acceptée' || projects.some(p => p.demandeId === d.id || p.id === d.id)).length;
   const approvalRate = filteredDemandes.length > 0 ? Math.round((acceptedDemandesCount / filteredDemandes.length) * 100) : 0;
 
   const handleAccept = (demandeId) => updateDemandeStatus(demandeId, 'Acceptée');
@@ -511,6 +561,75 @@ const SponsorDashboard = () => {
           <div className="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500 flex justify-between items-center">
             <span>Taux de santé</span>
             <span className="font-bold text-emerald-600">{projects.length > 0 ? Math.round((onTrackProjectsCount / projects.length) * 100) : 100}% OK</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Portefeuille par Domaines et Catégories */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Projets par Domaines */}
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <h3 className="font-bold text-slate-800 text-base mb-1 flex items-center gap-2">
+              <FolderKanban className="text-blue-600" size={18} />
+              Projets par Domaine
+            </h3>
+            <p className="text-xs text-slate-400 mb-4">Répartition des projets par domaine d'activité</p>
+            <div className="space-y-4">
+              {Object.keys(domainStats).length > 0 ? (
+                Object.entries(domainStats)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([dom, count]) => {
+                    const pct = projects.length ? Math.round((count / projects.length) * 100) : 0;
+                    return (
+                      <div key={dom} className="space-y-1.5">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="font-semibold text-slate-700">{dom}</span>
+                          <span className="font-bold text-slate-500">{count} ({pct}%)</span>
+                        </div>
+                        <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                           <div className="bg-blue-500 h-2 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })
+              ) : (
+                <p className="text-xs text-slate-400 italic text-center py-4">Aucune donnée disponible</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Projets par Catégories */}
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <h3 className="font-bold text-slate-800 text-base mb-1 flex items-center gap-2">
+              <PieChart className="text-purple-600" size={18} />
+              Projets par Catégorie de Projet
+            </h3>
+            <p className="text-xs text-slate-400 mb-4">Rempli depuis les informations complémentaires</p>
+            <div className="space-y-4">
+              {Object.keys(categoryStats).length > 0 ? (
+                Object.entries(categoryStats)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([cat, count]) => {
+                    const pct = projects.length ? Math.round((count / projects.length) * 100) : 0;
+                    return (
+                      <div key={cat} className="space-y-1.5">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="font-semibold text-slate-700">{cat}</span>
+                          <span className="font-bold text-slate-500">{count} ({pct}%)</span>
+                        </div>
+                        <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                           <div className="bg-purple-500 h-2 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })
+              ) : (
+                <p className="text-xs text-slate-400 italic text-center py-4">Aucune donnée disponible</p>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 import React from 'react';
-import { Server, ShieldCheck, FolderKanban, Users, TrendingUp, Activity, PieChart, FileText, CheckCircle2, Clock, XCircle, ArrowUpRight, BarChart2, Shield } from 'lucide-react';
-import { useUser, useAuth, useDemandes, useProjects, useCharter, useTasks, useTestCases } from '../../context/AppContext';
+import { Server, ShieldCheck, FolderKanban, Users, TrendingUp, Activity, PieChart, FileText, CheckCircle2, Clock, XCircle, ArrowUpRight, BarChart2, Shield, Building, AlertTriangle } from 'lucide-react';
+import { useUser, useAuth, useDemandes, useProjects, useCharter, useTasks, useTestCases, useConfig } from '../../context/AppContext';
 import { Link, useNavigate } from 'react-router-dom';
 import Popup from '../Popup';
 
@@ -27,8 +27,8 @@ const AdminDashboard = () => {
   const activeProjects = projects.filter(p => !['Utilisation', 'Archive', 'Archivée', 'Terminé'].includes(p.status)).length;
   const validatedProjects = projects.filter(p => ['Utilisation', 'Archive', 'Archivée', 'Terminé'].includes(p.status)).length;
   const filteredDemandes = demandes.filter(d => d.statut !== 'Brouillon');
-  const enCoursDemandes = filteredDemandes.filter(d => d.statut === 'En cours').length;
-  const acceptedDemandes = filteredDemandes.filter(d => d.statut === 'Acceptée').length;
+  const enCoursDemandes = filteredDemandes.filter(d => d.statut === 'En cours' && !projects.some(p => p.demandeId === d.id || p.id === d.id)).length;
+  const acceptedDemandes = filteredDemandes.filter(d => d.statut === 'Acceptée' || projects.some(p => p.demandeId === d.id || p.id === d.id)).length;
   const refusedDemandes = filteredDemandes.filter(d => d.statut === 'Refusée').length;
   
   const approvalRate = filteredDemandes.length ? Math.round((acceptedDemandes / filteredDemandes.length) * 100) : 0;
@@ -53,7 +53,69 @@ const AdminDashboard = () => {
     return [];
   };
 
+  const { config } = useConfig();
 
+  const domainStats = {};
+  const categoryStats = {};
+  const serviceStats = {};
+
+  (config.domaines || []).forEach(d => domainStats[d] = 0);
+  (config.categoriesProjet || []).forEach(c => categoryStats[c] = 0);
+  (config.servicesProjet || []).forEach(s => serviceStats[s] = 0);
+  (config.services || []).forEach(s => { if(serviceStats[s] === undefined) serviceStats[s] = 0; });
+
+  projects.forEach(p => {
+    const targetId = p.demandeId || p.id;
+    const d = demandes.find(dem => dem.id === targetId || dem.id === p.demandeId || dem.id === p.id);
+    const charter = charters.find(c => c.demandeId === targetId || c.demandeId === p.demandeId || c.demandeId === p.id);
+    
+    const domains = parseArray(d?.domaines || charter?.domaines || p.domaines);
+    const categories = parseArray(charter?.categoriesProjet || d?.categoriesProjet || p.categoriesProjet);
+    const service = charter?.service || d?.service || p.service;
+
+    if (domains.length === 0) {
+      domainStats['Non spécifié'] = (domainStats['Non spécifié'] || 0) + 1;
+    } else {
+      domains.forEach(dom => {
+        domainStats[dom] = (domainStats[dom] || 0) + 1;
+      });
+    }
+
+    if (categories.length === 0) {
+      categoryStats['Non spécifié'] = (categoryStats['Non spécifié'] || 0) + 1;
+    } else {
+      categories.forEach(cat => {
+        categoryStats[cat] = (categoryStats[cat] || 0) + 1;
+      });
+    }
+
+    if (!service || service.trim() === '' || service.trim() === '-') {
+      serviceStats['Non spécifié'] = (serviceStats['Non spécifié'] || 0) + 1;
+    } else {
+      const sTrim = service.trim();
+      serviceStats[sTrim] = (serviceStats[sTrim] || 0) + 1;
+    }
+  });
+
+  const delayedProjectsCount = projects.filter(p => {
+    if (['Utilisation', 'Archive', 'Archivée', 'Terminé'].includes(p.status)) return false;
+    const targetId = p.demandeId || p.id;
+    const charter = charters.find(c => c.demandeId === targetId || c.demandeId === p.demandeId || c.demandeId === p.id);
+    if (!charter || !charter.dateFin) return false;
+    
+    const dateFinParts = charter.dateFin.split('-');
+    if (dateFinParts.length === 3) {
+      const year = parseInt(dateFinParts[0], 10);
+      const month = parseInt(dateFinParts[1], 10) - 1;
+      const day = parseInt(dateFinParts[2], 10);
+      const dateFinObj = new Date(year, month, day);
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return dateFinObj < today;
+    }
+    return false;
+  }).length;
 
   // Project Stages Breakdown
   const initiationCount = projects.filter(p => p.status === 'Initiation' || p.status === 'En Préparation').length;
@@ -103,44 +165,32 @@ const AdminDashboard = () => {
             </span>
           </div>
           <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-            Tour de Contrôle Administrateur
+            {user?.role === 'Project Manager' ? 'Tableau de Bord Project Manager' : 
+             user?.role === 'Sponsor' ? 'Tableau de Bord Stratégique' : 
+             'Tour de Contrôle Administrateur'}
           </h1>
           <p className="text-slate-300 mt-2 text-sm md:text-base max-w-2xl">
-            Supervision analytique globale : santé du système, indicateurs de performance des projets et statistiques des utilisateurs.
+            {user?.role === 'Project Manager' ? 'Pilotage opérationnel du portefeuille, avancement des projets et gestion des ressources IT.' : 
+             user?.role === 'Sponsor' ? 'Suivi analytique du portefeuille, avancement des projets financés et gouvernance des validations.' : 
+             'Supervision analytique globale : santé du système, indicateurs de performance des projets et répartition par service.'}
           </p>
         </div>
       </div>
 
       {/* Main KPI Cards Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div onClick={() => navigate('/projects')} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:border-emerald-500 hover:shadow-md transition-all cursor-pointer group">
+        <div onClick={() => navigate('/demande-si')} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:border-amber-500 hover:shadow-md transition-all cursor-pointer group">
           <div className="flex justify-between items-start mb-3">
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 group-hover:text-emerald-600 transition-colors">Portefeuille Projets</p>
-              <p className="text-3xl font-black text-slate-800">{projects.length}</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 group-hover:text-amber-600 transition-colors">Demandes SI Soumises</p>
+              <p className="text-3xl font-black text-slate-800">{filteredDemandes.length}</p>
             </div>
-            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-              <FolderKanban size={24} />
-            </div>
-          </div>
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span>Actifs : <strong className="text-emerald-600 font-bold">{activeProjects}</strong></span>
-            <span>Terminés : <strong className="text-slate-700 font-semibold">{validatedProjects}</strong></span>
-          </div>
-        </div>
-
-        <div onClick={() => navigate('/users')} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:border-blue-500 hover:shadow-md transition-all cursor-pointer group">
-          <div className="flex justify-between items-start mb-3">
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 group-hover:text-blue-600 transition-colors">Comptes Utilisateurs</p>
-              <p className="text-3xl font-black text-slate-800">{users.length}</p>
-            </div>
-            <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-colors">
-              <Users size={24} />
+            <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl group-hover:bg-amber-600 group-hover:text-white transition-colors">
+              <Activity size={24} />
             </div>
           </div>
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-blue-600 font-semibold">
-            <span>Gérer les accès</span>
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-amber-600 font-semibold">
+            <span>{enCoursDemandes} en cours</span>
             <ArrowUpRight size={14} />
           </div>
         </div>
@@ -160,18 +210,34 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        <div onClick={() => navigate('/demande-si')} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:border-amber-500 hover:shadow-md transition-all cursor-pointer group">
+        <div onClick={() => navigate('/projects')} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:border-emerald-500 hover:shadow-md transition-all cursor-pointer group">
           <div className="flex justify-between items-start mb-3">
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 group-hover:text-amber-600 transition-colors">Demandes SI Soumises</p>
-              <p className="text-3xl font-black text-slate-800">{filteredDemandes.length}</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 group-hover:text-emerald-600 transition-colors">Portefeuille Projets</p>
+              <p className="text-3xl font-black text-slate-800">{projects.length}</p>
             </div>
-            <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl group-hover:bg-amber-600 group-hover:text-white transition-colors">
-              <Activity size={24} />
+            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+              <FolderKanban size={24} />
             </div>
           </div>
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-amber-600 font-semibold">
-            <span>{enCoursDemandes} en cours</span>
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <span>Actifs : <strong className="text-emerald-600 font-bold">{activeProjects}</strong></span>
+            <span>Terminés : <strong className="text-slate-700 font-semibold">{validatedProjects}</strong></span>
+          </div>
+        </div>
+
+        <div onClick={() => navigate('/projects')} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:border-rose-500 hover:shadow-md transition-all cursor-pointer group">
+          <div className="flex justify-between items-start mb-3">
+            <div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 group-hover:text-rose-600 transition-colors">Projets en Retard</p>
+              <p className="text-3xl font-black text-rose-600">{delayedProjectsCount}</p>
+            </div>
+            <div className="p-3 bg-rose-50 text-rose-600 rounded-2xl group-hover:bg-rose-600 group-hover:text-white transition-colors">
+              <AlertTriangle size={24} />
+            </div>
+          </div>
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-rose-600 font-semibold">
+            <span>Date de fin dépassée</span>
             <ArrowUpRight size={14} />
           </div>
         </div>
@@ -202,6 +268,51 @@ const AdminDashboard = () => {
 
       {/* Visual Statistics Sections */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Demandes SI Approval Stats */}
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <h3 className="font-bold text-slate-800 text-base mb-1 flex items-center gap-2">
+              <BarChart2 className="text-emerald-600" size={18} />
+              Métriques des Demandes SI
+            </h3>
+            <p className="text-xs text-slate-400 mb-4">Taux d'approbation et état des flux</p>
+
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <div className="p-2.5 bg-emerald-50/70 border border-emerald-100 rounded-2xl text-center">
+                <span className="text-[10px] font-bold text-emerald-700 uppercase block">Acceptées</span>
+                <span className="text-xl font-black text-emerald-700">{acceptedDemandes}</span>
+              </div>
+              <div className="p-2.5 bg-blue-50/70 border border-blue-100 rounded-2xl text-center">
+                <span className="text-[10px] font-bold text-blue-700 uppercase block">Total</span>
+                <span className="text-xl font-bold text-blue-800 leading-tight">{filteredDemandes.length}</span>
+              </div>
+              <div className="p-2.5 bg-amber-50/70 border border-amber-100 rounded-2xl text-center">
+                <span className="text-[10px] font-bold text-amber-700 uppercase block">En Cours</span>
+                <span className="text-xl font-bold text-amber-800 leading-tight">{enCoursDemandes}</span>
+              </div>
+              <div className="p-2.5 bg-rose-50/70 border border-rose-100 rounded-2xl text-center">
+                <span className="text-[10px] font-bold text-rose-700 uppercase block">Refusées</span>
+                <span className="text-xl font-black text-rose-700">{refusedDemandes}</span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-500">Taux d'Approbation</span>
+                <span className="font-extrabold text-emerald-600">{approvalRate}%</span>
+              </div>
+              <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                <div className="bg-emerald-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${approvalRate}%` }}></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500 flex justify-between items-center">
+            <span>Registre global SI</span>
+            <span className="font-bold text-slate-700">{filteredDemandes.length} soumissions</span>
+          </div>
+        </div>
+
         {/* Project Stage Distribution - SVG Donut Chart */}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div>
@@ -277,51 +388,6 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Demandes SI Approval Stats */}
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
-          <div>
-            <h3 className="font-bold text-slate-800 text-base mb-1 flex items-center gap-2">
-              <BarChart2 className="text-emerald-600" size={18} />
-              Métriques des Demandes SI
-            </h3>
-            <p className="text-xs text-slate-400 mb-4">Taux d'approbation et état des flux</p>
-
-            <div className="grid grid-cols-2 gap-2 mb-4">
-              <div className="p-2.5 bg-emerald-50/70 border border-emerald-100 rounded-2xl text-center">
-                <span className="text-[10px] font-bold text-emerald-700 uppercase block">Acceptées</span>
-                <span className="text-xl font-black text-emerald-700">{acceptedDemandes}</span>
-              </div>
-              <div className="p-2.5 bg-blue-50/70 border border-blue-100 rounded-2xl text-center">
-                <span className="text-[10px] font-bold text-blue-700 uppercase block">Total</span>
-                <span className="text-xl font-bold text-blue-800 leading-tight">{filteredDemandes.length}</span>
-              </div>
-              <div className="p-2.5 bg-amber-50/70 border border-amber-100 rounded-2xl text-center">
-                <span className="text-[10px] font-bold text-amber-700 uppercase block">En Cours</span>
-                <span className="text-xl font-bold text-amber-800 leading-tight">{enCoursDemandes}</span>
-              </div>
-              <div className="p-2.5 bg-rose-50/70 border border-rose-100 rounded-2xl text-center">
-                <span className="text-[10px] font-bold text-rose-700 uppercase block">Refusées</span>
-                <span className="text-xl font-black text-rose-700">{refusedDemandes}</span>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500">Taux d'Approbation</span>
-                <span className="font-extrabold text-emerald-600">{approvalRate}%</span>
-              </div>
-              <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                <div className="bg-emerald-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${approvalRate}%` }}></div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500 flex justify-between items-center">
-            <span>Registre global SI</span>
-            <span className="font-bold text-slate-700">{filteredDemandes.length} soumissions</span>
-          </div>
-        </div>
-
         {/* Tasks & Tests Overview */}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div>
@@ -367,6 +433,157 @@ const AdminDashboard = () => {
           <div className="mt-6 pt-4 border-t border-slate-100 text-[11px] text-slate-500 flex justify-between items-center font-medium">
             <span>Volume global traité</span>
             <span className="text-slate-700 font-bold">{totalTasks + totalTests} items</span>
+          </div>
+        </div>
+      </div>
+
+
+      {/* Portefeuille par Domaines, Catégories et Services */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Projets par Domaines */}
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-300 hover:border-slate-300">
+          <div>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center border border-blue-100 shadow-xs shrink-0">
+                <FolderKanban size={20} />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800 text-base leading-snug">
+                  Projets par Domaine
+                </h3>
+                <p className="text-[11px] text-slate-400">Répartition par domaine d'activité</p>
+              </div>
+            </div>
+            <div className="space-y-2 mt-5">
+              {Object.keys(domainStats).length > 0 ? (
+                Object.entries(domainStats)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([dom, count]) => {
+                    const pct = projects.length ? Math.round((count / projects.length) * 100) : 0;
+                    return (
+                      <div key={dom} className="group/item p-2.5 hover:bg-slate-50 rounded-2xl border border-transparent hover:border-slate-100 transition-all duration-300">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="font-bold text-slate-700 text-[13px] group-hover/item:text-blue-600 transition-colors">{dom}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-black text-slate-800 text-[13px]">{count}</span>
+                            <span className="inline-flex items-center rounded-full bg-blue-50 border border-blue-100/50 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+                              {pct}%
+                            </span>
+                          </div>
+                        </div>
+                        <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden shadow-inner relative">
+                          <div 
+                            className="bg-gradient-to-r from-blue-400 to-indigo-600 h-2 rounded-full transition-all duration-700 ease-out relative" 
+                            style={{ width: `${pct}%` }}
+                          >
+                            <div className="absolute right-0 top-0 bottom-0 w-1 bg-white/40 animate-pulse" />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+              ) : (
+                <p className="text-xs text-slate-400 italic text-center py-4">Aucune donnée disponible</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Projets par Catégories */}
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-300 hover:border-slate-300">
+          <div>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center border border-purple-100 shadow-xs shrink-0">
+                <PieChart size={20} />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800 text-base leading-snug">
+                  Projets par Catégorie de Projet
+                </h3>
+                <p className="text-[11px] text-slate-400">Rempli depuis les informations complémentaires</p>
+              </div>
+            </div>
+            <div className="space-y-2 mt-5">
+              {Object.keys(categoryStats).length > 0 ? (
+                Object.entries(categoryStats)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([cat, count]) => {
+                    const pct = projects.length ? Math.round((count / projects.length) * 100) : 0;
+                    return (
+                      <div key={cat} className="group/item p-2.5 hover:bg-slate-50 rounded-2xl border border-transparent hover:border-slate-100 transition-all duration-300">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="font-bold text-slate-700 text-[13px] group-hover/item:text-purple-600 transition-colors">{cat}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-black text-slate-800 text-[13px]">{count}</span>
+                            <span className="inline-flex items-center rounded-full bg-purple-50 border border-purple-100/50 px-2 py-0.5 text-[10px] font-bold text-purple-700">
+                              {pct}%
+                            </span>
+                          </div>
+                        </div>
+                        <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden shadow-inner relative">
+                          <div 
+                            className="bg-gradient-to-r from-purple-400 to-fuchsia-600 h-2 rounded-full transition-all duration-700 ease-out relative" 
+                            style={{ width: `${pct}%` }}
+                          >
+                            <div className="absolute right-0 top-0 bottom-0 w-1 bg-white/40 animate-pulse" />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+              ) : (
+                <p className="text-xs text-slate-400 italic text-center py-4">Aucune donnée disponible</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Projets par Services */}
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-300 hover:border-slate-300">
+          <div>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 bg-teal-50 text-teal-600 rounded-xl flex items-center justify-center border border-teal-100 shadow-xs shrink-0">
+                <Building size={20} />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800 text-base leading-snug">
+                  Projets par Service
+                </h3>
+                <p className="text-[11px] text-slate-400">Répartition par service demandeur</p>
+              </div>
+            </div>
+            <div className="space-y-2 mt-5">
+              {Object.keys(serviceStats).length > 0 ? (
+                Object.entries(serviceStats)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([srv, count]) => {
+                    const pct = projects.length ? Math.round((count / projects.length) * 100) : 0;
+                    return (
+                      <div key={srv} className="group/item p-2.5 hover:bg-slate-50 rounded-2xl border border-transparent hover:border-slate-100 transition-all duration-300">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="font-bold text-slate-700 text-[13px] group-hover/item:text-teal-600 transition-colors">{srv}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-black text-slate-800 text-[13px]">{count}</span>
+                            <span className="inline-flex items-center rounded-full bg-teal-50 border border-teal-100/50 px-2 py-0.5 text-[10px] font-bold text-teal-700">
+                              {pct}%
+                            </span>
+                          </div>
+                        </div>
+                        <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden shadow-inner relative">
+                          <div 
+                            className="bg-gradient-to-r from-teal-400 to-emerald-600 h-2 rounded-full transition-all duration-700 ease-out relative" 
+                            style={{ width: `${pct}%` }}
+                          >
+                            <div className="absolute right-0 top-0 bottom-0 w-1 bg-white/40 animate-pulse" />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+              ) : (
+                <p className="text-xs text-slate-400 italic text-center py-4">Aucune donnée disponible</p>
+              )}
+            </div>
           </div>
         </div>
       </div>

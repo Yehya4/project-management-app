@@ -95,12 +95,31 @@ class TestCaseService {
             this.getById(id).then(testCase => {
                 if (!testCase) return resolve({ id });
 
-                const query = 'DELETE FROM test_cases WHERE id = ?';
+                const query = 'UPDATE test_cases SET is_archived = 1 WHERE id = ?';
                 db.query(query, [id], async (err) => {
                     if (err) return reject(err);
 
                     if (io) {
-                        io.emit('test_case_deleted', { id: parseInt(id) || id });
+                        io.emit('test_case_deleted', { id: parseInt(id) || id, archived: true });
+                    }
+                    await projectService.autoUpdateStatus(testCase.projectId, io);
+                    resolve({ id });
+                });
+            }).catch(reject);
+        });
+    }
+
+    restore(id, io) {
+        return new Promise((resolve, reject) => {
+            this.getById(id).then(testCase => {
+                if (!testCase) return resolve({ id });
+
+                const query = 'UPDATE test_cases SET is_archived = 0 WHERE id = ?';
+                db.query(query, [id], async (err) => {
+                    if (err) return reject(err);
+
+                    if (io) {
+                        io.emit('test_case_restored', { id: parseInt(id) || id });
                     }
                     await projectService.autoUpdateStatus(testCase.projectId, io);
                     resolve({ id });

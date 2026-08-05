@@ -387,13 +387,13 @@ const ProjectOverview = () => {
   );
 
   if (!charter && isStrictPM) {
-    pendingActions.push({ label: 'Créer la Charte de Projet', icon: FileText, link: `/project-charter?demandeId=${project.demandeId}`, color: 'bg-indigo-600 text-white' });
+    pendingActions.push({ label: 'Créer la Charte de Projet', icon: FileText, link: `/projects/${project.id}/charter-edit?demandeId=${project.demandeId}`, state: { returnTo: `/projects/${project.id}/charter` }, color: 'bg-indigo-600 text-white' });
   }
   if (charter?.statut === 'Envoyé au Demandeur' && isDemandeur) {
-    pendingActions.push({ label: 'Accepter la Charte (Demandeur)', icon: CheckCircle2, link: `/project-charter?demandeId=${project.demandeId}`, color: 'bg-blue-600 text-white' });
+    pendingActions.push({ label: 'Accepter la Charte (Demandeur)', icon: CheckCircle2, link: `/projects/${project.id}/charter-edit?demandeId=${project.demandeId}`, state: { returnTo: `/projects/${project.id}/charter` }, color: 'bg-blue-600 text-white' });
   }
   if (charter?.statut === 'Soumis au Sponsor' && isSponsorRole) {
-    pendingActions.push({ label: 'Valider la Charte (Sponsor)', icon: CheckCircle2, link: `/project-charter?demandeId=${project.demandeId}`, color: 'bg-emerald-600 text-white' });
+    pendingActions.push({ label: 'Valider la Charte (Sponsor)', icon: CheckCircle2, link: `/projects/${project.id}/charter-edit?demandeId=${project.demandeId}`, state: { returnTo: `/projects/${project.id}/charter` }, color: 'bg-emerald-600 text-white' });
   }
   if (charter?.statut === 'Validé' && project.atelierCadrage !== 'Validé' && isStrictPM) {
     pendingActions.push({ label: "Valider l'Atelier de Cadrage", icon: CheckCircle2, link: `/projects/${project.id}/documents`, color: 'bg-purple-600 text-white' });
@@ -422,7 +422,8 @@ const ProjectOverview = () => {
         </div>
         {isPending && isPM && (
           <Link
-            to={`/project-charter?demandeId=${project.demandeId}`}
+            to={`/projects/${project.id}/charter-edit?demandeId=${project.demandeId}`}
+            state={{ returnTo: `/projects/${project.id}/charter` }}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-xl font-semibold hover:bg-slate-50 transition-colors shadow-sm text-sm"
           >
             <FileText size={16} />
@@ -447,6 +448,7 @@ const ProjectOverview = () => {
                 <Link
                   key={idx}
                   to={action.link}
+                  state={action.state || undefined}
                   className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm shadow-md hover:-translate-y-0.5 hover:shadow-lg transition-all ${action.color}`}
                 >
                   <action.icon size={18} />

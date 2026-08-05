@@ -28,6 +28,7 @@ router.post('/demandes/', demandeController.create);
 router.put('/demandes/:id', demandeController.update);
 router.put('/demandes/:id/status', demandeController.updateStatus);
 router.delete('/demandes/:id', demandeController.delete);
+router.put('/demandes/:id/restore', demandeController.restore);
 
 router.get('/projects/', projectController.getAll);
 router.post('/projects/', projectController.create);
@@ -36,6 +37,7 @@ router.put('/projects/:id/status', projectController.updateStatus);
 router.put('/projects/:id/progress', projectController.updateProgress);
 router.put('/projects/:id', projectController.update);
 router.delete('/projects/:id', projectController.delete);
+router.put('/projects/:id/restore', projectController.restore);
 
 router.get('/projects/:projectId/members', teamController.getMembers);
 router.post('/projects/:projectId/members', teamController.addOrUpdateMember);
@@ -47,25 +49,30 @@ router.post('/tasks/', taskController.create);
 router.put('/tasks/:id', taskController.update);
 router.put('/tasks/:id/status', taskController.updateStatus);
 router.delete('/tasks/:id', taskController.delete);
+router.put('/tasks/:id/restore', taskController.restore);
 
 router.get('/projects/:projectId/test-cases', testCaseController.getByProject);
 router.post('/test-cases', testCaseController.create);
 router.put('/test-cases/:id', testCaseController.update);
 router.put('/test-cases/:id/status', testCaseController.updateStatus);
 router.delete('/test-cases/:id', testCaseController.delete);
+router.put('/test-cases/:id/restore', testCaseController.restore);
 
 router.get('/projects/:projectId/events', eventController.getEventsByProject);
 router.post('/projects/:projectId/events', eventController.createEvent);
 router.put('/events/:id', eventController.updateEvent);
 router.delete('/events/:id', eventController.deleteEvent);
+router.put('/events/:id/restore', eventController.restoreEvent);
 
 router.get('/charters/', charterController.getAll);
 router.post('/charters/', charterController.save);
 router.delete('/charters/:demandeId', charterController.delete);
+router.put('/charters/:demandeId/restore', charterController.restore);
 
 router.get('/documents/:projectId', documentController.getByProjectId);
 router.post('/documents/', documentController.create);
 router.delete('/documents/:id', documentController.delete);
+router.put('/documents/:id/restore', documentController.restore);
 
 router.get('/messages/', messageController.getAll);
 

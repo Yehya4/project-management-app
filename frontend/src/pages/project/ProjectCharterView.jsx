@@ -1,6 +1,6 @@
 import React from 'react';
-import { useOutletContext, Link } from 'react-router-dom';
-import { useCharter, useAuth, useDemandes, useProjects } from '../../context/AppContext';
+import { useOutletContext, Link, useNavigate } from 'react-router-dom';
+import { useCharter, useAuth, useDemandes, useProjects, useConfig } from '../../context/AppContext';
 import {
   FileText, Flag, Activity, Users, Briefcase,
   CheckCircle, AlertTriangle, MessageSquare, Edit3,
@@ -12,6 +12,7 @@ import { generateCharterPDF } from '../../utils/pdfGenerator';
 
 // Config des phases de progression
 const PHASE_PROGRESS_CONFIG = {
+  'Initiation':    { min: 0, max: 15, color: '#f59e0b', bg: '#fffbeb', border: '#fde68a', label: 'Initiation' },
   'Développement': { min: 15, max: 80, color: '#8b5cf6', bg: '#f5f3ff', border: '#ddd6fe', label: 'Développement' },
   'Testing':       { min: 80, max: 90, color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe', label: 'Testing' },
   'Déploiement':   { min: 90, max: 100, color: '#f59e0b', bg: '#fffbeb', border: '#fde68a', label: 'Déploiement' },
@@ -60,6 +61,8 @@ const ProjectCharterView = () => {
   const { getCharterByDemandeId, saveCharter } = useCharter();
   const { demandes } = useDemandes();
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { config } = useConfig();
 
   const { updateProjectProgress } = useProjects();
   const charter = getCharterByDemandeId(project.demandeId);
@@ -108,7 +111,9 @@ const ProjectCharterView = () => {
   React.useEffect(() => {
     if (charter) {
       setInfosFormData({
-        categoriesProjet: charter.categoriesProjet || '',
+        categoriesProjet: Array.isArray(charter.categoriesProjet) 
+          ? charter.categoriesProjet 
+          : (charter.categoriesProjet ? String(charter.categoriesProjet).split(',').map(s=>s.trim()).filter(Boolean) : []),
         service: charter.service || '',
         dateFin: charter.dateFin ? new Date(charter.dateFin).toISOString().split('T')[0] : ''
       });
@@ -117,6 +122,20 @@ const ProjectCharterView = () => {
 
   const handleInfosChange = (e) => {
     setInfosFormData({ ...infosFormData, [e.target.name]: e.target.value });
+  };
+
+  const handleCategoryToggle = (cat) => {
+    let current = Array.isArray(infosFormData.categoriesProjet)
+      ? [...infosFormData.categoriesProjet]
+      : (typeof infosFormData.categoriesProjet === 'string'
+          ? infosFormData.categoriesProjet.split(',').map(s=>s.trim()).filter(Boolean)
+          : []);
+    if (current.includes(cat)) {
+      current = current.filter(c => c !== cat);
+    } else {
+      current.push(cat);
+    }
+    setInfosFormData(prev => ({ ...prev, categoriesProjet: current }));
   };
 
   const handleSaveInfos = async () => {
@@ -159,12 +178,12 @@ const ProjectCharterView = () => {
             </div>
             {isPMOrAdmin && project.demandeId && (
               <div className="flex flex-col gap-3 mt-2">
-                <Link
-                  to={`/project-charter?demandeId=${project.demandeId}`}
+                <button
+                  onClick={() => navigate(`/projects/${project.id}/charter-edit?demandeId=${project.demandeId}`, { state: { returnTo: `/projects/${project.id}/charter` } })}
                   className="flex justify-center items-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-semibold transition-all shadow-sm"
                 >
                   <Edit3 size={16} /> Créer la Charte manuellement
-                </Link>
+                </button>
 
               </div>
             )}
@@ -200,12 +219,12 @@ const ProjectCharterView = () => {
                 <Download size={16} /> <span className="hidden md:inline">PDF</span>
               </button>
               {charter.statut !== 'Validé' && (
-                <Link
-                  to={`/project-charter?demandeId=${project.demandeId}`}
+                <button
+                  onClick={() => navigate(`/projects/${project.id}/charter-edit?demandeId=${project.demandeId}`, { state: { returnTo: `/projects/${project.id}/charter` } })}
                   className="flex items-center gap-2 px-4 py-2 bg-blue-600 border border-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all shadow-sm shrink-0"
                 >
                   <Edit3 size={16} /> Éditer la Charte
-                </Link>
+                </button>
               )}
             </div>
           )}
@@ -521,12 +540,6 @@ const ProjectCharterView = () => {
             </div>
           ) : (
             <div className="bg-white rounded-2xl p-4 border border-slate-100 text-center">
-              {project.status === 'Initiation' && (
-                <div className="flex items-center justify-center gap-2 text-indigo-600">
-                  <Rocket size={18} />
-                  <p className="text-sm font-semibold">Phase Initiation — Progression fixe à 15% (automatique)</p>
-                </div>
-              )}
               {project.status === 'Utilisation' && (
                 <div className="flex items-center justify-center gap-2 text-emerald-600">
                   <CheckCircle2 size={18} />
@@ -578,13 +591,40 @@ const ProjectCharterView = () => {
         <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
           {isEditingInfos ? (
             <>
-              <div>
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Catégories du Projet</label>
-                <input type="text" name="categoriesProjet" value={infosFormData.categoriesProjet} onChange={handleInfosChange} className="w-full p-2.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-teal-500 text-sm bg-slate-50" placeholder="Ex: Technique, Métier..." />
+              <div className="col-span-1 md:col-span-3">
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Catégorie de projet</label>
+                <div className="flex flex-wrap gap-3 mt-1">
+                  {(config.categoriesProjet || []).map((cat) => {
+                    const isSelected = Array.isArray(infosFormData.categoriesProjet)
+                      ? infosFormData.categoriesProjet.includes(cat)
+                      : (typeof infosFormData.categoriesProjet === 'string' ? infosFormData.categoriesProjet.includes(cat) : false);
+                    return (
+                      <label key={cat} className="flex items-center gap-2 cursor-pointer bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:bg-slate-100 transition-all select-none">
+                        <input
+                          type="checkbox"
+                          checked={!!isSelected}
+                          onChange={() => handleCategoryToggle(cat)}
+                          className="w-4 h-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
+                        />
+                        <span className="text-xs font-semibold text-slate-600">{cat}</span>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Service</label>
-                <input type="text" name="service" value={infosFormData.service} onChange={handleInfosChange} className="w-full p-2.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-teal-500 text-sm bg-slate-50" placeholder="Ex: IT, RH, Finance..." />
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Service de projet</label>
+                <select 
+                  name="service" 
+                  value={infosFormData.service || ''} 
+                  onChange={handleInfosChange} 
+                  className="w-full p-2.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-teal-500 text-sm bg-slate-50 cursor-pointer appearance-none"
+                >
+                  <option value="" disabled>Sélectionnez un service</option>
+                  {(config.servicesProjet || []).map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Date Fin Prévue</label>
@@ -593,8 +633,8 @@ const ProjectCharterView = () => {
             </>
           ) : (
             <>
-              <Field label="Catégories du Projet" value={charter?.categoriesProjet || '-'} />
-              <Field label="Service" value={charter?.service || '-'} />
+              <Field label="Catégorie de projet" value={Array.isArray(charter?.categoriesProjet) ? charter.categoriesProjet.join(', ') : charter?.categoriesProjet || '-'} />
+              <Field label="Service de projet" value={charter?.service || '-'} />
               <Field label="Date Fin Prévue" value={charter?.dateFin ? new Date(charter.dateFin).toLocaleDateString('fr-FR') : '-'} />
             </>
           )}

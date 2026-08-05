@@ -30,6 +30,16 @@ class CharterController {
             return res.status(500).json({ message: 'Erreur lors de la suppression', error });
         }
     }
+
+    async restore(req, res) {
+        try {
+            const io = req.app.get('io');
+            await charterService.restore(req.params.demandeId, io);
+            return res.status(200).json({ message: 'Charte restaurée' });
+        } catch (error) {
+            return res.status(500).json({ message: 'Erreur lors de la restauration', error });
+        }
+    }
 }
 
 module.exports = new CharterController();

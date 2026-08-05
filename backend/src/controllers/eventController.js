@@ -45,6 +45,17 @@ class EventController {
             return res.status(500).json({ error: 'Internal Server Error' });
         }
     }
+
+    async restoreEvent(req, res) {
+        try {
+            const { id } = req.params;
+            await eventService.restoreEvent(id);
+            return res.json({ message: 'Event restored successfully' });
+        } catch (error) {
+            console.error(error);
+            return res.status(500).json({ error: 'Internal Server Error' });
+        }
+    }
 }
 
 module.exports = new EventController();

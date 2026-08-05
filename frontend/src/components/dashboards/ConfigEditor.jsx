@@ -157,9 +157,30 @@ const ConfigEditor = () => {
           onArchive={archiveConfigItem}
         />
         <ConfigSection 
-          title="Catégories des projets" 
+          title="Catégorie" 
+          configKey="categories" 
+          items={config.categories || []} 
+          onUpdate={updateConfig} 
+          onArchive={archiveConfigItem}
+        />
+        <ConfigSection 
+          title="Catégorie de projet" 
           configKey="categoriesProjet" 
-          items={config.categoriesProjet} 
+          items={config.categoriesProjet || []} 
+          onUpdate={updateConfig} 
+          onArchive={archiveConfigItem}
+        />
+        <ConfigSection 
+          title="Service" 
+          configKey="services" 
+          items={config.services || []} 
+          onUpdate={updateConfig} 
+          onArchive={archiveConfigItem}
+        />
+        <ConfigSection 
+          title="Service de projet" 
+          configKey="servicesProjet" 
+          items={config.servicesProjet || []} 
           onUpdate={updateConfig} 
           onArchive={archiveConfigItem}
         />

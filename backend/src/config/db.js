@@ -131,6 +131,58 @@ pool.getConnection((error, connection) => {
     }
   );
 
+  // Ensure default configurations exist
+  const defaultConfigs = [
+    { key: 'categories', value: ['Nouveau projet', 'Amélioration', 'Maintenance', 'Urgent'] },
+    { key: 'categoriesProjet', value: ['Nouveau projet', 'Amélioration', 'Maintenance', 'Urgent'] },
+    { key: 'services', value: ['DSI', 'RH', 'Finance', 'Marketing'] },
+    { key: 'servicesProjet', value: ['DSI', 'RH', 'Finance', 'Marketing'] }
+  ];
+
+  defaultConfigs.forEach(config => {
+    connection.query(
+      `SELECT COUNT(*) AS count FROM configurations WHERE config_key = ?`,
+      [config.key],
+      (err, results) => {
+        if (err) {
+          console.error(`Erreur vérification config ${config.key}:`, err.message);
+          return;
+        }
+        if (results && results[0] && results[0].count === 0) {
+          const defaultVals = JSON.stringify(config.value);
+          connection.query(
+            `INSERT INTO configurations (config_key, config_value, archived_value) VALUES (?, ?, '[]')`,
+            [config.key, defaultVals],
+            (err2) => {
+              if (err2) {
+                console.error(`Erreur insertion config ${config.key}:`, err2.message);
+              } else {
+                console.log(`Configuration par défaut '${config.key}' insérée.`);
+              }
+            }
+          );
+        }
+      }
+    );
+  });
+
+  // Soft Delete Archive Columns
+  const archiveColumns = [
+    "ALTER TABLE demandes ADD COLUMN is_archived TINYINT(1) DEFAULT 0",
+    "ALTER TABLE projects ADD COLUMN is_archived TINYINT(1) DEFAULT 0",
+    "ALTER TABLE tasks ADD COLUMN is_archived TINYINT(1) DEFAULT 0",
+    "ALTER TABLE test_cases ADD COLUMN is_archived TINYINT(1) DEFAULT 0",
+    "ALTER TABLE project_events ADD COLUMN is_archived TINYINT(1) DEFAULT 0",
+    "ALTER TABLE project_documents ADD COLUMN is_archived TINYINT(1) DEFAULT 0",
+    "ALTER TABLE charters ADD COLUMN is_archived TINYINT(1) DEFAULT 0"
+  ];
+
+  archiveColumns.forEach(query => {
+    connection.query(query, (err) => {
+      if (err && err.code !== 'ER_DUP_FIELDNAME') console.error(`Erreur ${query}:`, err.message);
+    });
+  });
+
   connection.release();
 });
 

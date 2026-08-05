@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Send, ArrowLeft, Save, X, Calendar, User, Briefcase, FileText, CheckCircle, Clock, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Popup from './Popup';
-import { useConfig, useAuth, useUser } from '../context/AppContext';
+import { useConfig, useAuth, useUser, usePopup } from '../context/AppContext';
 import { formatUserDisplayName } from '../utils/userUtils';
 import mammoth from 'mammoth';
 
@@ -46,7 +46,7 @@ export const ChampTexteLong = ({ label, id, value, onChange, placeholder, requir
 );
 
 
-export const GroupeCasesCocher = ({ label, options, selectedValues, onChange, name }) => {
+export const GroupeCasesCocher = ({ label, options, selectedValues, onChange, name, required }) => {
   const handleCheckboxChange = (optionValue) => {
     let newValues;
     if (selectedValues.includes(optionValue)) {
@@ -59,7 +59,9 @@ export const GroupeCasesCocher = ({ label, options, selectedValues, onChange, na
 
   return (
     <div className="mb-6">
-      <label className="block mb-3 text-sm font-semibold text-slate-700">{label}</label>
+      <label className="block mb-3 text-sm font-semibold text-slate-700">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
       <div className="flex flex-wrap gap-4">
         {options.map((option) => (
           <label key={option} className="flex items-center gap-2 cursor-pointer group">
@@ -170,6 +172,7 @@ export const FormulaireDemandeSI = ({ onSubmit, onSave, initialData }) => {
   const navigate = useNavigate();
   const { config } = useConfig();
   const { user } = useAuth();
+  const { showPopup } = usePopup();
   
   const [formData, setFormData] = useState(initialData || {
     ...INITIAL_STATE,
@@ -184,33 +187,88 @@ export const FormulaireDemandeSI = ({ onSubmit, onSave, initialData }) => {
   }, [initialData]);
   
   const [showSavePopup, setShowSavePopup] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = React.useRef(null);
-
-
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (onSubmit) {
-      onSubmit(formData);
-    } else {
-      console.log('Demande soumise:', formData);
-      alert('Demande SI soumise avec succès !');
-      navigate(-1);
+    if (isSubmitting) return;
+
+    if (!formData.domaines || formData.domaines.length === 0) {
+      showPopup({
+        title: "Validation requise",
+        message: "Veuillez sélectionner au moins un domaine concerné.",
+        type: "warning"
+      });
+      return;
+    }
+    if (!formData.natureBesoin || formData.natureBesoin.length === 0) {
+      showPopup({
+        title: "Validation requise",
+        message: "Veuillez sélectionner au moins une nature du besoin.",
+        type: "warning"
+      });
+      return;
+    }
+    if (!formData.benefices || formData.benefices.length === 0) {
+      showPopup({
+        title: "Validation requise",
+        message: "Veuillez sélectionner au moins un bénéfice escompté.",
+        type: "warning"
+      });
+      return;
+    }
+    if (formData.valideeResponsable === null || formData.valideeResponsable === undefined || formData.valideeResponsable === '') {
+      showPopup({
+        title: "Validation requise",
+        message: "Veuillez répondre à la question : Demande révisée et validée par responsable de l'entité ?",
+        type: "warning"
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    
+    try {
+      if (onSubmit) {
+        await onSubmit(formData);
+      } else {
+        console.log('Demande soumise:', formData);
+        showPopup({
+          title: "Succès",
+          message: "Demande SI soumise avec succès !",
+          type: "success",
+          onConfirm: () => navigate(-1)
+        });
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    if (onSave) {
-      onSave(formData);
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    
+    try {
+      if (onSave) {
+        await onSave(formData);
+      }
+      console.log('Demande enregistrée:', formData);
+      setShowSavePopup(true);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
     }
-    console.log('Demande enregistrée:', formData);
-    setShowSavePopup(true);
   };
 
   const handlePopupClose = () => {
@@ -222,7 +280,7 @@ export const FormulaireDemandeSI = ({ onSubmit, onSave, initialData }) => {
 
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-      {}
+      
       <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
         <span className="text-sm text-slate-500">Remplissez les informations de votre demande</span>
       </div>
@@ -257,6 +315,7 @@ export const FormulaireDemandeSI = ({ onSubmit, onSave, initialData }) => {
           options={DOMAINES_OPTS}
           selectedValues={formData.domaines}
           onChange={handleChange}
+          required
         />
       </div>
 
@@ -288,6 +347,7 @@ export const FormulaireDemandeSI = ({ onSubmit, onSave, initialData }) => {
           options={NATURE_OPTS}
           selectedValues={formData.natureBesoin}
           onChange={handleChange}
+          required
         />
         <div className="my-6 border-t border-dashed border-slate-200"></div>
         <GroupeCasesCocher
@@ -296,6 +356,7 @@ export const FormulaireDemandeSI = ({ onSubmit, onSave, initialData }) => {
           options={BENEFICES_OPTS}
           selectedValues={formData.benefices}
           onChange={handleChange}
+          required
         />
         <div className="my-6 border-t border-dashed border-slate-200"></div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -309,7 +370,7 @@ export const FormulaireDemandeSI = ({ onSubmit, onSave, initialData }) => {
           />
           <div className="flex flex-col">
             <label className="mb-2 text-sm font-semibold text-slate-700">
-              Demande révisée et validée par responsable de l'entité?
+              Demande révisée et validée par responsable de l'entité? <span className="text-red-500">*</span>
             </label>
             <div className="flex items-center gap-6 mt-2">
               <label className="flex items-center gap-2 cursor-pointer">
@@ -352,17 +413,19 @@ export const FormulaireDemandeSI = ({ onSubmit, onSave, initialData }) => {
           <button
             type="button"
             onClick={handleSave}
-            className="flex items-center px-6 py-3 bg-white border border-slate-200 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 focus:ring-4 focus:ring-slate-100 transition-all shadow-sm"
+            disabled={isSubmitting}
+            className={`flex items-center px-6 py-3 bg-white border border-slate-200 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 focus:ring-4 focus:ring-slate-100 transition-all shadow-sm ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <Save size={18} className="mr-2" />
-            Enregistrer
+            {isSubmitting ? 'Enregistrement...' : 'Enregistrer'}
           </button>
           <button
             type="submit"
-            className="flex items-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 transition-all shadow-md"
+            disabled={isSubmitting}
+            className={`flex items-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 transition-all shadow-md ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <Send size={18} className="mr-2" />
-            Soumettre la demande
+            {isSubmitting ? 'Soumission...' : 'Soumettre la demande'}
           </button>
         </div>
       </div>
@@ -527,6 +590,7 @@ export const DemandeDetailsModal = ({ isOpen, onClose, demande }) => {
 };
 
 export const InfosComplementairesModal = ({ isOpen, onClose, demande, onSave }) => {
+  const { config } = useConfig();
   const [formData, setFormData] = useState({
     categoriesProjet: [],
     service: '',
@@ -574,13 +638,23 @@ export const InfosComplementairesModal = ({ isOpen, onClose, demande, onSave }) 
           </button>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <ChampSaisie
-            label="Service"
-            id="service"
-            value={formData.service}
-            onChange={handleChange}
-            placeholder="Ex: Marketing, IT..."
-          />
+          <div className="flex flex-col mb-4">
+            <label htmlFor="service" className="mb-2 text-sm font-semibold text-slate-700">
+              Service de projet
+            </label>
+            <select
+              id="service"
+              name="service"
+              value={formData.service || ''}
+              onChange={handleChange}
+              className="px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm cursor-pointer appearance-none"
+            >
+              <option value="" disabled>Sélectionnez un service</option>
+              {(config.servicesProjet || []).map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
           <ChampSaisie
             label="Date Fin Prévue"
             id="dateFin"
@@ -591,7 +665,7 @@ export const InfosComplementairesModal = ({ isOpen, onClose, demande, onSave }) 
           <GroupeCasesCocher
             label="Catégories du Projet"
             name="categoriesProjet"
-            options={['Nouveau projet', 'Amélioration', 'Maintenance', 'Urgent']}
+            options={config.categoriesProjet || []}
             selectedValues={formData.categoriesProjet}
             onChange={handleChange}
           />

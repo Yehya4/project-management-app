@@ -70,13 +70,21 @@ class DemandeService {
                     (id, nomDemandeur, fonction, domaines, categoriesProjet, contexte, description, natureBesoin, benefices, delaiSouhaite, dateCreation, statut, valideeResponsable, service, dateFin) 
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-                                const values = [
+                                let formattedDateFin = null;
+                if (dateFin) {
+                    const dStr = String(dateFin).trim();
+                    if (dStr) {
+                        formattedDateFin = dStr.includes('T') ? dStr.split('T')[0] : dStr;
+                    }
+                }
+
+                const values = [
                     newId, nomDemandeur, fonction, 
                     JSON.stringify(domaines || []), JSON.stringify(categoriesProjet || []), 
                     contexte, description, 
                     JSON.stringify(natureBesoin || []), JSON.stringify(benefices || []), 
                     delaiSouhaite, dateCreation, initialStatut, valideeResponsable || false,
-                    service || null, dateFin || null
+                    service || null, formattedDateFin
                 ];
 
                 db.query(query, values, (err) => {
@@ -111,25 +119,50 @@ class DemandeService {
             const { 
                 nomDemandeur, fonction, domaines, categoriesProjet, 
                 contexte, description, natureBesoin, benefices, delaiSouhaite, valideeResponsable,
-                service, dateFin
+                service, dateFin, statut
             } = demandeData;
 
-                        const query = `UPDATE demandes 
-                SET nomDemandeur=?, fonction=?, domaines=?, categoriesProjet=?, contexte=?, description=?, natureBesoin=?, benefices=?, delaiSouhaite=?, valideeResponsable=?, service=?, dateFin=?
+            const query = `UPDATE demandes 
+                SET nomDemandeur=?, fonction=?, domaines=?, categoriesProjet=?, contexte=?, description=?, natureBesoin=?, benefices=?, delaiSouhaite=?, valideeResponsable=?, service=?, dateFin=?, statut=?
                 WHERE id=?`;
 
-                        const values = [
+            let formattedDateFin = null;
+            if (dateFin) {
+                const dStr = String(dateFin).trim();
+                if (dStr) {
+                    formattedDateFin = dStr.includes('T') ? dStr.split('T')[0] : dStr;
+                }
+            }
+
+            const values = [
                 nomDemandeur, fonction, 
                 JSON.stringify(domaines || []), JSON.stringify(categoriesProjet || []), 
                 contexte, description, 
                 JSON.stringify(natureBesoin || []), JSON.stringify(benefices || []), 
-                delaiSouhaite, valideeResponsable || false, service || null, dateFin || null, id
+                delaiSouhaite, valideeResponsable || false, service || null, formattedDateFin, statut || 'En attente', id
             ];
 
             db.query(query, values, (err) => {
                 if (err) return reject(err);
-                const updatedDemande = { id, ...demandeData };
-                if (io) io.emit('demande_updated', updatedDemande);
+                const updatedDemande = { id, ...demandeData, statut: statut || 'En attente' };
+                if (io) {
+                    io.emit('demande_updated', updatedDemande);
+                    if (statut === 'En cours') {
+                        const notification = {
+                            id: Date.now(),
+                            title: 'Nouvelle demande SI',
+                            message: `Une nouvelle demande (${id}) a été soumise par ${nomDemandeur || 'un utilisateur'}.`,
+                            date: 'À l\'instant',
+                            read: false,
+                            type: 'info'
+                        };
+                        const target = io.to('role_Admin').to('role_Sponsor').to('role_Project Manager');
+                        if (nomDemandeur) {
+                            target.to(`name_${nomDemandeur}`);
+                        }
+                        target.emit('new_notification', notification);
+                    }
+                }
                 resolve(updatedDemande);
             });
         });
@@ -141,7 +174,7 @@ class DemandeService {
                 if (err) return reject(err);
                 const result = { id, statut };
 
-                                if (io) {
+                if (io) {
                     let nomDemandeur = null;
                     try {
                         const demande = await this.getById(id);
@@ -153,7 +186,7 @@ class DemandeService {
                     }
 
                     let notification = null;
-                    if (statut === 'En attente') {
+                    if (statut === 'En attente' || statut === 'En cours') {
                         notification = {
                             id: Date.now(),
                             title: 'Demande soumise',
@@ -184,6 +217,28 @@ class DemandeService {
                     io.emit('demande_updated', { id, statut });
                 }
 
+                if (statut === 'Acceptée') {
+                    try {
+                        db.query('SELECT * FROM projects WHERE demandeId = ?', [id], (pErr, pResults) => {
+                            if (!pErr && (!pResults || pResults.length === 0)) {
+                                const projectService = require('./projectService');
+                                this.getById(id).then(demandeObj => {
+                                    const projName = `Projet (${id})`;
+                                    projectService.create({
+                                        nom: projName,
+                                        chefProjet: 'Project Manager (PM)',
+                                        status: 'Initiation',
+                                        description: demandeObj?.description || '',
+                                        demandeId: id
+                                    }, io).catch(console.error);
+                                }).catch(console.error);
+                            }
+                        });
+                    } catch (pEx) {
+                        console.error('Erreur auto-création projet:', pEx);
+                    }
+                }
+
                 resolve(result);
             });
         });
@@ -191,9 +246,19 @@ class DemandeService {
 
     delete(id, io) {
         return new Promise((resolve, reject) => {
-            db.query('DELETE FROM demandes WHERE id = ?', [id], (err) => {
+            db.query('UPDATE demandes SET is_archived = 1 WHERE id = ?', [id], (err) => {
                 if (err) return reject(err);
-                if (io) io.emit('demande_deleted', { id });
+                if (io) io.emit('demande_deleted', { id, archived: true });
+                resolve({ id });
+            });
+        });
+    }
+
+    restore(id, io) {
+        return new Promise((resolve, reject) => {
+            db.query('UPDATE demandes SET is_archived = 0 WHERE id = ?', [id], (err) => {
+                if (err) return reject(err);
+                if (io) io.emit('demande_restored', { id });
                 resolve({ id });
             });
         });

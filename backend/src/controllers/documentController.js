@@ -39,6 +39,18 @@ class DocumentController {
             return res.status(500).json({ message: 'Erreur lors de la suppression.' });
         }
     }
+
+    async restore(req, res) {
+        try {
+            const { id } = req.params;
+            const io = req.app.get('io');
+            const result = await documentService.restore(id, io);
+            return res.json(result);
+        } catch (err) {
+            console.error("Erreur DocumentController.restore:", err);
+            return res.status(500).json({ message: 'Erreur lors de la restauration.' });
+        }
+    }
 }
 
 module.exports = new DocumentController();

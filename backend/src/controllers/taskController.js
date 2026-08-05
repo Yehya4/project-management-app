@@ -96,6 +96,18 @@ class TaskController {
             return res.status(500).json({ message: 'Erreur lors de la suppression de la tâche.' });
         }
     }
+
+    async restore(req, res) {
+        try {
+            const { id } = req.params;
+            const io = req.app.get('io');
+            await taskService.restore(id, io);
+            return res.json({ message: 'Tâche restaurée avec succès.' });
+        } catch (err) {
+            console.error(err);
+            return res.status(500).json({ message: 'Erreur lors de la restauration de la tâche.' });
+        }
+    }
 }
 
 module.exports = new TaskController();

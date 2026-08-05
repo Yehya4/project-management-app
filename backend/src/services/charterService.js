@@ -57,6 +57,14 @@ class CharterService {
             categoriesProjet, service, dateFin
         } = charterData;
 
+        let formattedDateFin = null;
+        if (dateFin) {
+            const dStr = String(dateFin).trim();
+            if (dStr) {
+                formattedDateFin = dStr.includes('T') ? dStr.split('T')[0] : dStr;
+            }
+        }
+
         const catProjetStr = categoriesProjet ? (Array.isArray(categoriesProjet) ? JSON.stringify(categoriesProjet) : categoriesProjet) : null;
 
         await new Promise((resolve, reject) => {
@@ -78,7 +86,7 @@ class CharterService {
                         sponsorMetier, chefProjetMetier, equipeMetier, utilisateursFinaux, 
                         planCom, risques, criteresSucces, statut || 'Brouillon', 
                         JSON.stringify(commentaires || []), 
-                        catProjetStr, service || null, dateFin || null, 
+                        catProjetStr, service || null, formattedDateFin, 
                         demandeId
                     ];
 
@@ -101,7 +109,7 @@ class CharterService {
                         sponsorMetier, chefProjetMetier, equipeMetier, utilisateursFinaux, 
                         planCom, risques, criteresSucces, statut || 'Brouillon',
                         JSON.stringify(commentaires || []),
-                        catProjetStr, service || null, dateFin || null
+                        catProjetStr, service || null, formattedDateFin
                     ];
 
                     db.query(query, values, (err) => {
@@ -168,9 +176,19 @@ class CharterService {
 
     delete(demandeId, io) {
         return new Promise((resolve, reject) => {
-            db.query('DELETE FROM charters WHERE demandeId = ?', [demandeId], (err) => {
+            db.query('UPDATE charters SET is_archived = 1 WHERE demandeId = ?', [demandeId], (err) => {
                 if (err) return reject(err);
-                if (io) io.emit('charter_deleted', { demandeId });
+                if (io) io.emit('charter_deleted', { demandeId, archived: true });
+                resolve({ demandeId });
+            });
+        });
+    }
+
+    restore(demandeId, io) {
+        return new Promise((resolve, reject) => {
+            db.query('UPDATE charters SET is_archived = 0 WHERE demandeId = ?', [demandeId], (err) => {
+                if (err) return reject(err);
+                if (io) io.emit('charter_restored', { demandeId });
                 resolve({ demandeId });
             });
         });

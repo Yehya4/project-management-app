@@ -109,6 +109,18 @@ class TestCaseController {
             return res.status(500).json({ message: 'Erreur lors de la suppression du cas de test.' });
         }
     }
+
+    async restore(req, res) {
+        try {
+            const { id } = req.params;
+            const io = req.app.get('io');
+            await testCaseService.restore(id, io);
+            return res.json({ message: 'Cas de test restauré avec succès.' });
+        } catch (err) {
+            console.error(err);
+            return res.status(500).json({ message: 'Erreur lors de la restauration du cas de test.' });
+        }
+    }
 }
 
 module.exports = new TestCaseController();

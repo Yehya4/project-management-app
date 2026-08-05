@@ -43,11 +43,31 @@ class DocumentService {
                 const doc = results[0];
                 if (!doc) return resolve({ id });
 
-                const query = 'DELETE FROM project_documents WHERE id = ?';
+                const query = 'UPDATE project_documents SET is_archived = 1 WHERE id = ?';
                 db.query(query, [id], async (err) => {
                     if (err) return reject(err);
                     if (io) {
-                        io.emit('document_deleted', { id: parseInt(id) || id, projectId: doc.projectId });
+                        io.emit('document_deleted', { id: parseInt(id) || id, projectId: doc.projectId, archived: true });
+                    }
+                    resolve({ id });
+                });
+            });
+        });
+    }
+
+    restore(id, io) {
+        return new Promise((resolve, reject) => {
+            const getQuery = 'SELECT * FROM project_documents WHERE id = ?';
+            db.query(getQuery, [id], (err, results) => {
+                if (err) return reject(err);
+                const doc = results[0];
+                if (!doc) return resolve({ id });
+
+                const query = 'UPDATE project_documents SET is_archived = 0 WHERE id = ?';
+                db.query(query, [id], async (err) => {
+                    if (err) return reject(err);
+                    if (io) {
+                        io.emit('document_restored', { id: parseInt(id) || id, projectId: doc.projectId });
                     }
                     resolve({ id });
                 });

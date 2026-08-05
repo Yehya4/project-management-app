@@ -18,10 +18,9 @@ const ProjectWorkspaceLayout = () => {
     const linkedProject = projects.find(p => p.id === id || p.demandeId === id);
     if (!linkedProject) {
       const demande = demandes.find(d => d.id === id);
-      if (demande && (demande.statut === 'Acceptée' || demande.statut === 'En cours' || demande.statut === 'En Développement')) {
+      if (demande && (demande.statut === 'Acceptée' || demande.statut === 'En Développement')) {
         const charter = charters.find(c => c.demandeId === id);
         if (charter && charter.statut === 'Validé') {
-          updateDemandeStatus(id, 'En cours');
           addProject({
             nom: demande.nomDemandeur ? `Projet ${demande.nomDemandeur}` : (demande.titre || `Projet issu de la demande ${id}`),
             chefProjet: charter.chefProjetIT || 'Non assigné',
@@ -32,13 +31,8 @@ const ProjectWorkspaceLayout = () => {
           });
         }
       }
-    } else {
-      const demande = demandes.find(d => d.id === linkedProject.demandeId || d.id === linkedProject.id);
-      if (demande && ['Initiation', 'Développement', 'En Préparation'].includes(linkedProject.status) && demande.statut !== 'En cours') {
-        updateDemandeStatus(demande.id, 'En cours');
-      }
     }
-  }, [id, projects, demandes, charters, addProject, updateDemandeStatus]);
+  }, [id, projects, demandes, charters, addProject]);
 
   useEffect(() => {
     const linkedProject = projects.find(p => p.id === id || p.demandeId === id);
@@ -86,7 +80,7 @@ const ProjectWorkspaceLayout = () => {
 
   if (!project) {
     const demande = demandes.find(d => d.id === id);
-    if (demande && (demande.statut === 'Acceptée' || demande.statut === 'En cours' || demande.statut === 'En Développement')) {
+    if (demande && (demande.statut === 'Acceptée' || demande.statut === 'En Développement')) {
       isPending = true;
       project = {
         id: demande.id,

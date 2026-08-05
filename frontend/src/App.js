@@ -51,9 +51,7 @@ const DashboardRouter = () => {
       case 'User':
         return <UserDashboard />;
       case 'Project Manager':
-        return <PMDashboard />;
       case 'Sponsor':
-        return <SponsorDashboard />;
       case 'Admin':
         return <AdminDashboard />;
       case 'Developer':
@@ -105,6 +103,7 @@ function App() {
                     <Route path="utilisation" element={<ProjectUtilisation />} />
                     <Route path="role" element={<ProjectRole />} />
                     <Route path="project-info" element={<ProjectInfo />} />
+                    <Route path="charter-edit" element={<ProjectCharter />} />
                   </Route>
                   <Route path="/users" element={<UsersPage />} />
                   <Route path="/settings" element={<SettingsPage />} />

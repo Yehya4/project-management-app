@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { useAuth } from '../../context/AppContext';
+import { useAuth, usePopup } from '../../context/AppContext';
 import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, AlignLeft, X, Trash2 } from 'lucide-react';
 
 const PRESETS_COLORS = [
@@ -20,6 +20,7 @@ const MONTHS = [
 const ProjectCalendar = () => {
   const { project } = useOutletContext();
   const { user, token } = useAuth();
+  const { showConfirm } = usePopup();
   
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState([]);
@@ -196,20 +197,27 @@ const ProjectCalendar = () => {
   };
 
   const handleDelete = async () => {
-    if (!selectedEvent || !window.confirm('Voulez-vous vraiment supprimer cet événement ?')) return;
+    if (!selectedEvent) return;
 
-    try {
-      const res = await fetch(`${BASE_EVENT_URL}/${selectedEvent.id}`, {
-        method: 'DELETE',
-        headers: getHeaders()
-      });
-      if (res.ok) {
-        setEvents(prev => prev.filter(evt => evt.id !== selectedEvent.id));
-        setSelectedEvent(null);
+    showConfirm({
+      title: "Supprimer l'événement ?",
+      message: "Voulez-vous vraiment supprimer cet événement ?",
+      type: "error",
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`${BASE_EVENT_URL}/${selectedEvent.id}`, {
+            method: 'DELETE',
+            headers: getHeaders()
+          });
+          if (res.ok) {
+            setEvents(prev => prev.filter(evt => evt.id !== selectedEvent.id));
+            setSelectedEvent(null);
+          }
+        } catch (err) {
+          console.error('Error deleting event:', err);
+        }
       }
-    } catch (err) {
-      console.error('Error deleting event:', err);
-    }
+    });
   };
 
   const getEventColors = (colorVal) => {
