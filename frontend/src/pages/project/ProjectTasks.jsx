@@ -36,11 +36,22 @@ const ProjectTasks = () => {
   const teamMembers  = getTeamByProjectId(project.id) || [];
 
   const [isModalOpen,  setIsModalOpen]  = useState(false);
+  const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [formData,     setFormData]     = useState({
-    objet: '', description: '', priority: 'Moyenne', assigneeId: '', status: 'En cours',
+    objet: '', description: '', priority: '', assigneeId: '', status: '',
     dateDebutReel: '', dateFinReel: '', dateFin: '', solutionResultat: '', attachment: '', reference: ''
   });
+
+  const dynamicColumns = React.useMemo(() => {
+    const existingCols = [...COLUMNS];
+    projectTasks.forEach(t => {
+      if (t.status && !existingCols.find(c => c.id === t.status)) {
+        existingCols.push({ id: t.status, title: t.status, color: 'border-slate-300', dot: 'bg-slate-300' });
+      }
+    });
+    return existingCols;
+  }, [projectTasks]);
 
   
   const canManageTasks = ['Project Manager', 'Sponsor', 'Admin'].includes(user?.role);
@@ -73,11 +84,10 @@ const ProjectTasks = () => {
     const ws_data = [
       ['INSTRUCTIONS D\'IMPORTATION DES TÂCHES'],
       ['1. TOUTES les colonnes sont obligatoires. Aucune cellule ne doit être vide.'],
-      ['2. Les valeurs pour Priorité doivent être exactes : Basse, Moyenne, Haute, Critique.'],
-      ['3. Les valeurs pour Statut doivent être exactes : En cours, Fait, Clôturée, Archivée.'],
+      ['2. Remplissez librement les champs.'],
       [],
-      ['Reference *', 'Objet *', 'Description *', 'Priorite *', 'Statut *', 'Assignation (ID Utilisateur) *', 'Date Debut Reel (YYYY-MM-DD) *', 'Date Fin Reel (YYYY-MM-DD) *', 'Date Fin Prevue (YYYY-MM-DD) *', 'Solution / Resultat *'],
-      ['TSK-001', 'Ma première tâche', 'Description détaillée de la tâche', 'Moyenne', 'En cours', 'ID_123', '2024-01-01', '2024-01-15', '2024-01-20', 'Solution appliquée']
+      ['Objet *', 'Description *', 'Priorite *', 'Statut *', 'Assignation *', 'Date Debut Reel (YYYY-MM-DD) *', 'Date Fin Reel (YYYY-MM-DD) *', 'Date Fin Prevue (YYYY-MM-DD) *', 'Solution / Resultat *'],
+      ['Ma première tâche', 'Description détaillée', 'Moyenne', 'En cours', 'Jean Dupont', '2024-01-01', '2024-01-15', '2024-01-20', 'Solution appliquée']
     ];
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
     
@@ -104,13 +114,13 @@ const ProjectTasks = () => {
           fill: { fgColor: { rgb: "1F4E78" } },
           alignment: { vertical: "center", horizontal: "center" }
         };
-      } else if (rowNum >= 2 && rowNum <= 4) { 
+      } else if (rowNum >= 2 && rowNum <= 3) { 
         style = {
           font: { name: "Arial", sz: 11, color: { rgb: "1F4E78" }, italic: true, bold: true },
           fill: { fgColor: { rgb: "DDEBF7" } },
           alignment: { vertical: "center" }
         };
-      } else if (rowNum === 6) { 
+      } else if (rowNum === 5) { 
         style = {
           font: { name: "Arial", sz: 12, bold: true, color: { rgb: "FFFFFF" } },
           fill: { fgColor: { rgb: "00B050" } },
@@ -122,7 +132,7 @@ const ProjectTasks = () => {
            right: { style: "medium", color: { auto: 1 } }
           }
         };
-      } else if (rowNum === 7) { 
+      } else if (rowNum === 6) { 
         style = {
           font: { name: "Arial", sz: 11, color: { rgb: "808080" }, italic: true },
           fill: { fgColor: { rgb: "F2F2F2" } },
@@ -140,15 +150,13 @@ const ProjectTasks = () => {
 
     // Fusions des cellules d'instructions
     ws['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },
-      { s: { r: 1, c: 0 }, e: { r: 1, c: 9 } },
-      { s: { r: 2, c: 0 }, e: { r: 2, c: 9 } },
-      { s: { r: 3, c: 0 }, e: { r: 3, c: 9 } }
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 8 } },
+      { s: { r: 2, c: 0 }, e: { r: 2, c: 8 } }
     ];
 
     // Largeurs de colonnes
     ws['!cols'] = [
-      { wch: 15 }, // Reference
       { wch: 40 }, // Objet
       { wch: 50 }, // Description
       { wch: 20 }, // Priorite
@@ -165,10 +173,9 @@ const ProjectTasks = () => {
       { hpt: 35 }, // Ligne 1
       { hpt: 25 }, // Ligne 2
       { hpt: 25 }, // Ligne 3
-      { hpt: 25 }, // Ligne 4
-      { hpt: 15 }, // Ligne 5 (vide)
-      { hpt: 30 }, // Ligne 6 (Headers)
-      { hpt: 45 }  // Ligne 7 (Exemple)
+      { hpt: 15 }, // Ligne 4 (vide)
+      { hpt: 30 }, // Ligne 5 (Headers)
+      { hpt: 45 }  // Ligne 6 (Exemple)
     ];
 
     const wb = XLSX.utils.book_new();
@@ -213,7 +220,6 @@ const ProjectTasks = () => {
           return;
         }
 
-        const refIdx = headers.findIndex(h => h.includes('reference') || h.includes('référence'));
         const objIdx = headers.findIndex(h => h.includes('objet') || h.includes('nom') || h.includes('tache') || h.includes('tâche'));
         const descIdx = headers.findIndex(h => h.includes('description'));
         const prioIdx = headers.findIndex(h => h.includes('priorite') || h.includes('priorité'));
@@ -235,50 +241,75 @@ const ProjectTasks = () => {
           if (row.every(cell => !String(cell || '').trim())) continue;
 
           const objet = String(row[objIdx] || '').trim();
-          const reference = refIdx !== -1 ? String(row[refIdx] || '').trim() : '';
           const description = descIdx !== -1 ? String(row[descIdx] || '').trim() : '';
           const rawPriority = prioIdx !== -1 ? String(row[prioIdx] || '').trim() : '';
           const rawStatus = statIdx !== -1 ? String(row[statIdx] || '').trim() : '';
-          const assigneeId = asgIdx !== -1 ? String(row[asgIdx] || '').trim() : '';
-          const dateDebutReel = dDebIdx !== -1 ? String(row[dDebIdx] || '').trim() : '';
-          const dateFinReel = dFinRIdx !== -1 ? String(row[dFinRIdx] || '').trim() : '';
-          const dateFin = dFinPIdx !== -1 ? String(row[dFinPIdx] || '').trim() : '';
+          
+          const asgStr = asgIdx !== -1 ? String(row[asgIdx] || '').trim() : '';
+          let assigneeId = '';
+          if (asgStr) {
+            const member = teamMembers.find(m => 
+              (m.user && `${m.user.prenom} ${m.user.nom}`.toLowerCase().includes(asgStr.toLowerCase())) || 
+              m.userId.toString() === asgStr
+            );
+            if (member) assigneeId = member.userId;
+            // Si non trouvé, assigneeId reste vide (Non assigné) pour éviter une erreur serveur
+          }
+
+          const parseExcelDate = (val) => {
+            if (val == null || val === '') return '';
+            if (typeof val === 'number') {
+              try {
+                const dateObj = XLSX.SSF.parse_date_code(val);
+                if (dateObj) return `${dateObj.y}-${String(dateObj.m).padStart(2, '0')}-${String(dateObj.d).padStart(2, '0')}`;
+              } catch (e) {
+                return '';
+              }
+            }
+            return String(val).trim();
+          };
+
+          const dateDebutReel = dDebIdx !== -1 ? parseExcelDate(row[dDebIdx]) : '';
+          const dateFinReel = dFinRIdx !== -1 ? parseExcelDate(row[dFinRIdx]) : '';
+          const dateFin = dFinPIdx !== -1 ? parseExcelDate(row[dFinPIdx]) : '';
           const solutionResultat = solIdx !== -1 ? String(row[solIdx] || '').trim() : '';
 
           let missingFields = [];
-          if (!reference) missingFields.push('Reference');
           if (!objet) missingFields.push('Objet');
           if (!description) missingFields.push('Description');
-          if (!rawPriority) missingFields.push('Priorité');
+          if (!rawPriority) missingFields.push('Priorite');
           if (!rawStatus) missingFields.push('Statut');
           if (!assigneeId) missingFields.push('Assignation');
-          if (!dateDebutReel) missingFields.push('Date Début Réel');
-          if (!dateFinReel) missingFields.push('Date Fin Réel');
-          if (!dateFin) missingFields.push('Date Fin Prévue');
-          if (!solutionResultat) missingFields.push('Solution');
+          if (!dateDebutReel) missingFields.push('Date Debut Reel');
+          if (!dateFinReel) missingFields.push('Date Fin Reel');
+          if (!dateFin) missingFields.push('Date Fin Prevue');
+          if (!solutionResultat) missingFields.push('Solution / Resultat');
 
           if (missingFields.length > 0) {
             errors.push(`Ligne ${i + 1} ignorée (Champs manquants : ${missingFields.join(', ')}).`);
             continue; 
           }
 
-          let priority = 'Moyenne';
-          if (!['Basse', 'Moyenne', 'Haute', 'Critique'].includes(rawPriority)) {
-            errors.push(`Ligne ${i + 1} : Priorité "${rawPriority}" non reconnue (mise à Moyenne).`);
-          } else {
-            priority = rawPriority;
+          let priority = rawPriority;
+          if (priority) {
+            const normalized = priority.toLowerCase().trim();
+            if (normalized.includes('bass')) priority = 'Basse';
+            else if (normalized.includes('moyen')) priority = 'Moyenne';
+            else if (normalized.includes('haut')) priority = 'Haute';
+            else if (normalized.includes('criti')) priority = 'Critique';
           }
 
-          let status = 'En cours';
-          if (!['En cours', 'Fait', 'Clôturée', 'Archivée'].includes(rawStatus)) {
-            errors.push(`Ligne ${i + 1} : Statut "${rawStatus}" non reconnu (mis à En cours).`);
-          } else {
-            status = rawStatus;
+          let status = rawStatus;
+          if (status) {
+            const normalized = status.toLowerCase().trim();
+            if (normalized.includes('cour')) status = 'En cours';
+            else if (normalized.includes('fait')) status = 'Fait';
+            else if (normalized.includes('clôtur') || normalized.includes('clotur')) status = 'Clôturée';
+            else if (normalized.includes('archiv')) status = 'Archivée';
           }
 
           await addTask({
             projectId: project.id,
-            reference: reference || `TSK-${Date.now()}-${importedCount}`,
             objet,
             description,
             priority,
@@ -353,7 +384,7 @@ const ProjectTasks = () => {
     }
 
     setIsModalOpen(false);
-    setFormData({ objet: '', description: '', priority: 'Moyenne', assigneeId: '', status: 'En cours', dateDebutReel: '', dateFinReel: '', dateFin: '', solutionResultat: '', attachment: '', attachmentName: '', reference: '' });
+    setFormData({ objet: '', description: '', priority: '', assigneeId: '', status: '', dateDebutReel: '', dateFinReel: '', dateFin: '', solutionResultat: '', attachment: '', attachmentName: '', reference: '' });
   };
 
   const handleTaskAttachmentUpload = (e) => {
@@ -388,7 +419,7 @@ const ProjectTasks = () => {
   const getAssigneeName = (id) => {
     if (!id) return 'Non assigné';
     const member = teamMembers.find(m => m.userId?.toString() === id?.toString());
-    return member ? `${member.user.prenom} ${member.user.nom}` : 'Inconnu';
+    return member ? `${member.user.prenom} ${member.user.nom}` : id;
   };
 
   const handleDragStart = (e, taskId) => {
@@ -426,27 +457,20 @@ const ProjectTasks = () => {
         {!isPending && canManageTasks && (
           <div className="flex items-center gap-2 flex-wrap justify-end">
             <button
-              onClick={handleDownloadExcelTemplate}
+              onClick={() => setIsExcelModalOpen(true)}
               className="flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl font-semibold hover:bg-emerald-100 transition-colors shadow-sm shrink-0"
-              title="Télécharger le modèle Excel"
+              title="Gérer les tâches via Excel"
             >
-              <Download size={18} /> <span className="hidden lg:inline">Modèle Excel</span>
+              <FileSpreadsheet size={18} /> <span className="hidden lg:inline">Import/Export Excel</span>
             </button>
 
             <input 
               type="file" 
               accept=".xlsx,.xls" 
               ref={excelInputRef} 
-              onChange={handleImportExcel} 
+              onChange={(e) => { handleImportExcel(e); setIsExcelModalOpen(false); }} 
               className="hidden" 
             />
-            <button
-              onClick={() => excelInputRef.current?.click()}
-              className="flex items-center gap-2 px-3 py-2 bg-slate-100 border border-slate-300 text-slate-700 rounded-xl font-semibold hover:bg-slate-200 transition-colors shadow-sm shrink-0"
-              title="Importer depuis Excel"
-            >
-              <FileSpreadsheet size={18} /> <span className="hidden lg:inline">Import Excel</span>
-            </button>
 
 
             <button
@@ -502,7 +526,7 @@ const ProjectTasks = () => {
 
       {}
       <div className="flex-1 flex gap-5 overflow-x-auto pb-4">
-          {COLUMNS.map(column => {
+          {dynamicColumns.map(column => {
             const colTasks = projectTasks.filter(t => t.status === column.id);
             return (
               <div
@@ -619,6 +643,51 @@ const ProjectTasks = () => {
         </div>
       )}
 
+      {/* Modal Excel */}
+      {isExcelModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
+            <div className="flex justify-between items-center p-6 border-b border-slate-100 shrink-0">
+              <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <FileSpreadsheet className="text-emerald-600" /> Gestion Excel
+              </h3>
+              <button onClick={() => setIsExcelModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="p-6 flex flex-col gap-4">
+              <button
+                onClick={() => { handleDownloadExcelTemplate(); setIsExcelModalOpen(false); }}
+                className="flex flex-col items-center justify-center gap-2 p-6 bg-emerald-50 border-2 border-emerald-200 text-emerald-700 rounded-2xl hover:bg-emerald-100 hover:border-emerald-300 transition-all cursor-pointer w-full text-center group"
+              >
+                <Download size={32} className="group-hover:-translate-y-1 transition-transform" />
+                <span className="font-bold text-lg">Télécharger le Modèle</span>
+                <span className="text-sm font-medium opacity-80 text-emerald-600/80">Obtenez un fichier Excel avec les bonnes colonnes</span>
+              </button>
+
+              <button
+                onClick={() => { excelInputRef.current?.click(); }}
+                className="flex flex-col items-center justify-center gap-2 p-6 bg-blue-50 border-2 border-blue-200 text-blue-700 rounded-2xl hover:bg-blue-100 hover:border-blue-300 transition-all cursor-pointer w-full text-center group"
+              >
+                <Upload size={32} className="group-hover:-translate-y-1 transition-transform" />
+                <span className="font-bold text-lg">Importer un Fichier</span>
+                <span className="text-sm font-medium opacity-80 text-blue-600/80">Chargez vos tâches à partir d'un fichier rempli</span>
+              </button>
+            </div>
+            
+            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end">
+              <button
+                onClick={() => setIsExcelModalOpen(false)}
+                className="px-6 py-2.5 font-semibold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors w-full"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -677,6 +746,7 @@ const ProjectTasks = () => {
                       className="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none"
                       value={formData.dateDebutReel}
                       onChange={e => setFormData({ ...formData, dateDebutReel: e.target.value })}
+                      required
                     />
                   </div>
                   <div>
@@ -686,6 +756,7 @@ const ProjectTasks = () => {
                       className="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none"
                       value={formData.dateFinReel}
                       onChange={e => setFormData({ ...formData, dateFinReel: e.target.value })}
+                      required
                     />
                   </div>
                   <div>
@@ -695,6 +766,7 @@ const ProjectTasks = () => {
                       className="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none"
                       value={formData.dateFin}
                       onChange={e => setFormData({ ...formData, dateFin: e.target.value })}
+                      required
                     />
                   </div>
                 </div>
@@ -706,6 +778,7 @@ const ProjectTasks = () => {
                     placeholder="Décrivez la tâche et les critères d'acceptation..."
                     value={formData.description}
                     onChange={e => setFormData({ ...formData, description: e.target.value })}
+                    required
                   />
                 </div>
 
@@ -716,6 +789,7 @@ const ProjectTasks = () => {
                     placeholder="Quelle est la solution mise en place ?"
                     value={formData.solutionResultat}
                     onChange={e => setFormData({ ...formData, solutionResultat: e.target.value })}
+                    required
                   />
                 </div>
 
@@ -728,7 +802,7 @@ const ProjectTasks = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-1 flex items-center gap-1">
                       <Tag size={15} /> Priorité
@@ -737,7 +811,9 @@ const ProjectTasks = () => {
                       className="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none"
                       value={formData.priority}
                       onChange={e => setFormData({ ...formData, priority: e.target.value })}
+                      required
                     >
+                      <option value="">Sélectionner</option>
                       <option value="Basse">⬇️ Basse</option>
                       <option value="Moyenne">⏺️ Moyenne</option>
                       <option value="Haute">⬆️ Haute</option>
@@ -746,11 +822,12 @@ const ProjectTasks = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Assigner à</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">Assigné à</label>
                     <select
                       className="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none"
                       value={formData.assigneeId}
                       onChange={e => setFormData({ ...formData, assigneeId: e.target.value })}
+                      required
                     >
                       <option value="">Non assigné</option>
                       {teamMembers.map(m => (
@@ -759,11 +836,21 @@ const ProjectTasks = () => {
                         </option>
                       ))}
                     </select>
-                    {teamMembers.length === 0 && (
-                      <p className="text-xs text-amber-600 mt-1">
-                        L'équipe est vide. Allez dans "Équipe" pour ajouter des membres.
-                      </p>
-                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">Statut</label>
+                    <select
+                      className="w-full border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none"
+                      value={formData.status}
+                      onChange={e => setFormData({ ...formData, status: e.target.value })}
+                      required
+                    >
+                      <option value="">Sélectionner</option>
+                      {dynamicColumns.map(col => (
+                        <option key={col.id} value={col.id}>{col.title}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </form>
@@ -932,11 +1019,11 @@ const ProjectTasks = () => {
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Statut</h4>
                   {canMoveTask(selectedTask) ? (
                     <select
-                      className="border border-slate-300 rounded-lg p-1.5 text-xs font-bold bg-white text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
-                      value={selectedTask.status}
+                      className="w-full border border-slate-300 rounded-lg p-1.5 text-xs font-bold bg-white text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                      value={selectedTask.status || ''}
                       onChange={e => handleStatusChange(selectedTask.id, e.target.value)}
                     >
-                      {COLUMNS.map(col => (
+                      {dynamicColumns.map(col => (
                         <option key={col.id} value={col.id}>{col.title}</option>
                       ))}
                     </select>

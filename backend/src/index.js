@@ -100,6 +100,10 @@ io.on('connection', (socket) => {
                                                         const notificationForSponsorData = { ...notificationForSponsorAdminData, role: 'Sponsor', id: Date.now().toString() + Math.random().toString(36).substring(7) };
                             const savedNotifForSponsor = await notificationService.addNotification(notificationForSponsorData);
                             io.to('role_Sponsor').emit('new_notification', savedNotifForSponsor);
+
+                            const notificationForInfraData = { ...notificationForSponsorAdminData, role: 'Responsable Infra', id: Date.now().toString() + Math.random().toString(36).substring(7) };
+                            const savedNotifForInfra = await notificationService.addNotification(notificationForInfraData);
+                            io.to('role_Responsable Infra').emit('new_notification', savedNotifForInfra);
                         }
                     } catch (error) {
                         console.error('Erreur lors du traitement de la mention :', error);

@@ -10,6 +10,7 @@ import AdminDashboard from './components/dashboards/AdminDashboard';
 import DeveloperDashboard from './components/dashboards/DeveloperDashboard';
 import TesterDashboard from './components/dashboards/TesterDashboard';
 import ChefTesteurDashboard from './components/dashboards/ChefTesteurDashboard';
+import InfraDashboard from './components/dashboards/InfraDashboard';
 import NouvelleDemandeSI from './pages/NouvelleDemandeSI';
 import ListeDemandesSI from './pages/ListeDemandesSI';
 import ProjectCharter from './pages/ProjectCharter';
@@ -54,6 +55,8 @@ const DashboardRouter = () => {
       case 'Sponsor':
       case 'Admin':
         return <AdminDashboard />;
+      case 'Responsable Infra':
+        return <InfraDashboard />;
       case 'Developer':
         return <DeveloperDashboard />;
       case 'Tester':

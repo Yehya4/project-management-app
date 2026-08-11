@@ -163,7 +163,7 @@ class CharterService {
                     type: notifType
                 };
 
-                const target = io.to('role_Admin').to('role_Sponsor').to('role_Project Manager');
+                const target = io.to('role_Admin').to('role_Responsable Infra').to('role_Sponsor').to('role_Project Manager');
                 if (nomDemandeur) {
                     target.to(`name_${nomDemandeur}`);
                 }

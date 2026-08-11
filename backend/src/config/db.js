@@ -68,6 +68,25 @@ pool.getConnection((error, connection) => {
     "ALTER TABLE tasks ADD COLUMN attachment LONGTEXT"
   ];
 
+  const deduplicateReferencesQuery = `
+    UPDATE tasks 
+    SET reference = CONCAT(reference, '-', id) 
+    WHERE reference IN (
+      SELECT ref FROM (
+        SELECT reference as ref FROM tasks GROUP BY reference HAVING COUNT(*) > 1
+      ) as temp
+    )
+  `;
+
+  connection.query(deduplicateReferencesQuery, (err) => {
+    if (err) console.error("Erreur deduplication des references:", err.message);
+    else {
+      connection.query("ALTER TABLE tasks ADD UNIQUE INDEX unique_reference (reference)", (err) => {
+        if (err && err.code !== 'ER_DUP_KEYNAME') console.error("Erreur ajout contrainte UNIQUE reference:", err.message);
+      });
+    }
+  });
+
   tasksColumns.forEach(query => {
     connection.query(query, (err) => {
       if (err && err.code !== 'ER_DUP_FIELDNAME') console.error(`Erreur ${query}:`, err.message);

@@ -6,6 +6,7 @@ export const getRoleAcronym = (role) => {
   if (r.toLowerCase() === 'tester' || r.toLowerCase() === 'testeur' || r === 'Tester') return 'Tester';
   if (r.toLowerCase() === 'sponsor' || r === 'Sponsor') return 'Sponsor';
   if (r.toLowerCase() === 'admin' || r.toLowerCase() === 'administrateur' || r === 'Admin') return 'Admin';
+  if (r.toLowerCase() === 'responsable infra' || r === 'Responsable Infra') return 'Infra';
   if (r.toLowerCase() === 'user' || r.toLowerCase() === 'demandeur' || r === 'User') return 'User';
   return r;
 };

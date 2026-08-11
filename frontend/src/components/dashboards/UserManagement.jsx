@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useUser } from '../../context/AppContext';
 import { Plus, Trash2, Edit2, Users, Check, X } from 'lucide-react';
 
-const ROLES = ['User', 'Developer', 'Tester', 'Chef Testeur', 'Project Manager', 'Sponsor'];
+const ROLES = ['User', 'Developer', 'Tester', 'Chef Testeur', 'Project Manager', 'Sponsor', 'Responsable Infra'];
 
 const UserManagement = ({ isModal = true, onClose }) => {
   const { users, addUser, updateUser, archiveUser } = useUser();
@@ -186,6 +186,7 @@ const UserManagement = ({ isModal = true, onClose }) => {
                       <td className="p-4 align-top">
                         <span className={`px-3 py-1 rounded-full text-xs font-semibold inline-block ${
                           user.role === 'Admin' ? 'bg-purple-100 text-purple-700' :
+                          user.role === 'Responsable Infra' ? 'bg-indigo-100 text-indigo-700' :
                           user.role === 'Sponsor' ? 'bg-amber-100 text-amber-700' :
                           user.role === 'Project Manager' ? 'bg-blue-100 text-blue-700' :
                           'bg-slate-100 text-slate-700'
@@ -194,7 +195,7 @@ const UserManagement = ({ isModal = true, onClose }) => {
                         </span>
                       </td>
                       <td className="p-4 text-right align-top">
-                        {user.role !== 'Admin' && (
+                        {(user.role !== 'Admin' && user.role !== 'Responsable Infra') && (
                           <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button onClick={() => handleEditStart(user)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Modifier">
                               <Edit2 size={18} />

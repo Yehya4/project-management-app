@@ -30,8 +30,11 @@ class TaskController {
                 return res.status(400).json({ message: 'Champs obligatoires manquants (projectId, objet/title, priority, status).' });
             }
 
-            const taskId = id || `TSK-${Date.now()}`;
-            const finalReference = reference || taskId; // Use provided reference or auto-generate
+            let finalReference = reference;
+            if (!finalReference || finalReference.trim() === '') {
+                finalReference = await taskService.getNextReference();
+            }
+            const taskId = id || finalReference;
             const io = req.app.get('io');
             const task = await taskService.create({
                 id: taskId,

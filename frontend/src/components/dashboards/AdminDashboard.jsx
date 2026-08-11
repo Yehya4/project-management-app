@@ -62,7 +62,6 @@ const AdminDashboard = () => {
   (config.domaines || []).forEach(d => domainStats[d] = 0);
   (config.categoriesProjet || []).forEach(c => categoryStats[c] = 0);
   (config.servicesProjet || []).forEach(s => serviceStats[s] = 0);
-  (config.services || []).forEach(s => { if(serviceStats[s] === undefined) serviceStats[s] = 0; });
 
   projects.forEach(p => {
     const targetId = p.demandeId || p.id;
@@ -93,7 +92,11 @@ const AdminDashboard = () => {
       serviceStats['Non spécifié'] = (serviceStats['Non spécifié'] || 0) + 1;
     } else {
       const sTrim = service.trim();
-      serviceStats[sTrim] = (serviceStats[sTrim] || 0) + 1;
+      if ((config.servicesProjet || []).includes(sTrim)) {
+        serviceStats[sTrim] = (serviceStats[sTrim] || 0) + 1;
+      } else {
+        serviceStats['Non spécifié'] = (serviceStats['Non spécifié'] || 0) + 1;
+      }
     }
   });
 
@@ -167,11 +170,13 @@ const AdminDashboard = () => {
           <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
             {user?.role === 'Project Manager' ? 'Tableau de Bord Project Manager' : 
              user?.role === 'Sponsor' ? 'Tableau de Bord Stratégique' : 
+             user?.role === 'Responsable Infra' ? 'Tableau de Bord Infrastructure' :
              'Tour de Contrôle Administrateur'}
           </h1>
           <p className="text-slate-300 mt-2 text-sm md:text-base max-w-2xl">
             {user?.role === 'Project Manager' ? 'Pilotage opérationnel du portefeuille, avancement des projets et gestion des ressources IT.' : 
              user?.role === 'Sponsor' ? 'Suivi analytique du portefeuille, avancement des projets financés et gouvernance des validations.' : 
+             user?.role === 'Responsable Infra' ? 'Vue globale des projets pour le suivi de phase et la validation des mises en production.' :
              'Supervision analytique globale : santé du système, indicateurs de performance des projets et répartition par service.'}
           </p>
         </div>

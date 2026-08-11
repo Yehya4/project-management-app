@@ -62,6 +62,7 @@ const Sidebar = () => {
           projectsLink,
           messagesLink
         ];
+      case 'Responsable Infra':
       default:
         return [dashboardLink, projectsLink, messagesLink];
     }

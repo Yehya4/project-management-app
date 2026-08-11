@@ -22,12 +22,13 @@ const ProjectDeployment = () => {
   const isPM = user?.role === 'Project Manager';
   const isSponsor = user?.role === 'Sponsor';
   const isDev = user?.role === 'Developer';
+  const isResponsableInfra = user?.role === 'Responsable Infra';
 
-  // Allowed to upload plan de déploiement: Admin, PM, Sponsor, Developer
-  const canUploadPlan = isAdmin || isPM || isSponsor || isDev;
+  // Allowed to upload plan de déploiement: Admin, PM, Sponsor, Developer, Responsable Infra
+  const canUploadPlan = isAdmin || isPM || isSponsor || isDev || isResponsableInfra;
 
-  // Allowed to validate deployment: Admin, PM, Sponsor ONLY (No Developers)
-  const canValidateDeployment = isAdmin || isPM || isSponsor;
+  // Allowed to validate deployment: Responsable Infra ONLY
+  const canValidateDeployment = isResponsableInfra;
 
   const handleUploadPlan = (e) => {
     const file = e.target.files[0];
@@ -170,7 +171,7 @@ const ProjectDeployment = () => {
           <div>
             <p className="font-bold text-lg text-emerald-900">Déploiement Effectué et Validé !</p>
             <p className="text-emerald-700 text-sm mt-0.5">
-              Le projet a été déployé en production avec succès par <strong>{project.deploymentValidatedBy || 'Administrateur / PM / Sponsor'}</strong> le {project.deploymentValidatedAt || 'récemment'}.
+              Le projet a été déployé en production avec succès par <strong>{project.deploymentValidatedBy || 'Responsable Infra'}</strong> le {project.deploymentValidatedAt || 'récemment'}.
             </p>
           </div>
         </div>
@@ -185,7 +186,7 @@ const ProjectDeployment = () => {
               Plan de Déploiement
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Le PM, Sponsor, Admin ou Développeur importe le plan de déploiement.
+              Le PM, Sponsor, Admin, Responsable Infra ou Développeur importe le plan de déploiement.
             </p>
           </div>
 
@@ -302,7 +303,7 @@ const ProjectDeployment = () => {
         </div>
       )}
 
-      {/* VALIDATE DEPLOYMENT ACTION SECTION - ADMIN, SPONSOR, PM ONLY */}
+      {/* VALIDATE DEPLOYMENT ACTION SECTION - RESPONSABLE INFRA ONLY */}
       {isDeploymentPhase && canValidateDeployment && (
         <div className="bg-gradient-to-r from-amber-500 to-orange-600 rounded-3xl p-6 md:p-8 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
           <div>

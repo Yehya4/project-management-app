@@ -20,6 +20,20 @@ class TaskService {
         });
     }
 
+    getNextReference() {
+        return new Promise((resolve, reject) => {
+            db.query("SELECT MAX(CAST(SUBSTRING(reference, 5) AS UNSIGNED)) as max_ref FROM tasks WHERE reference REGEXP '^TSK-[0-9]{1,6}$'", (err, results) => {
+                if (err) {
+                    console.error("Error getting next reference:", err);
+                    return resolve(`TSK-${Date.now()}`); // Fallback
+                }
+                const max = results[0].max_ref || 0;
+                const nextNum = max + 1;
+                resolve(`TSK-${String(nextNum).padStart(3, '0')}`);
+            });
+        });
+    }
+
     create(taskData, io) {
         return new Promise((resolve, reject) => {
             const { id, projectId, title, description, priority, assigneeId, status, reference, objet, dateDebutReel, dateFinReel, dateFin, solutionResultat, attachment } = taskData;

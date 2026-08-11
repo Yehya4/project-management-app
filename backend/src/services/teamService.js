@@ -118,7 +118,7 @@ class TeamService {
                                 read: false,
                                 type: 'info'
                             };
-                            io.to('role_Admin').to('role_Sponsor').to('role_Project Manager').emit('new_notification', notificationForManagement);
+                            io.to('role_Admin').to('role_Responsable Infra').to('role_Sponsor').to('role_Project Manager').emit('new_notification', notificationForManagement);
                         } catch (notifErr) {
                             console.error(notifErr);
                         }

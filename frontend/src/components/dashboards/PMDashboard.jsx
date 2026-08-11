@@ -103,7 +103,11 @@ const PMDashboard = () => {
       serviceStats['Non spécifié'] = (serviceStats['Non spécifié'] || 0) + 1;
     } else {
       const sTrim = service.trim();
-      serviceStats[sTrim] = (serviceStats[sTrim] || 0) + 1;
+      if ((config.servicesProjet || []).includes(sTrim)) {
+        serviceStats[sTrim] = (serviceStats[sTrim] || 0) + 1;
+      } else {
+        serviceStats['Non spécifié'] = (serviceStats['Non spécifié'] || 0) + 1;
+      }
     }
   });
 
