@@ -9,7 +9,7 @@ const ProjectTestingCard = ({ project }) => {
   const { updateProject } = useProjects();
   
   useEffect(() => {
-    fetch(`http://localhost:5000/api/projects/${project.id}/test-cases`, {
+    fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/projects/${project.id}/test-cases`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(r => r.json())

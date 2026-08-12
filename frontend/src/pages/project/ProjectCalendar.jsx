@@ -40,8 +40,8 @@ const ProjectCalendar = () => {
   });
 
   const isController = user?.role === 'Project Manager' || user?.role === 'Sponsor' || user?.role === 'Admin';
-  const API_URL = `http://localhost:5000/api/projects/${project.id}/events`;
-  const BASE_EVENT_URL = `http://localhost:5000/api/events`;
+  const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/projects/${project.id}/events`;
+  const BASE_EVENT_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/events`;
 
   const getHeaders = () => ({
     'Content-Type': 'application/json',

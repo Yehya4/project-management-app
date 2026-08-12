@@ -51,7 +51,7 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     if (token) {
-      const newSocket = io('http://localhost:5000', { auth: { token } });
+      const newSocket = io(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}`, { auth: { token } });
       setSocket(newSocket);
 
       if (user) {
@@ -81,7 +81,7 @@ export const UserProvider = ({ children }) => {
   const { token } = useAuth();
   const { socket } = useSocket();
 
-  const API_URL = 'http://localhost:5000/api/users';
+  const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/users`;
 
   const getHeaders = () => ({
     'Content-Type': 'application/json',
@@ -211,7 +211,7 @@ export const ConfigProvider = ({ children }) => {
   const { token } = useAuth();
   const { socket } = useSocket();
 
-  const API_URL = 'http://localhost:5000/api/config';
+  const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/config`;
 
   const getHeaders = () => ({
     'Content-Type': 'application/json',
@@ -293,7 +293,7 @@ export const DemandeProvider = ({ children }) => {
   const { token, logout } = useAuth();
   const { socket } = useSocket();
 
-  const API_URL = 'http://localhost:5000/api/demandes';
+  const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/demandes`;
 
   const getHeaders = () => ({
     'Content-Type': 'application/json',
@@ -484,7 +484,7 @@ export const CharterProvider = ({ children }) => {
   const { token } = useAuth();
   const { socket } = useSocket();
 
-  const API_URL = 'http://localhost:5000/api/charters';
+  const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/charters`;
 
   const getHeaders = () => ({
     'Content-Type': 'application/json',
@@ -640,7 +640,7 @@ export const ProjectProvider = ({ children }) => {
   const { token } = useAuth();
   const { socket } = useSocket();
 
-  const API_URL = 'http://localhost:5000/api/projects';
+  const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/projects`;
 
   const getHeaders = () => ({
     'Content-Type': 'application/json',
@@ -826,7 +826,7 @@ export const NotificationProvider = ({ children }) => {
   const { token } = useAuth();
   const { socket } = useSocket();
 
-  const API_URL = 'http://localhost:5000/api/notifications';
+  const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/notifications`;
 
   const getHeaders = () => ({
     'Content-Type': 'application/json',
@@ -926,7 +926,7 @@ export const TaskProvider = ({ children }) => {
   const { token } = useAuth();
   const { socket } = useSocket();
 
-  const API_URL = 'http://localhost:5000/api/tasks';
+  const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/tasks`;
 
   const getHeaders = () => ({
     'Content-Type': 'application/json',
@@ -1100,7 +1100,7 @@ export const TeamProvider = ({ children }) => {
   const { token } = useAuth();
   const { socket } = useSocket();
   const { users } = useUser();
-  const API_URL = 'http://localhost:5000/api/projects';
+  const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/projects`;
 
   const getHeaders = () => ({
     'Content-Type': 'application/json',
@@ -1193,7 +1193,7 @@ export const MessageProvider = ({ children }) => {
   const { token, user } = useAuth();
   const { socket } = useSocket();
   
-  const API_URL = 'http://localhost:5000/api/messages';
+  const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/messages`;
 
   const getHeaders = () => ({
     'Content-Type': 'application/json',
@@ -1260,7 +1260,7 @@ export const TestCaseProvider = ({ children }) => {
   const { token } = useAuth();
   const { socket } = useSocket();
 
-  const API_URL = 'http://localhost:5000/api';
+  const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api`;
 
   const getHeaders = () => ({
     'Content-Type': 'application/json',
@@ -1425,7 +1425,7 @@ export const DocumentProvider = ({ children }) => {
   const { token } = useAuth();
   const { socket } = useSocket();
 
-  const API_URL = 'http://localhost:5000/api/documents';
+  const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/documents`;
 
   const getHeaders = () => ({
     'Content-Type': 'application/json',
