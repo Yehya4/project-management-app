@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useNavigate } from 'react-router-dom';
 import { useTasks, useTeam, useAuth, useProjects, useDocuments, usePopup } from '../../context/AppContext';
 import {
   PlusCircle, MoreHorizontal, X, Clock, CheckCircle, CheckCheck,
@@ -31,6 +31,21 @@ const ProjectTasks = () => {
   const { addDocument } = useDocuments();
   const { user } = useAuth();
   const { showPopup } = usePopup();
+  const navigate = useNavigate();
+
+  const handleValidateForTesting = async () => {
+    try {
+      await updateProject(project.id, { status: 'Testing', progress: 80 });
+      showPopup({
+        title: "Validation du Développement",
+        message: `La phase de développement a été validée avec succès ! Le projet "${project?.nom || ''}" passe en Testing.`,
+        type: "success"
+      });
+      navigate(`/projects/${project.id}/tests`);
+    } catch (err) {
+      console.error('Erreur validation testing:', err);
+    }
+  };
 
   const projectTasks = tasks.filter(t => t.projectId === project.id);
   const teamMembers  = getTeamByProjectId(project.id) || [];
@@ -53,8 +68,9 @@ const ProjectTasks = () => {
     return existingCols;
   }, [projectTasks]);
 
-  
-  const canManageTasks = ['Project Manager', 'Sponsor', 'Admin'].includes(user?.role);
+  const isProjectChef = project?.chefProjet &&
+    (`${user?.prenom || ''} ${user?.nom || ''}`.trim() === project.chefProjet);
+  const canManageTasks = ['Project Manager', 'Sponsor', 'Admin', 'PM', 'Chef de Projet'].includes(user?.role) || isProjectChef;
 
   const canMoveTask = (task) => {
     if (canManageTasks) return true;
@@ -63,125 +79,175 @@ const ProjectTasks = () => {
   };
 
   
-  const doneTasks  = projectTasks.filter(t => ['Fait', 'Clôturée', 'Archivée'].includes(t.status));
+  const doneTasks  = projectTasks.filter(t => ['Fait', 'Clôturée', 'Clôture', 'Archivée', 'Archive', 'Terminé'].includes(t.status));
   const totalTasks = projectTasks.length;
   const doneCount  = doneTasks.length;
   const progress   = totalTasks > 0 ? Math.round((doneCount / totalTasks) * 100) : 0;
   const allDone    = totalTasks > 0 && doneCount === totalTasks;
 
-  useEffect(() => {
-    if (allDone && project.status === 'Développement') {
-      const timer = setTimeout(() => {
-        updateProject(project.id, { status: 'Testing', progress: 80 });
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [allDone, project.status, project.id, updateProject]);
-
+  // Transition is now manual via button
 
 
   const handleDownloadExcelTemplate = () => {
+    // Build the list of team members for the assignee column guide
+    const profilesList = teamMembers
+      .filter(m => m.user)
+      .map(m => `${m.user.prenom} ${m.user.nom} (${m.role || m.user.role})`.trim())
+      .join(', ');
+
+    const assigneeNote = profilesList
+      ? `Assigné à : écrire le nom du profil. Ex: ${profilesList}`
+      : `Assigné à : écrire le prénom et nom d\'un membre de l\'équipe`;
+
     const ws_data = [
-      ['INSTRUCTIONS D\'IMPORTATION DES TÂCHES'],
-      ['1. TOUTES les colonnes sont obligatoires. Aucune cellule ne doit être vide.'],
-      ['2. Remplissez librement les champs.'],
+      // Row 1 - Title
+      ['MODÈLE D\'IMPORTATION DES TÂCHES DE DÉVELOPPEMENT'],
+      // Row 2 - Warning
+      ['⚠️  NE PAS MODIFIER les en-têtes. Remplissez à partir de la ligne 7. Sauvegardez en .xlsx avant d\'importer.'],
+      // Row 3 - Assignee note
+      [`📋  ${assigneeNote}`],
+      // Row 4 - Priority note
+      ['📌  Priorité : écrire exactement → Basse | Moyenne | Haute | Critique'],
+      // Row 5 - Status note
+      ['🔖  Statut   : écrire exactement → En cours | Fait | Clôturée | Archivée'],
+      // Row 6 - Separator / empty
       [],
-      ['Objet *', 'Description *', 'Priorite *', 'Statut *', 'Assignation *', 'Date Debut Reel (YYYY-MM-DD) *', 'Date Fin Reel (YYYY-MM-DD) *', 'Date Fin Prevue (YYYY-MM-DD) *', 'Solution / Resultat *'],
-      ['Ma première tâche', 'Description détaillée', 'Moyenne', 'En cours', 'Jean Dupont', '2024-01-01', '2024-01-15', '2024-01-20', 'Solution appliquée']
+      // Row 7 - Headers
+      [
+        'Objet *',
+        'Description *',
+        'Priorité *',
+        'Statut *',
+        'Assigné à *',
+        'Date Début Réel (YYYY-MM-DD) *',
+        'Date Fin Réel (YYYY-MM-DD) *',
+        'Date Fin Prévue (YYYY-MM-DD) *',
+        'Solution / Résultat'
+      ],
+      // Row 8 - Example row
+      [
+        'Exemple : Développer la page de connexion',
+        'Créer le formulaire avec validation des champs email et mot de passe',
+        'Haute',
+        'En cours',
+        teamMembers.length > 0 && teamMembers[0].user
+          ? `${teamMembers[0].user.prenom} ${teamMembers[0].user.nom}`
+          : 'Prénom Nom',
+        new Date().toISOString().split('T')[0],
+        new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0],
+        new Date(Date.now() + 10*24*60*60*1000).toISOString().split('T')[0],
+        'Formulaire validé, tests unitaires passés'
+      ],
+      // Rows 9..38 – 30 empty rows for user to fill
+      ...Array.from({ length: 30 }, () => ['', '', '', '', '', '', '', '', '']),
     ];
+
+
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
-    
-    // Style professionnel
-    for (let key in ws) {
-      if (key[0] === '!') continue;
-      
-      const rowNum = parseInt(key.replace(/[a-zA-Z]/g, ''));
-      
-      let style = {
-        font: { name: "Arial", sz: 11, color: { rgb: "000000" } },
-        alignment: { vertical: "center", wrapText: true },
-        border: {
-           top: { style: "thin", color: { auto: 1 } },
-           bottom: { style: "thin", color: { auto: 1 } },
-           left: { style: "thin", color: { auto: 1 } },
-           right: { style: "thin", color: { auto: 1 } }
-        }
-      };
 
-      if (rowNum === 1) { 
-        style = {
-          font: { name: "Arial", sz: 14, bold: true, color: { rgb: "FFFFFF" } },
-          fill: { fgColor: { rgb: "1F4E78" } },
-          alignment: { vertical: "center", horizontal: "center" }
-        };
-      } else if (rowNum >= 2 && rowNum <= 3) { 
-        style = {
-          font: { name: "Arial", sz: 11, color: { rgb: "1F4E78" }, italic: true, bold: true },
-          fill: { fgColor: { rgb: "DDEBF7" } },
-          alignment: { vertical: "center" }
-        };
-      } else if (rowNum === 5) { 
-        style = {
-          font: { name: "Arial", sz: 12, bold: true, color: { rgb: "FFFFFF" } },
-          fill: { fgColor: { rgb: "00B050" } },
-          alignment: { vertical: "center", horizontal: "center", wrapText: true },
-          border: {
-           top: { style: "medium", color: { auto: 1 } },
-           bottom: { style: "medium", color: { auto: 1 } },
-           left: { style: "medium", color: { auto: 1 } },
-           right: { style: "medium", color: { auto: 1 } }
-          }
-        };
-      } else if (rowNum === 6) { 
-        style = {
-          font: { name: "Arial", sz: 11, color: { rgb: "808080" }, italic: true },
-          fill: { fgColor: { rgb: "F2F2F2" } },
-          alignment: { vertical: "center", wrapText: true },
-          border: {
-           top: { style: "thin", color: { auto: 1 } },
-           bottom: { style: "thin", color: { auto: 1 } },
-           left: { style: "thin", color: { auto: 1 } },
-           right: { style: "thin", color: { auto: 1 } }
-          }
-        };
-      }
-      ws[key].s = style;
-    }
+    // Column widths
+    ws['!cols'] = [
+      { wch: 45 }, // Objet
+      { wch: 55 }, // Description
+      { wch: 18 }, // Priorité
+      { wch: 18 }, // Statut
+      { wch: 30 }, // Assigné à
+      { wch: 28 }, // Date Début
+      { wch: 28 }, // Date Fin Réel
+      { wch: 28 }, // Date Fin Prévue
+      { wch: 45 }, // Solution
+    ];
 
-    // Fusions des cellules d'instructions
+    // Row heights (instructions + header + example + 30 data rows)
+    ws['!rows'] = [
+      { hpt: 38 }, // row 1 title
+      { hpt: 26 }, // row 2 warning
+      { hpt: 26 }, // row 3 assignee
+      { hpt: 26 }, // row 4 priority
+      { hpt: 26 }, // row 5 status
+      { hpt: 12 }, // row 6 separator
+      { hpt: 32 }, // row 7 headers
+      { hpt: 48 }, // row 8 example
+      ...Array.from({ length: 30 }, () => ({ hpt: 22 })), // rows 9-38 data rows
+    ];
+
+
+    // Merge instruction rows across all 9 columns
     ws['!merges'] = [
       { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } },
       { s: { r: 1, c: 0 }, e: { r: 1, c: 8 } },
-      { s: { r: 2, c: 0 }, e: { r: 2, c: 8 } }
+      { s: { r: 2, c: 0 }, e: { r: 2, c: 8 } },
+      { s: { r: 3, c: 0 }, e: { r: 3, c: 8 } },
+      { s: { r: 4, c: 0 }, e: { r: 4, c: 8 } },
     ];
 
-    // Largeurs de colonnes
-    ws['!cols'] = [
-      { wch: 40 }, // Objet
-      { wch: 50 }, // Description
-      { wch: 20 }, // Priorite
-      { wch: 20 }, // Statut
-      { wch: 25 }, // Assignation
-      { wch: 25 }, // Date debut reel
-      { wch: 25 }, // Date fin reel
-      { wch: 25 }, // Date fin prevue
-      { wch: 40 }  // Solution
-    ];
-    
-    // Configurer la hauteur des lignes
-    ws['!rows'] = [
-      { hpt: 35 }, // Ligne 1
-      { hpt: 25 }, // Ligne 2
-      { hpt: 25 }, // Ligne 3
-      { hpt: 15 }, // Ligne 4 (vide)
-      { hpt: 30 }, // Ligne 5 (Headers)
-      { hpt: 45 }  // Ligne 6 (Exemple)
-    ];
+    // Apply styles cell by cell
+    for (let key in ws) {
+      if (key[0] === '!') continue;
+      const rowNum = parseInt(key.replace(/[a-zA-Z]/g, ''), 10);
+
+      if (rowNum === 1) {
+        // Title row
+        ws[key].s = {
+          font: { name: 'Arial', sz: 14, bold: true, color: { rgb: 'FFFFFF' } },
+          fill: { fgColor: { rgb: '1F4E78' } },
+          alignment: { vertical: 'center', horizontal: 'center' },
+        };
+      } else if (rowNum >= 2 && rowNum <= 5) {
+        // Instruction rows
+        ws[key].s = {
+          font: { name: 'Arial', sz: 11, color: { rgb: '1F4E78' }, italic: true },
+          fill: { fgColor: { rgb: 'DEEAF1' } },
+          alignment: { vertical: 'center', wrapText: true },
+        };
+      } else if (rowNum === 7) {
+        // Header row
+        ws[key].s = {
+          font: { name: 'Arial', sz: 12, bold: true, color: { rgb: 'FFFFFF' } },
+          fill: { fgColor: { rgb: '0070C0' } },
+          alignment: { vertical: 'center', horizontal: 'center', wrapText: true },
+          border: {
+            top: { style: 'medium', color: { rgb: '000000' } },
+            bottom: { style: 'medium', color: { rgb: '000000' } },
+            left: { style: 'thin', color: { rgb: '000000' } },
+            right: { style: 'thin', color: { rgb: '000000' } },
+          },
+        };
+      } else if (rowNum === 8) {
+        // Example row
+        ws[key].s = {
+          font: { name: 'Arial', sz: 10, color: { rgb: '595959' }, italic: true },
+          fill: { fgColor: { rgb: 'F2F2F2' } },
+          alignment: { vertical: 'center', wrapText: true },
+          border: {
+            top: { style: 'thin', color: { rgb: 'BFBFBF' } },
+            bottom: { style: 'thin', color: { rgb: 'BFBFBF' } },
+            left: { style: 'thin', color: { rgb: 'BFBFBF' } },
+            right: { style: 'thin', color: { rgb: 'BFBFBF' } },
+          },
+        };
+      } else if (rowNum >= 9) {
+        // Empty data rows – alternating colors for readability
+        const isEven = rowNum % 2 === 0;
+        ws[key].s = {
+          font: { name: 'Arial', sz: 11, color: { rgb: '000000' } },
+          fill: { fgColor: { rgb: isEven ? 'EBF5FB' : 'FFFFFF' } },
+          alignment: { vertical: 'center', wrapText: true },
+          border: {
+            top:    { style: 'thin', color: { rgb: 'BDC3C7' } },
+            bottom: { style: 'thin', color: { rgb: 'BDC3C7' } },
+            left:   { style: 'thin', color: { rgb: 'BDC3C7' } },
+            right:  { style: 'thin', color: { rgb: 'BDC3C7' } },
+          },
+        };
+      }
+    }
 
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Template Taches");
-    XLSX.writeFile(wb, "Template_Import_Taches.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, 'Tâches Dev');
+    XLSX.writeFile(wb, `Template_Taches_Dev_${project.id || 'Projet'}.xlsx`);
   };
+
 
   const excelInputRef = React.useRef(null);
 
@@ -203,14 +269,19 @@ const ProjectTasks = () => {
           return;
         }
 
-        // Trouver la ligne d'en-têtes
+        // Helper: strip accents for accent-insensitive comparison
+        const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+
         let headerRowIndex = -1;
         let headers = [];
+        let headersNorm = [];
         for (let i = 0; i < Math.min(rows.length, 20); i++) {
-          const rowStr = (rows[i] || []).map(h => String(h || '').toLowerCase().trim());
-          if (rowStr.some(h => h.includes('objet')) && rowStr.some(h => h.includes('statut'))) {
+          const rowRaw  = (rows[i] || []).map(h => String(h || '').toLowerCase().trim());
+          const rowNorm = rowRaw.map(h => norm(h));
+          if (rowNorm.some(h => h.includes('objet')) && rowNorm.some(h => h.includes('statut'))) {
             headerRowIndex = i;
-            headers = rowStr;
+            headers     = rowRaw;
+            headersNorm = rowNorm;
             break;
           }
         }
@@ -220,15 +291,16 @@ const ProjectTasks = () => {
           return;
         }
 
-        const objIdx = headers.findIndex(h => h.includes('objet') || h.includes('nom') || h.includes('tache') || h.includes('tâche'));
-        const descIdx = headers.findIndex(h => h.includes('description'));
-        const prioIdx = headers.findIndex(h => h.includes('priorite') || h.includes('priorité'));
-        const statIdx = headers.findIndex(h => h.includes('statut'));
-        const asgIdx = headers.findIndex(h => h.includes('assignation') || h.includes('assigne'));
-        const dDebIdx = headers.findIndex(h => h.includes('debut') || h.includes('début'));
-        const dFinRIdx = headers.findIndex(h => h.includes('fin reel') || h.includes('fin réel'));
-        const dFinPIdx = headers.findIndex(h => h.includes('fin prevue') || h.includes('fin prévue'));
-        const solIdx = headers.findIndex(h => h.includes('solution') || h.includes('resultat') || h.includes('résultat'));
+        const objIdx   = headersNorm.findIndex(h => h.includes('objet') || h.includes('tache'));
+        const descIdx  = headersNorm.findIndex(h => h.includes('description'));
+        const prioIdx  = headersNorm.findIndex(h => h.includes('priorite'));
+        const statIdx  = headersNorm.findIndex(h => h.includes('statut'));
+        const asgIdx   = headersNorm.findIndex(h => h.includes('assigne') || h.includes('assignation'));
+        const dDebIdx  = headersNorm.findIndex(h => h.includes('debut') && (h.includes('reel') || h.includes('date')));
+        const dFinRIdx = headersNorm.findIndex(h => h.includes('fin') && h.includes('reel'));
+        const dFinPIdx = headersNorm.findIndex(h => h.includes('fin') && (h.includes('prevue') || h.includes('prevu')));
+        const solIdx   = headersNorm.findIndex(h => h.includes('solution') || h.includes('resultat'));
+
 
         let importedCount = 0;
         let errors = [];
@@ -237,7 +309,7 @@ const ProjectTasks = () => {
           const row = rows[i];
           if (!row || !Array.isArray(row) || row.length === 0) continue;
 
-          // Ignorer les lignes totalement vides
+          
           if (row.every(cell => !String(cell || '').trim())) continue;
 
           const objet = String(row[objIdx] || '').trim();
@@ -248,26 +320,55 @@ const ProjectTasks = () => {
           const asgStr = asgIdx !== -1 ? String(row[asgIdx] || '').trim() : '';
           let assigneeId = '';
           if (asgStr) {
-            const member = teamMembers.find(m => 
-              (m.user && `${m.user.prenom} ${m.user.nom}`.toLowerCase().includes(asgStr.toLowerCase())) || 
-              m.userId.toString() === asgStr
-            );
+            const asgNorm = norm(asgStr);
+            const member = teamMembers.find(m => {
+              if (!m.user) return false;
+              const fullName    = norm(`${m.user.prenom || ''} ${m.user.nom || ''}`);
+              const fullNameAlt = norm(`${m.user.nom || ''} ${m.user.prenom || ''}`);
+              const userRole    = norm(m.role || m.user.role || '');
+              // Match by full name (exact or partial)
+              if (fullName    && (fullName === asgNorm    || fullName.includes(asgNorm)    || asgNorm.includes(fullName)))    return true;
+              if (fullNameAlt && (fullNameAlt === asgNorm || fullNameAlt.includes(asgNorm) || asgNorm.includes(fullNameAlt))) return true;
+              // Match by role
+              if (userRole && (userRole === asgNorm || userRole.includes(asgNorm) || asgNorm.includes(userRole))) return true;
+              // Match by ID
+              if (m.userId.toString() === asgStr) return true;
+              return false;
+            });
             if (member) assigneeId = member.userId;
-            // Si non trouvé, assigneeId reste vide (Non assigné) pour éviter une erreur serveur
           }
+
 
           const parseExcelDate = (val) => {
             if (val == null || val === '') return '';
+            // Excel serial number (numeric)
             if (typeof val === 'number') {
               try {
                 const dateObj = XLSX.SSF.parse_date_code(val);
                 if (dateObj) return `${dateObj.y}-${String(dateObj.m).padStart(2, '0')}-${String(dateObj.d).padStart(2, '0')}`;
-              } catch (e) {
-                return '';
-              }
+              } catch (e) { return ''; }
             }
-            return String(val).trim();
+            const str = String(val).trim();
+            // DD/MM/YYYY  → YYYY-MM-DD
+            const dmyMatch = str.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+            if (dmyMatch) {
+              const [, d, m, y] = dmyMatch;
+              return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+            }
+            // MM/DD/YYYY  → YYYY-MM-DD
+            const mdyMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+            if (mdyMatch) {
+              const [, m, d, y] = mdyMatch;
+              // if month > 12 it's actually DD/MM – swap
+              const month = parseInt(m, 10);
+              const day   = parseInt(d, 10);
+              if (month > 12) return `${y}-${d.padStart(2,'0')}-${m.padStart(2,'0')}`;
+              return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+            }
+            // Already YYYY-MM-DD or other ISO
+            return str;
           };
+
 
           const dateDebutReel = dDebIdx !== -1 ? parseExcelDate(row[dDebIdx]) : '';
           const dateFinReel = dFinRIdx !== -1 ? parseExcelDate(row[dFinRIdx]) : '';
@@ -277,13 +378,12 @@ const ProjectTasks = () => {
           let missingFields = [];
           if (!objet) missingFields.push('Objet');
           if (!description) missingFields.push('Description');
-          if (!rawPriority) missingFields.push('Priorite');
+          if (!rawPriority) missingFields.push('Priorité');
           if (!rawStatus) missingFields.push('Statut');
-          if (!assigneeId) missingFields.push('Assignation');
-          if (!dateDebutReel) missingFields.push('Date Debut Reel');
-          if (!dateFinReel) missingFields.push('Date Fin Reel');
-          if (!dateFin) missingFields.push('Date Fin Prevue');
-          if (!solutionResultat) missingFields.push('Solution / Resultat');
+          // assigneeId is optional (Non assigné is acceptable)
+          if (!dateDebutReel) missingFields.push('Date Début Réel');
+          if (!dateFinReel) missingFields.push('Date Fin Réel');
+          if (!dateFin) missingFields.push('Date Fin Prévue');
 
           if (missingFields.length > 0) {
             errors.push(`Ligne ${i + 1} ignorée (Champs manquants : ${missingFields.join(', ')}).`);
@@ -442,13 +542,13 @@ const ProjectTasks = () => {
     setSelectedTask(prev => prev ? { ...prev, status: newStatus } : null);
   };
 
-  const isDev = project.status === 'Développement';
-  const isTesting = project.status === 'Testing';
+  const isTesting = ['Testing', 'Fait'].includes(project?.status);
+  const isDev = !isTesting && !['Déploiement', 'Utilisation', 'Clôture', 'Clôturée', 'Archive', 'Archivée', 'Terminé'].includes(project?.status);
 
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col gap-4">
       
-      {}
+      {/* ─── Header ─── */}
       <div className="flex justify-between items-center shrink-0">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Tâches de développement</h2>
@@ -456,22 +556,33 @@ const ProjectTasks = () => {
         </div>
         {!isPending && canManageTasks && (
           <div className="flex items-center gap-2 flex-wrap justify-end">
+
+            {isDev && (
+              <button
+                onClick={handleValidateForTesting}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all shadow-sm shrink-0"
+                title="Valider le développement et passer au Testing"
+              >
+                <FlaskConical size={18} /> Valider pour Testing
+              </button>
+            )}
+
+            {/* Single Import/Export button */}
             <button
               onClick={() => setIsExcelModalOpen(true)}
               className="flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl font-semibold hover:bg-emerald-100 transition-colors shadow-sm shrink-0"
-              title="Gérer les tâches via Excel"
+              title="Import / Export Excel"
             >
               <FileSpreadsheet size={18} /> <span className="hidden lg:inline">Import/Export Excel</span>
             </button>
 
-            <input 
-              type="file" 
-              accept=".xlsx,.xls" 
-              ref={excelInputRef} 
-              onChange={(e) => { handleImportExcel(e); setIsExcelModalOpen(false); }} 
-              className="hidden" 
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              ref={excelInputRef}
+              onChange={(e) => { handleImportExcel(e); setIsExcelModalOpen(false); }}
+              className="hidden"
             />
-
 
             <button
               onClick={() => {
@@ -487,41 +598,67 @@ const ProjectTasks = () => {
         )}
       </div>
 
-      {}
-      {totalTasks > 0 && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm shrink-0">
-          <div className="flex justify-between items-center mb-2">
+      {/* Banner & Progress */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm shrink-0 space-y-3">
+        {totalTasks > 0 && (
+          <>
+            <div className="flex justify-between items-center mb-1">
+              <div className="flex items-center gap-2">
+                <CheckCheck size={16} className="text-emerald-600" />
+                <span className="text-sm font-semibold text-slate-700">
+                  {doneCount}/{totalTasks} tâches terminées
+                </span>
+              </div>
+              <span className="text-sm font-bold text-slate-700">{progress}%</span>
+            </div>
+            <div className="w-full bg-slate-100 rounded-full h-2">
+              <div
+                className="h-2 rounded-full transition-all duration-500"
+                style={{
+                  width: `${progress}%`,
+                  background: allDone ? '#10b981' : '#3b82f6'
+                }}
+              />
+            </div>
+          </>
+        )}
+
+        {isDev && canManageTasks && (
+          <div className={`flex flex-col md:flex-row items-center justify-between gap-3 text-sm font-semibold p-3.5 rounded-xl shadow-sm border ${
+            allDone 
+              ? 'text-emerald-800 bg-emerald-50 border-emerald-200' 
+              : 'text-blue-800 bg-blue-50 border-blue-200'
+          }`}>
             <div className="flex items-center gap-2">
-              <CheckCheck size={16} className="text-emerald-600" />
-              <span className="text-sm font-semibold text-slate-700">
-                {doneCount}/{totalTasks} tâches terminées
+              {allDone ? (
+                <CheckCircle size={20} className="text-emerald-600 shrink-0" />
+              ) : (
+                <Clock size={20} className="text-blue-600 shrink-0" />
+              )}
+              <span>
+                {allDone 
+                  ? 'Toutes les tâches de développement sont terminées ! Vous pouvez valider pour passer au Testing.'
+                  : `Phase Développement en cours (${doneCount}/${totalTasks} tâches terminées). Vous pouvez valider pour passer au Testing.`}
               </span>
             </div>
-            <span className="text-sm font-bold text-slate-700">{progress}%</span>
+            <button
+              onClick={handleValidateForTesting}
+              className={`px-4 py-2 text-white rounded-xl transition-all whitespace-nowrap flex items-center gap-2 shadow-md font-extrabold text-xs shrink-0 ${
+                allDone ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-blue-600 hover:bg-blue-700'
+              }`}
+            >
+              <FlaskConical size={16} /> Valider & Passer au Testing <ArrowRight size={16} />
+            </button>
           </div>
-          <div className="w-full bg-slate-100 rounded-full h-2">
-            <div
-              className="h-2 rounded-full transition-all duration-500"
-              style={{
-                width: `${progress}%`,
-                background: allDone ? '#10b981' : '#3b82f6'
-              }}
-            />
+        )}
+
+        {isTesting && (
+          <div className="flex items-center gap-2 text-sm font-semibold text-violet-700 bg-violet-50 border border-violet-200 p-3 rounded-xl">
+            <FlaskConical size={18} className="text-violet-600 shrink-0" />
+            <span>Le projet est en phase <strong>Testing</strong>. Rendez-vous dans l'onglet Tests.</span>
           </div>
-          {allDone && isDev && (
-            <div className="mt-3 flex items-center gap-2 text-sm font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl">
-              <FlaskConical size={16} />
-              Toutes les tâches sont terminées — Passage automatique à la phase <strong>Testing</strong> en cours…
-            </div>
-          )}
-          {isTesting && (
-            <div className="mt-3 flex items-center gap-2 text-sm font-semibold text-violet-700 bg-violet-50 border border-violet-200 p-2.5 rounded-xl">
-              <FlaskConical size={16} />
-              Le projet est en phase <strong>Testing</strong>. Rendez-vous dans l'onglet Tests.
-            </div>
-          )}
-        </div>
-      )}
+        )}
+      </div>
 
 
       {}
@@ -643,43 +780,56 @@ const ProjectTasks = () => {
         </div>
       )}
 
-      {/* Modal Excel */}
+      {/* ─── Import/Export Excel Modal ─── */}
       {isExcelModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
-            <div className="flex justify-between items-center p-6 border-b border-slate-100 shrink-0">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="flex justify-between items-center px-6 py-5 border-b border-slate-100 shrink-0">
               <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <FileSpreadsheet className="text-emerald-600" /> Gestion Excel
+                <FileSpreadsheet size={22} className="text-emerald-600" /> Import / Export Excel
               </h3>
-              <button onClick={() => setIsExcelModalOpen(false)} className="text-slate-400 hover:text-slate-600">
-                <X size={24} />
+              <button onClick={() => setIsExcelModalOpen(false)} className="text-slate-400 hover:text-slate-700 p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
+                <X size={20} />
               </button>
             </div>
-            
+
+            {/* Options */}
             <div className="p-6 flex flex-col gap-4">
+              {/* Download Template */}
               <button
                 onClick={() => { handleDownloadExcelTemplate(); setIsExcelModalOpen(false); }}
-                className="flex flex-col items-center justify-center gap-2 p-6 bg-emerald-50 border-2 border-emerald-200 text-emerald-700 rounded-2xl hover:bg-emerald-100 hover:border-emerald-300 transition-all cursor-pointer w-full text-center group"
+                className="flex items-center gap-4 p-5 bg-emerald-50 border-2 border-emerald-200 text-emerald-800 rounded-2xl hover:bg-emerald-100 hover:border-emerald-400 transition-all group text-left"
               >
-                <Download size={32} className="group-hover:-translate-y-1 transition-transform" />
-                <span className="font-bold text-lg">Télécharger le Modèle</span>
-                <span className="text-sm font-medium opacity-80 text-emerald-600/80">Obtenez un fichier Excel avec les bonnes colonnes</span>
+                <div className="p-3 bg-emerald-600 text-white rounded-xl shrink-0 group-hover:scale-110 transition-transform">
+                  <Download size={24} />
+                </div>
+                <div>
+                  <p className="font-bold text-base">Télécharger le Modèle</p>
+                  <p className="text-sm text-emerald-700 mt-0.5">Fichier Excel pré-rempli avec instructions et exemple. Les explications sont incluses dans le fichier.</p>
+                </div>
               </button>
 
+              {/* Import */}
               <button
                 onClick={() => { excelInputRef.current?.click(); }}
-                className="flex flex-col items-center justify-center gap-2 p-6 bg-blue-50 border-2 border-blue-200 text-blue-700 rounded-2xl hover:bg-blue-100 hover:border-blue-300 transition-all cursor-pointer w-full text-center group"
+                className="flex items-center gap-4 p-5 bg-blue-50 border-2 border-blue-200 text-blue-800 rounded-2xl hover:bg-blue-100 hover:border-blue-400 transition-all group text-left"
               >
-                <Upload size={32} className="group-hover:-translate-y-1 transition-transform" />
-                <span className="font-bold text-lg">Importer un Fichier</span>
-                <span className="text-sm font-medium opacity-80 text-blue-600/80">Chargez vos tâches à partir d'un fichier rempli</span>
+                <div className="p-3 bg-blue-600 text-white rounded-xl shrink-0 group-hover:scale-110 transition-transform">
+                  <Upload size={24} />
+                </div>
+                <div>
+                  <p className="font-bold text-base">Importer un Fichier Excel</p>
+                  <p className="text-sm text-blue-700 mt-0.5">Chargez un fichier .xlsx rempli pour ajouter des tâches automatiquement.</p>
+                </div>
               </button>
             </div>
-            
-            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end">
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50">
               <button
                 onClick={() => setIsExcelModalOpen(false)}
-                className="px-6 py-2.5 font-semibold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors w-full"
+                className="w-full px-6 py-2.5 font-semibold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors"
               >
                 Annuler
               </button>
@@ -687,6 +837,7 @@ const ProjectTasks = () => {
           </div>
         </div>
       )}
+
 
       {}
       {isModalOpen && (

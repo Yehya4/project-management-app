@@ -89,7 +89,7 @@ const Sidebar = () => {
         isOpen ? 'w-72' : 'w-20'
       }`}
     >
-      {/* Toggle Button */}
+      {}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="absolute -right-3.5 top-7 bg-slate-800 border border-slate-700 text-slate-300 rounded-full p-1.5 hover:bg-blue-600 hover:text-white shadow-lg transition-all hover:scale-110 z-50 flex items-center justify-center"
@@ -98,7 +98,7 @@ const Sidebar = () => {
         {isOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
       </button>
 
-      {/* Brand Header */}
+      {}
       <div className="h-20 flex items-center px-4 border-b border-slate-800/80 overflow-hidden shrink-0">
         <div className="flex items-center gap-3.5 w-full">
           <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-indigo-500 text-white flex items-center justify-center shadow-lg shadow-blue-500/25 text-lg font-black shrink-0 relative group">
@@ -114,9 +114,9 @@ const Sidebar = () => {
         </div>
       </div>
 
-      {/* Navigation Sections */}
+      {}
       <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-800">
-        {/* Main Section */}
+        {}
         <div>
           {isOpen && (
             <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2.5">

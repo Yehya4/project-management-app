@@ -114,7 +114,7 @@ const getPhaseSubSteps = (phaseId, project, charter, currentIdx) => {
 
     if (isCurrent) {
       if (phaseId === 'Développement') {
-        // Dev: 15% → 80%
+        
         if (order === 1) {
           done = project.progress >= 40;
           active = project.progress >= 15 && project.progress < 40;
@@ -128,7 +128,7 @@ const getPhaseSubSteps = (phaseId, project, charter, currentIdx) => {
           locked = project.progress < 60;
         }
       } else if (phaseId === 'Testing') {
-        // Testing: 80% → 90%
+        
         if (order === 1) {
           done = project.progress >= 83;
           active = project.progress >= 80 && project.progress < 83;
@@ -142,7 +142,7 @@ const getPhaseSubSteps = (phaseId, project, charter, currentIdx) => {
           locked = project.progress < 87;
         }
       } else if (phaseId === 'Déploiement') {
-        // Déploiement: 90% → 100%
+        
         if (order === 1) {
           done = project.progress >= 93;
           active = project.progress >= 90 && project.progress < 93;
@@ -156,7 +156,7 @@ const getPhaseSubSteps = (phaseId, project, charter, currentIdx) => {
           locked = project.progress < 97;
         }
       } else {
-        // Autres phases (Utilisation, etc.)
+        
         if (order === 1) {
           done = project.progress >= 15;
           active = project.progress < 15;
@@ -187,7 +187,7 @@ const getPhaseSubSteps = (phaseId, project, charter, currentIdx) => {
       return [
         createStep('test-1', 'Création du plan de tests', FileText, 'QA', 1),
         createStep('test-2', 'Exécution des tests', Activity, 'QA', 2),
-        createStep('test-3', 'Validation des tests', CheckCheck, 'Chef Testeur', 3),
+        createStep('test-3', 'Validation des tests', CheckCheck, 'QA / Admin / PM / Sponsor', 3),
       ];
     case 'Déploiement':
       return [
@@ -525,7 +525,7 @@ const ProjectOverview = () => {
       {}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
-        {/* Progression */}
+        {}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-3 mb-3">
@@ -549,7 +549,7 @@ const ProjectOverview = () => {
           </div>
         </div>
 
-        {/* Cas de tests */}
+        {}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-3 mb-3">

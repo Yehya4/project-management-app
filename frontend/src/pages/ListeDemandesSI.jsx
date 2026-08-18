@@ -326,7 +326,7 @@ const ListeDemandesSI = () => {
                               >
                                 <Eye size={18} />
                               </button>
-                              {linkedProj && (
+                              {linkedProj && user?.role !== 'User' && (
                                 <Link
                                   to={`/projects/${linkedProj.id}`}
                                   className="flex items-center gap-1 px-2 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors shadow-sm border border-blue-100 text-xs font-semibold ml-1"

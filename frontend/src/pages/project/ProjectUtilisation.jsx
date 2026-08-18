@@ -10,7 +10,7 @@ const ProjectUtilisation = () => {
   const { user } = useAuth();
   const [popup, setPopup] = useState({ isOpen: false, title: '', message: '', type: 'success' });
   
-  // States for the two steps in Utilisation
+  
   const [suiviCompleted, setSuiviCompleted] = useState(project?.suiviPostDeploiement || false);
 
   if (!project) return null;
@@ -58,7 +58,7 @@ const ProjectUtilisation = () => {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      {/* HEADER */}
+      {}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
@@ -82,7 +82,7 @@ const ProjectUtilisation = () => {
       ) : (
         <div className="grid grid-cols-1 gap-6">
           
-          {/* Étape 1 : Suivi Post-Déploiement */}
+          {}
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
             <div className="flex items-start gap-4">
               <div className={`p-3 rounded-xl ${suiviCompleted ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'}`}>
@@ -119,7 +119,7 @@ const ProjectUtilisation = () => {
             </div>
           </div>
 
-          {/* Étape 2 : Clôture du Projet */}
+          {}
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
             {!suiviCompleted && (
               <div className="absolute inset-0 bg-slate-50/80 backdrop-blur-[2px] z-10 flex items-center justify-center">

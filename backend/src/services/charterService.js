@@ -14,8 +14,23 @@ class CharterService {
                             parsedCategories = row.categoriesProjet.split(',').map(s => s.trim());
                         }
                     }
+                    let parsedEquipeIT = { dev: '', test: '' };
+                    if (row.equipeIT) {
+                        try {
+                            parsedEquipeIT = JSON.parse(row.equipeIT);
+                        } catch (e) {
+                            parsedEquipeIT.dev = row.equipeIT;
+                        }
+                    }
                     return {
                         ...row,
+                        equipeITSponsor: row.sponsorIT,
+                        equipeITChef: row.chefProjetIT,
+                        equipeITDev: parsedEquipeIT.dev,
+                        equipeITTest: parsedEquipeIT.test,
+                        equipeMetierSponsor: row.sponsorMetier,
+                        equipeMetierChef: row.chefProjetMetier,
+                        equipeMetierEquipe: row.equipeMetier,
                         commentaires: row.commentaires ? JSON.parse(row.commentaires) : [],
                         categoriesProjet: parsedCategories
                     };
@@ -40,6 +55,23 @@ class CharterService {
                     } else {
                         row.categoriesProjet = [];
                     }
+                    let parsedEquipeIT = { dev: '', test: '' };
+                    if (row.equipeIT) {
+                        try {
+                            parsedEquipeIT = JSON.parse(row.equipeIT);
+                        } catch (e) {
+                            parsedEquipeIT.dev = row.equipeIT;
+                        }
+                    }
+                    
+                    row.equipeITSponsor = row.sponsorIT;
+                    row.equipeITChef = row.chefProjetIT;
+                    row.equipeITDev = parsedEquipeIT.dev;
+                    row.equipeITTest = parsedEquipeIT.test;
+                    row.equipeMetierSponsor = row.sponsorMetier;
+                    row.equipeMetierChef = row.chefProjetMetier;
+                    row.equipeMetierEquipe = row.equipeMetier;
+                    
                     resolve(row);
                 } else {
                     resolve(null);
@@ -52,10 +84,23 @@ class CharterService {
         const { 
             demandeId, titre, contexte, objectifs, perimetreInclus, perimetreExclu, 
             sponsorIT, chefProjetIT, equipeIT, 
-            sponsorMetier, chefProjetMetier, equipeMetier, utilisateursFinaux, 
+            equipeITSponsor, equipeITChef, equipeITDev, equipeITTest,
+            sponsorMetier, chefProjetMetier, equipeMetier,
+            equipeMetierSponsor, equipeMetierChef, equipeMetierEquipe,
+            utilisateursFinaux, 
             planCom, risques, criteresSucces, statut, commentaires,
             categoriesProjet, service, dateFin
         } = charterData;
+
+        const dbSponsorIT = equipeITSponsor !== undefined ? equipeITSponsor : sponsorIT;
+        const dbChefProjetIT = equipeITChef !== undefined ? equipeITChef : chefProjetIT;
+        const dbEquipeIT = (equipeITDev !== undefined || equipeITTest !== undefined) 
+            ? JSON.stringify({ dev: equipeITDev || '', test: equipeITTest || '' }) 
+            : equipeIT;
+
+        const dbSponsorMetier = equipeMetierSponsor !== undefined ? equipeMetierSponsor : sponsorMetier;
+        const dbChefProjetMetier = equipeMetierChef !== undefined ? equipeMetierChef : chefProjetMetier;
+        const dbEquipeMetier = equipeMetierEquipe !== undefined ? equipeMetierEquipe : equipeMetier;
 
         let formattedDateFin = null;
         if (dateFin) {
@@ -82,8 +127,8 @@ class CharterService {
 
                     const values = [
                         titre, contexte, objectifs, perimetreInclus, perimetreExclu, 
-                        sponsorIT, chefProjetIT, equipeIT, 
-                        sponsorMetier, chefProjetMetier, equipeMetier, utilisateursFinaux, 
+                        dbSponsorIT, dbChefProjetIT, dbEquipeIT, 
+                        dbSponsorMetier, dbChefProjetMetier, dbEquipeMetier, utilisateursFinaux, 
                         planCom, risques, criteresSucces, statut || 'Brouillon', 
                         JSON.stringify(commentaires || []), 
                         catProjetStr, service || null, formattedDateFin, 
@@ -105,8 +150,8 @@ class CharterService {
 
                     const values = [
                         demandeId, titre, contexte, objectifs, perimetreInclus, perimetreExclu, 
-                        sponsorIT, chefProjetIT, equipeIT, 
-                        sponsorMetier, chefProjetMetier, equipeMetier, utilisateursFinaux, 
+                        dbSponsorIT, dbChefProjetIT, dbEquipeIT, 
+                        dbSponsorMetier, dbChefProjetMetier, dbEquipeMetier, utilisateursFinaux, 
                         planCom, risques, criteresSucces, statut || 'Brouillon',
                         JSON.stringify(commentaires || []),
                         catProjetStr, service || null, formattedDateFin

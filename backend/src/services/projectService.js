@@ -2,11 +2,7 @@ const db = require('../config/db');
 
 class ProjectService {
 
-    /**
-     * Calcule la progression système basée sur les tâches/tests du projet.
-     * Retourne une valeur dans la plage de la phase actuelle.
-     */
-    async getSystemProgress(projectId, statut) {
+        async getSystemProgress(projectId, statut) {
         return new Promise((resolve) => {
             if (['Utilisation', 'Terminé', 'Archive', 'Archivée'].includes(statut)) return resolve(100);
             if (statut === 'Initiation') return resolve(null);
@@ -19,7 +15,7 @@ class ProjectService {
                 const taskRatio = totalTasks > 0 ? doneTasks / totalTasks : 0;
 
                 if (statut === 'Développement') {
-                    // 15% → 80% selon le % de tâches terminées
+                    
                     const sysProgress = Math.round(15 + taskRatio * 65);
                     return resolve(Math.min(80, Math.max(15, sysProgress)));
                 }
@@ -32,13 +28,13 @@ class ProjectService {
                     const testRatio = totalTests > 0 ? passedTests / totalTests : 0;
 
                     if (statut === 'Testing') {
-                        // 80% → 90% selon le % de tests validés
+                        
                         const sysProgress = Math.round(80 + testRatio * 10);
                         return resolve(Math.min(90, Math.max(80, sysProgress)));
                     }
 
                     if (statut === 'Déploiement') {
-                        // 90% de base
+                        
                         return resolve(90);
                     }
 
@@ -48,11 +44,7 @@ class ProjectService {
         });
     }
 
-    /**
-     * Formate un projet et calcule sa progression finale.
-     * progress = manualProgress dans la plage de la phase (ou valeur minimale de la phase).
-     */
-    formatProject(project) {
+        formatProject(project) {
         if (!project) return null;
         const status = project.statut || 'Initiation';
         let progress = 0;
@@ -61,19 +53,19 @@ class ProjectService {
 
         switch (status) {
             case 'Initiation':
-                // 0% → 15%, contrôlé manuellement par PM/Admin/Sponsor
+                
                 progress = manual != null ? Math.min(15, Math.max(0, manual)) : 0;
                 break;
             case 'Développement':
-                // 15% → 80%
+                
                 progress = manual != null ? Math.min(80, Math.max(15, manual)) : 15;
                 break;
             case 'Testing':
-                // 80% → 90%
+                
                 progress = manual != null ? Math.min(90, Math.max(80, manual)) : 80;
                 break;
             case 'Déploiement':
-                // 90% → 100%
+                
                 progress = manual != null ? Math.min(100, Math.max(90, manual)) : 90;
                 break;
             case 'Utilisation':
@@ -142,12 +134,7 @@ class ProjectService {
         });
     }
 
-    /**
-     * Met à jour la progression manuelle du projet (PM/Admin/Sponsor).
-     * Vérifie que la valeur est dans la plage autorisée selon la phase.
-     * Prend le max entre la valeur manuelle et la valeur système.
-     */
-    updateProgress(id, manualProgress, io) {
+        updateProgress(id, manualProgress, io) {
         return new Promise((resolve, reject) => {
             this.getById(id).then(project => {
                 if (!project) return reject(new Error('Projet non trouvé'));
@@ -161,13 +148,13 @@ class ProjectService {
                     case 'Testing':       minVal = 80; maxVal = 90;  break;
                     case 'Déploiement':   minVal = 90; maxVal = 100; break;
                     default:
-                        // Utilisation = 100%, pas de contrôle manuel
+                        
                         return resolve(project);
                 }
 
                 const clampedProgress = Math.min(maxVal, Math.max(minVal, parseInt(manualProgress)));
 
-                // Recalcule la progression système et prend le max
+                
                 this.getSystemProgress(id, statut).then(sysProgress => {
                     const finalProgress = sysProgress != null
                         ? Math.max(clampedProgress, sysProgress)
@@ -320,12 +307,12 @@ class ProjectService {
                         const charter = charters && charters[0];
                         let points = 0;
                         if (charter) {
-                            points += 1; // Charter créé
+                            points += 1; 
                             if (charter.statut !== 'Brouillon' && charter.statut !== 'Envoyé au Demandeur' && charter.statut !== 'Retourné par le Demandeur') {
-                                points += 1; // Demandeur accepté
+                                points += 1; 
                             }
                             if (charter.statut === 'Validé') {
-                                points += 1; // Sponsor validé
+                                points += 1; 
                             }
                         }
                         if (project.atelierCadrage === 'Validé') points += 1;
@@ -455,7 +442,7 @@ class ProjectService {
                         let targetStatus = currentStatus;
                         let targetManualProgress = undefined;
 
-                        // Check system progress update for the current status
+                        
                         if (sysProgress != null) {
                             let minVal = 0, maxVal = 100;
                             if (currentStatus === 'Initiation') { minVal = 0; maxVal = 15; }
@@ -470,7 +457,7 @@ class ProjectService {
                             }
                         }
 
-                        // Auto phase transitions
+                        
                         if (currentStatus === 'Initiation') {
                             if (project.architectureStatus === 'Validé') {
                                 targetStatus = 'Développement';

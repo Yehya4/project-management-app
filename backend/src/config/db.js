@@ -42,7 +42,7 @@ pool.getConnection((error, connection) => {
     }
   );
 
-  // Add columns for test_cases
+  
   const testCasesColumns = [
     "ALTER TABLE test_cases ADD COLUMN priority VARCHAR(20) DEFAULT 'Moyenne'",
     "ALTER TABLE test_cases ADD COLUMN assignedTo VARCHAR(255)",
@@ -57,7 +57,7 @@ pool.getConnection((error, connection) => {
     });
   });
 
-  // Add columns for tasks
+  
   const tasksColumns = [
     "ALTER TABLE tasks ADD COLUMN reference VARCHAR(255)",
     "ALTER TABLE tasks ADD COLUMN objet VARCHAR(255)",
@@ -92,7 +92,7 @@ pool.getConnection((error, connection) => {
       if (err && err.code !== 'ER_DUP_FIELDNAME') console.error(`Erreur ${query}:`, err.message);
     });
   });
-  // Add columns for projects (deployment + manual progress)
+  
   const projectsColumns = [
     "ALTER TABLE projects ADD COLUMN deploymentPlanFile VARCHAR(255)",
     "ALTER TABLE projects ADD COLUMN deploymentPlanStatus VARCHAR(50) DEFAULT 'En attente'",
@@ -120,7 +120,7 @@ pool.getConnection((error, connection) => {
     }
   );
 
-  // Add columns for charters
+  
   const chartersColumns = [
     "ALTER TABLE charters ADD COLUMN categoriesProjet VARCHAR(255)",
     "ALTER TABLE charters ADD COLUMN service VARCHAR(255)",
@@ -133,7 +133,7 @@ pool.getConnection((error, connection) => {
     });
   });
 
-  // Create project_documents table
+  
   connection.query(
     `CREATE TABLE IF NOT EXISTS project_documents (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -150,7 +150,7 @@ pool.getConnection((error, connection) => {
     }
   );
 
-  // Ensure default configurations exist
+  
   const defaultConfigs = [
     { key: 'categories', value: ['Nouveau projet', 'Amélioration', 'Maintenance', 'Urgent'] },
     { key: 'categoriesProjet', value: ['Nouveau projet', 'Amélioration', 'Maintenance', 'Urgent'] },
@@ -160,15 +160,16 @@ pool.getConnection((error, connection) => {
 
   defaultConfigs.forEach(config => {
     connection.query(
-      `SELECT COUNT(*) AS count FROM configurations WHERE config_key = ?`,
+      `SELECT config_key, config_value FROM configurations WHERE config_key = ?`,
       [config.key],
       (err, results) => {
         if (err) {
           console.error(`Erreur vérification config ${config.key}:`, err.message);
           return;
         }
-        if (results && results[0] && results[0].count === 0) {
-          const defaultVals = JSON.stringify(config.value);
+        const defaultVals = JSON.stringify(config.value);
+        if (!results || results.length === 0) {
+          // Row doesn't exist – insert it
           connection.query(
             `INSERT INTO configurations (config_key, config_value, archived_value) VALUES (?, ?, '[]')`,
             [config.key, defaultVals],
@@ -180,12 +181,29 @@ pool.getConnection((error, connection) => {
               }
             }
           );
+        } else {
+          // Row exists – update only if the list is empty
+          let currentVal = [];
+          try { currentVal = JSON.parse(results[0].config_value || '[]'); } catch (e) {}
+          if (!Array.isArray(currentVal) || currentVal.length === 0) {
+            connection.query(
+              `UPDATE configurations SET config_value = ? WHERE config_key = ?`,
+              [defaultVals, config.key],
+              (err2) => {
+                if (err2) {
+                  console.error(`Erreur mise à jour config ${config.key}:`, err2.message);
+                } else {
+                  console.log(`Configuration '${config.key}' mise à jour avec les valeurs par défaut.`);
+                }
+              }
+            );
+          }
         }
       }
     );
   });
 
-  // Soft Delete Archive Columns
+  
   const archiveColumns = [
     "ALTER TABLE demandes ADD COLUMN is_archived TINYINT(1) DEFAULT 0",
     "ALTER TABLE projects ADD COLUMN is_archived TINYINT(1) DEFAULT 0",

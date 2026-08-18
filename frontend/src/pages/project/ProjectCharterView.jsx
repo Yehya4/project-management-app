@@ -10,7 +10,10 @@ import {
 import mammoth from 'mammoth';
 import { generateCharterPDF } from '../../utils/pdfGenerator';
 
-// Config des phases de progression
+
+const DEFAULT_CATEGORIES = ['Nouveau projet', 'Amélioration', 'Maintenance', 'Urgent'];
+const DEFAULT_CATEGORIES_PROJET = ['Nouveau projet', 'Amélioration', 'Maintenance', 'Urgent'];
+
 const PHASE_PROGRESS_CONFIG = {
   'Initiation':    { min: 0, max: 15, color: '#f59e0b', bg: '#fffbeb', border: '#fde68a', label: 'Initiation' },
   'Développement': { min: 15, max: 80, color: '#8b5cf6', bg: '#f5f3ff', border: '#ddd6fe', label: 'Développement' },
@@ -419,9 +422,7 @@ const ProjectCharterView = () => {
   return (
     <div className="space-y-10 pb-10">
 
-      {/* ──────────────────────────────────────────────────────────────
-          SECTION CONTRÔLE DE PROGRESSION (PM / Admin / Sponsor)
-      ────────────────────────────────────────────────────────────── */}
+      {}
       {isPMOrAdmin && (
         <div
           className="rounded-3xl p-6 shadow-sm border"
@@ -430,7 +431,7 @@ const ProjectCharterView = () => {
             borderColor: phaseConfig ? phaseConfig.border : '#e2e8f0',
           }}
         >
-          {/* En-tête */}
+          {}
           <div className="flex items-center gap-3 mb-5">
             <div className="p-2.5 rounded-xl" style={{ background: phaseConfig ? phaseConfig.color + '20' : '#f1f5f9' }}>
               <Gauge size={22} style={{ color: phaseConfig ? phaseConfig.color : '#94a3b8' }} />
@@ -454,7 +455,7 @@ const ProjectCharterView = () => {
             </div>
           </div>
 
-          {/* Barre de progression actuelle */}
+          {}
           <div className="mb-5">
             <div className="flex justify-between items-center mb-2">
               <span className="text-xs font-semibold text-slate-600">Progression actuelle</span>
@@ -474,7 +475,7 @@ const ProjectCharterView = () => {
                 }}
               />
             </div>
-            {/* Jalons de la phase */}
+            {}
             <div className="flex justify-between text-[10px] text-slate-400 mt-1 font-medium">
               <span>{phaseConfig ? `${phaseConfig.min}%` : '0%'}</span>
               <span className="font-bold text-slate-500">{phaseConfig ? phaseConfig.label : 'Progression Globale'}</span>
@@ -482,7 +483,7 @@ const ProjectCharterView = () => {
             </div>
           </div>
 
-          {/* Slider de contrôle manuel */}
+          {}
           {phaseConfig ? (
             <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
               <div className="flex items-center justify-between mb-3">
@@ -594,7 +595,11 @@ const ProjectCharterView = () => {
               <div className="col-span-1 md:col-span-3">
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Catégorie de projet</label>
                 <div className="flex flex-wrap gap-3 mt-1">
-                  {(config.categoriesProjet || []).map((cat) => {
+                  {/* Catégorie de projet = config.categoriesProjet (liste "Catégorie de projet" dans les Paramètres) */}
+                  {((config.categoriesProjet && config.categoriesProjet.length > 0)
+                    ? config.categoriesProjet
+                    : DEFAULT_CATEGORIES_PROJET
+                  ).map((cat) => {
                     const isSelected = Array.isArray(infosFormData.categoriesProjet)
                       ? infosFormData.categoriesProjet.includes(cat)
                       : (typeof infosFormData.categoriesProjet === 'string' ? infosFormData.categoriesProjet.includes(cat) : false);

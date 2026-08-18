@@ -7,7 +7,7 @@ import {
   Rocket, Code2, Activity, PackageCheck
 } from 'lucide-react';
 
-// Config des phases de progression
+
 const PHASE_PROGRESS_CONFIG = {
   'En Préparation': { min: 0, max: 15, color: '#f59e0b', bg: '#fffbeb', border: '#fde68a', label: 'Initiation', icon: Rocket },
   'Initiation':    { min: 0, max: 15, color: '#f59e0b', bg: '#fffbeb', border: '#fde68a', label: 'Initiation', icon: Rocket },
@@ -121,9 +121,7 @@ const ProjectInfo = () => {
         )}
       </div>
 
-      {/* ──────────────────────────────────────────────────────────────
-          SECTION CONTRÔLE DE PROGRESSION (PM / Admin / Sponsor)
-      ────────────────────────────────────────────────────────────── */}
+      {}
       {canControlProgress && (
         <div
           className="rounded-3xl p-6 shadow-sm border"
@@ -132,7 +130,7 @@ const ProjectInfo = () => {
             borderColor: phaseConfig ? phaseConfig.border : '#e2e8f0',
           }}
         >
-          {/* En-tête */}
+          {}
           <div className="flex items-center gap-3 mb-5">
             <div
               className="p-2.5 rounded-xl"
@@ -162,7 +160,7 @@ const ProjectInfo = () => {
             </div>
           </div>
 
-          {/* Progression actuelle (affichage) */}
+          {}
           <div className="mb-5">
             <div className="flex justify-between items-center mb-2">
               <span className="text-xs font-semibold text-slate-600">Progression actuelle</span>
@@ -183,7 +181,7 @@ const ProjectInfo = () => {
                 }}
               />
             </div>
-            {/* Jalons */}
+            {}
             <div className="flex justify-between text-[10px] text-slate-400 mt-1 font-medium">
               <span>0%</span>
               <span className={project.progress >= 15 ? 'text-indigo-500 font-bold' : ''}>Initiation 15%</span>
@@ -209,7 +207,7 @@ const ProjectInfo = () => {
                 </span>
               </div>
 
-              {/* Slider */}
+              {}
               <div className="relative mb-4">
                 <input
                   type="range"
@@ -230,13 +228,13 @@ const ProjectInfo = () => {
                 </div>
               </div>
 
-              {/* Info */}
+              {}
               <p className="text-xs text-slate-500 mb-4 flex items-center gap-1.5">
                 <Info size={12} className="text-blue-400 shrink-0" />
                 La progression affichée est le maximum entre votre saisie et le calcul automatique du système (tâches/tests complétés).
               </p>
 
-              {/* Bouton Mettre à jour */}
+              {}
               <button
                 onClick={handleProgressUpdate}
                 disabled={isSavingProgress}
@@ -260,8 +258,7 @@ const ProjectInfo = () => {
               </button>
             </div>
           ) : (
-            /* Phases sans contrôle manuel */
-            <div className="bg-white rounded-2xl p-4 border border-slate-100 text-center">
+                        <div className="bg-white rounded-2xl p-4 border border-slate-100 text-center">
               {project.status === 'Initiation' && (
                 <div className="flex items-center justify-center gap-2 text-indigo-600">
                   <Rocket size={18} />

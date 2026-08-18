@@ -144,7 +144,7 @@ const ArchiveManager = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Sidebar Tabs */}
+        {}
         <div className="lg:col-span-1 space-y-2">
           {tabs.map(tab => (
             <button
@@ -171,7 +171,7 @@ const ArchiveManager = () => {
           ))}
         </div>
 
-        {/* Content Area */}
+        {}
         <div className="lg:col-span-3">
           <div className="bg-slate-50/50 rounded-3xl p-6 min-h-[500px] border border-slate-100">
             <div className="mb-6 flex items-center gap-2">

@@ -228,11 +228,11 @@ const ProjectDocuments = () => {
     <div className={`p-2 rounded-xl ${color}`}><Icon size={20} /></div>
   );
 
-  // Filter tasks & testCases by current project
+  
   const projectTasks = tasks ? tasks.filter(t => String(t.projectId) === String(project?.id)) : [];
   const projectTests = testCases ? testCases.filter(t => String(t.projectId) === String(project?.id)) : [];
 
-  // Generate doc items for all created tasks
+  
   const createdTaskDocs = projectTasks.map(t => ({
     id: `created-task-${t.id}`,
     name: `Fiche Tâche (${t.reference || t.id}) : ${t.objet || t.title || 'Sans titre'}`,
@@ -243,7 +243,7 @@ const ProjectDocuments = () => {
     rawTask: t
   }));
 
-  // Generate doc items for all created test cases
+  
   const createdTestCaseDocs = projectTests.map(tc => ({
     id: `created-testcase-${tc.id}`,
     name: `Fiche Cas de Test (${tc.testCaseId}) : ${tc.testName || 'Sans titre'}`,
@@ -254,7 +254,7 @@ const ProjectDocuments = () => {
     rawTestCase: tc
   }));
 
-  // Gather additional attachments from tasks and testCases if not already present in documents
+  
   const extraTaskDocs = projectTasks
     .filter(t => t.attachment && !documents.some(d => d.content === t.attachment))
     .map(t => ({
@@ -323,7 +323,7 @@ const ProjectDocuments = () => {
     ...extraTestDocs
   ];
 
-  // Enforce PDF format for all attachments/docs EXCEPT Test Cases which use Excel
+  
   const allDocumentsList = rawDocumentsList.map(doc => {
     const isTC = doc.isCreatedTestCase || doc.type === 'Cas de Test' || (doc.module === 'TestCase' && doc.type !== 'Pièce jointe');
     return {
@@ -952,7 +952,7 @@ const ProjectDocuments = () => {
         </div>
       )}
 
-      {/* SECTION CENTRALISÉE: Tous les documents du projet avec filtres et recherche */}
+      {}
       <div className="mt-12 mb-8 space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>

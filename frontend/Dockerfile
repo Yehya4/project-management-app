@@ -1,13 +1,10 @@
-# Etape 1: Build de l'application React
-FROM node:22-alpine as build
+FROM node:22-alpine
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
 RUN npm run build
+RUN npm install -g serve
 
-# Etape 2: Serveur Nginx (version unprivileged pour OpenShift)
-FROM nginxinc/nginx-unprivileged:alpine
-COPY --from=build /app/build /usr/share/nginx/html
-EXPOSE 8080
-CMD ["nginx", "-g", "daemon off;"]
+EXPOSE 3000
+CMD ["serve", "-s", "build", "-l", "3000"]

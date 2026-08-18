@@ -1,9 +1,5 @@
 import * as XLSX from 'xlsx';
 
-/**
- * Génère et télécharge un fichier Excel (.xlsx) pour un cas de test individuel.
- * Si shouldSave est false, renvoie une URL data: base64 du fichier Excel.
- */
 export const generateTestCaseExcel = (tc, projectName = '', shouldSave = true) => {
   const testCase = tc || {};
   const titleRow = [`Fiche Cas de Test - ${testCase.testCaseId || testCase.id || 'TC'} (${projectName || 'Projet'})`, '', '', '', '', '', '', '', '', '', ''];
@@ -69,9 +65,6 @@ export const generateTestCaseExcel = (tc, projectName = '', shouldSave = true) =
   }
 };
 
-/**
- * Génère et télécharge un fichier Excel (.xlsx) contenant l'ensemble des cas de test du projet.
- */
 export const generateAllTestCasesExcel = (testCases = [], projectName = '', shouldSave = true) => {
   const titleRow = [`Cas de Test du Projet - ${projectName || 'Projet'}`, '', '', '', '', '', '', '', '', '', ''];
   const headerRow = [

@@ -16,7 +16,7 @@ const ProjectMessages = () => {
   const [mentions, setMentions] = useState([]);
   
 
-  const [activeChat, setActiveChat] = useState('general'); // 'general' or userId
+  const [activeChat, setActiveChat] = useState('general'); 
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [searchPartnerQuery, setSearchPartnerQuery] = useState('');
   const [tempActiveChat, setTempActiveChat] = useState(null);

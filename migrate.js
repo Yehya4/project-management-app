@@ -15,7 +15,7 @@ async function migrate() {
                 db.query(q, (err) => {
                     if (err && err.code !== 'ER_DUP_FIELDNAME') {
                         console.error('Error on query:', q, err);
-                        resolve(); // Ignore duplicates or continue
+                        resolve(); 
                     } else {
                         console.log('Successfully executed:', q);
                         resolve();

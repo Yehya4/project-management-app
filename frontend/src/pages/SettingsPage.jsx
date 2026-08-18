@@ -10,7 +10,7 @@ const SettingsPage = () => {
   return (
     <Layout title="Paramètres Administration">
       <div className="space-y-8 max-w-6xl mx-auto pb-12">
-        {/* Banner Header */}
+        {}
         <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 rounded-3xl p-6 md:p-8 text-white shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center">
           <div>
             <div className="flex items-center gap-3 mb-2">
@@ -49,7 +49,7 @@ const SettingsPage = () => {
           </div>
         </div>
 
-        {/* Tab Content */}
+        {}
         {activeTab === 'config' ? (
           <div className="space-y-6 animate-fade-in">
             <ConfigEditor />

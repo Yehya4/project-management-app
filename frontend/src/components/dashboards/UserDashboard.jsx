@@ -62,7 +62,7 @@ const UserDashboard = () => {
   const totalMyProjProgress = myProjects.reduce((acc, p) => acc + (p.progress || 0), 0);
   const avgMyProjProgress   = myProjects.length ? Math.round(totalMyProjProgress / myProjects.length) : 0;
 
-  // Donut chart calculations
+  
   const statusData = [
     { name: 'Acceptées', count: acceptedDemandes, color: '#10b981' },
     { name: 'En cours', count: enCoursDemandes, color: '#3b82f6' },
@@ -88,7 +88,7 @@ const UserDashboard = () => {
 
   return (
     <div className="space-y-8">
-      {/* Strategic Header Banner */}
+      {}
       <div className="bg-gradient-to-r from-slate-950 via-blue-950 to-slate-900 rounded-3xl p-6 md:p-8 text-white shadow-xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
         <div className="relative z-10">
@@ -103,35 +103,11 @@ const UserDashboard = () => {
           </p>
         </div>
 
-        {/* Header Stats & Action Pill */}
-        <div className="flex flex-col sm:flex-row items-center gap-4 relative z-10 shrink-0">
-          <div className="flex items-center gap-4 bg-white/10 backdrop-blur-md p-3 px-5 rounded-2xl border border-white/10 shrink-0">
-            <div className="text-center">
-              <p className="text-2xl font-black text-blue-400">{totalDemandes}</p>
-              <p className="text-[10px] text-slate-300 uppercase font-bold">Demandes</p>
-            </div>
-            <div className="h-8 w-px bg-white/20" />
-            <div className="text-center">
-              <p className="text-2xl font-black text-amber-400">{enCoursDemandes}</p>
-              <p className="text-[10px] text-slate-300 uppercase font-bold">En Cours</p>
-            </div>
-            <div className="h-8 w-px bg-white/20" />
-            <div className="text-center">
-              <p className="text-2xl font-black text-emerald-400">{approvalRate}%</p>
-              <p className="text-[10px] text-slate-300 uppercase font-bold">Approbation</p>
-            </div>
-          </div>
+        {}
 
-          <Link
-            to="/demande-si"
-            className="flex items-center gap-2 px-4 py-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold text-xs shadow-lg shadow-blue-900/40 transition-all border border-blue-400/30 shrink-0"
-          >
-            <PlusCircle size={16} /> Nouvelle Demande SI
-          </Link>
-        </div>
       </div>
 
-      {/* Action Required Callout Banner */}
+      {}
       {myChartersPendingAction.length > 0 && (
         <div className="bg-white rounded-3xl shadow-sm border border-indigo-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-indigo-100 bg-indigo-50 flex items-center justify-between">
@@ -191,8 +167,8 @@ const UserDashboard = () => {
         </div>
       )}
 
-      {/* Main KPI Cards Grid (4 Columns) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <div 
           onClick={() => navigate('/demande-si')}
           className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm cursor-pointer hover:border-blue-500 hover:shadow-md transition-all group"
@@ -249,29 +225,12 @@ const UserDashboard = () => {
           </div>
         </div>
 
-        <div 
-          onClick={() => navigate('/demande-si')}
-          className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm cursor-pointer hover:border-purple-500 hover:shadow-md transition-all group"
-        >
-          <div className="flex justify-between items-start mb-3">
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 group-hover:text-purple-600 transition-colors">Taux de Faisabilité SI</p>
-              <p className="text-3xl font-black text-purple-600">{approvalRate}%</p>
-            </div>
-            <div className="p-3 bg-purple-50 text-purple-600 rounded-2xl group-hover:bg-purple-600 group-hover:text-white transition-colors">
-              <TrendingUp size={24} />
-            </div>
-          </div>
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-purple-600 font-semibold">
-            <span>{acceptedDemandes} sur {totalDemandes} retenue(s)</span>
-            <ArrowUpRight size={14} />
-          </div>
-        </div>
+
       </div>
 
-      {/* Visual Analytics Grid */}
+      {}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* SVG Donut Chart Card */}
+        {}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div>
             <h3 className="font-bold text-slate-800 text-base mb-1 flex items-center gap-2">
@@ -281,7 +240,7 @@ const UserDashboard = () => {
             <p className="text-xs text-slate-400 mb-4">Statistiques d'avancement de vos soumissions</p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-5 my-2">
-              {/* Donut SVG */}
+              {}
               <div className="relative w-40 h-40 shrink-0 flex items-center justify-center">
                 <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 100 100">
                   <circle cx="50" cy="50" r="42" fill="transparent" stroke="#f1f5f9" strokeWidth="12" />
@@ -306,7 +265,7 @@ const UserDashboard = () => {
                 </div>
               </div>
 
-              {/* Legend & Percentages */}
+              {}
               <div className="w-full space-y-1.5 text-xs">
                 {statusData.map(st => {
                   const pct = totalDemandes ? Math.round((st.count / totalDemandes) * 100) : 0;
@@ -335,7 +294,7 @@ const UserDashboard = () => {
           </div>
         </div>
 
-        {/* Gouvernance & Suivi du Portefeuille Card */}
+        {}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-1">
@@ -388,7 +347,7 @@ const UserDashboard = () => {
         </div>
       </div>
 
-      {/* Mes Projets List */}
+      {}
       <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
         <div className="flex items-center gap-2 mb-6">
           <Briefcase className="text-blue-600" size={24} />

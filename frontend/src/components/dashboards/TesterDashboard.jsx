@@ -23,7 +23,7 @@ const TesterDashboard = () => {
 
   return (
     <div className="space-y-8 pb-8">
-      {/* Banner */}
+      {}
       <div className="bg-gradient-to-r from-slate-900 via-purple-900 to-indigo-900 rounded-3xl p-6 md:p-8 text-white shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center relative overflow-hidden">
         <div className="absolute top-0 left-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl -translate-y-1/2 -translate-x-1/3 pointer-events-none" />
         <div className="relative z-10">
@@ -38,7 +38,7 @@ const TesterDashboard = () => {
           </p>
         </div>
         
-        {/* Header Stats */}
+        {}
         <div className="mt-6 md:mt-0 flex items-center gap-4 bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 relative z-10">
           <div className="text-center px-2">
             <p className="text-2xl font-black text-purple-300">{myProjects.length}</p>

@@ -111,7 +111,7 @@ const SponsorDashboard = () => {
   const totalProgress = projects.reduce((acc, p) => acc + (p.progress || 0), 0);
   const avgProgress   = projects.length ? Math.round(totalProgress / projects.length) : 0;
 
-  // Health Status Calculations
+  
   const blockedProjectsCount = chartersToValidate.length + backlogsToValidate.length + archsToValidate.length;
   const delayedProjectsCount = projects.filter(p => p.progress < 50 && p.status !== 'En Préparation').length;
   const onTrackProjectsCount = projects.length - blockedProjectsCount - delayedProjectsCount;
@@ -156,7 +156,7 @@ const SponsorDashboard = () => {
 
   return (
     <div className="space-y-8">
-      {/* Strategic Header Banner */}
+      {}
       <div className="bg-gradient-to-r from-slate-950 via-emerald-950 to-slate-900 rounded-3xl p-6 md:p-8 text-white shadow-xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
         <div>
           <div className="flex items-center gap-2 mb-2 text-emerald-400 font-semibold text-xs uppercase tracking-wider">
@@ -170,7 +170,7 @@ const SponsorDashboard = () => {
           </p>
         </div>
 
-        {/* Header Stats Pill */}
+        {}
         <div className="flex items-center gap-4 bg-white/10 backdrop-blur-md p-3 px-5 rounded-2xl border border-white/10 shrink-0">
           <div className="text-center">
             <p className="text-2xl font-black text-emerald-400">{projects.length}</p>
@@ -189,7 +189,7 @@ const SponsorDashboard = () => {
         </div>
       </div>
 
-      {/* Pending Actions Notification Section */}
+      {}
       {totalPendingActions > 0 && (
         <div className="bg-white rounded-3xl shadow-sm border border-amber-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-amber-100 bg-amber-50 flex items-center justify-between">
@@ -212,7 +212,7 @@ const SponsorDashboard = () => {
           </div>
 
           <div className="p-5 space-y-3">
-            {/* Charters Demandeur */}
+            {}
             {myChartersPendingAction.map(charter => (
               <div
                 key={`demandeur-${charter.demandeId}`}
@@ -245,7 +245,7 @@ const SponsorDashboard = () => {
               </div>
             ))}
 
-            {/* Charters Sponsor */}
+            {}
             {chartersToValidate.map(charter => {
               const relatedDemande = demandes.find(d => d.id === charter.demandeId);
               return (
@@ -282,7 +282,7 @@ const SponsorDashboard = () => {
               );
             })}
 
-            {/* Backlogs */}
+            {}
             {backlogsToValidate.map(project => (
               <div
                 key={`backlog-${project.id}`}
@@ -321,7 +321,7 @@ const SponsorDashboard = () => {
               </div>
             ))}
 
-            {/* Architectures */}
+            {}
             {archsToValidate.map(project => (
               <div
                 key={`arch-${project.id}`}
@@ -363,7 +363,7 @@ const SponsorDashboard = () => {
         </div>
       )}
 
-      {/* Main KPI Cards Grid (4 Columns) */}
+      {}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <div 
           onClick={() => navigate('/projects')}
@@ -441,9 +441,9 @@ const SponsorDashboard = () => {
         </div>
       </div>
 
-      {/* Visual Statistics Sections */}
+      {}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* SVG Donut Chart Card */}
+        {}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div>
             <h3 className="font-bold text-slate-800 text-base mb-1 flex items-center gap-2">
@@ -453,7 +453,7 @@ const SponsorDashboard = () => {
             <p className="text-xs text-slate-400 mb-4">Répartition des projets par étapes du cycle de vie</p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-5 my-2">
-              {/* Donut SVG */}
+              {}
               <div className="relative w-40 h-40 shrink-0 flex items-center justify-center">
                 <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 100 100">
                   <circle cx="50" cy="50" r="42" fill="transparent" stroke="#f1f5f9" strokeWidth="12" />
@@ -478,7 +478,7 @@ const SponsorDashboard = () => {
                 </div>
               </div>
 
-              {/* Legend & Percentages */}
+              {}
               <div className="w-full space-y-1.5 text-xs">
                 {phasesData.map(phase => {
                   const pct = projects.length ? Math.round((phase.count / projects.length) * 100) : 0;
@@ -507,7 +507,7 @@ const SponsorDashboard = () => {
           </div>
         </div>
 
-        {/* Project Health Status Grid */}
+        {}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div>
             <h3 className="font-bold text-slate-800 text-base mb-1 flex items-center gap-2">
@@ -565,9 +565,9 @@ const SponsorDashboard = () => {
         </div>
       </div>
 
-      {/* Portefeuille par Domaines et Catégories */}
+      {}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Projets par Domaines */}
+        {}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div>
             <h3 className="font-bold text-slate-800 text-base mb-1 flex items-center gap-2">
@@ -600,7 +600,7 @@ const SponsorDashboard = () => {
           </div>
         </div>
 
-        {/* Projets par Catégories */}
+        {}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div>
             <h3 className="font-bold text-slate-800 text-base mb-1 flex items-center gap-2">
@@ -634,7 +634,7 @@ const SponsorDashboard = () => {
         </div>
       </div>
 
-      {/* Sponsored Projects Quick Overview List */}
+      {}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden transition-all hover:shadow-md">
         <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
           <div className="flex items-center gap-3">

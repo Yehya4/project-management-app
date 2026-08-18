@@ -8,6 +8,9 @@ import { generateCharterPDF } from '../utils/pdfGenerator';
 import { formatUserDisplayName } from '../utils/userUtils';
 
 const ProjectCharter = () => {
+  const DEFAULT_CATEGORIES = ['Nouveau projet', 'Amélioration', 'Maintenance', 'Urgent'];
+  const DEFAULT_CATEGORIES_PROJET = ['Nouveau projet', 'Amélioration', 'Maintenance', 'Urgent'];
+
   const [searchParams] = useSearchParams();
   const demandeId = searchParams.get('demandeId');
   const navigate = useNavigate();
@@ -144,7 +147,10 @@ const ProjectCharter = () => {
   };
 
   const handleAction = async (action) => {
-    if (action === 'save' || action === 'sendUser' || action === 'sendSponsor' || action === 'acceptDemandeur' || action === 'acceptSponsor') {
+    // La validation est obligatoire uniquement lorsque le PM envoie la charte.
+    // Le brouillon (save) et les validations par les autres (acceptDemandeur, acceptSponsor) 
+    // ne doivent pas être bloqués par des champs vides si la charte a été créée avant.
+    if (action === 'sendUser' || action === 'sendSponsor') {
       if (!validateForm()) return;
     }
 
@@ -458,7 +464,11 @@ const ProjectCharter = () => {
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Catégorie <span className="text-rose-500">*</span></label>
                 <div className="flex flex-wrap gap-4 pt-1">
-                  {(config.categories || []).map((cat) => {
+                  {/* Catégorie = config.categories (liste "Catégorie" dans les Paramètres) */}
+                  {((config.categories && config.categories.length > 0)
+                    ? config.categories
+                    : DEFAULT_CATEGORIES
+                  ).map((cat) => {
                     const isSelected = Array.isArray(formData.categoriesProjet) 
                       ? formData.categoriesProjet.includes(cat)
                       : (typeof formData.categoriesProjet === 'string' ? formData.categoriesProjet.includes(cat) : false);

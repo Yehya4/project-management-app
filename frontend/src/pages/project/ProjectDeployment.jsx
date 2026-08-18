@@ -24,11 +24,11 @@ const ProjectDeployment = () => {
   const isDev = user?.role === 'Developer';
   const isResponsableInfra = user?.role === 'Responsable Infra';
 
-  // Allowed to upload plan de déploiement: Admin, PM, Sponsor, Developer, Responsable Infra
+  
   const canUploadPlan = isAdmin || isPM || isSponsor || isDev || isResponsableInfra;
 
-  // Allowed to validate deployment: Responsable Infra ONLY
-  const canValidateDeployment = isResponsableInfra;
+  // Le Responsable Infra, Admin, PM ou Sponsor peut valider le déploiement final
+  const canValidateDeployment = isResponsableInfra || isAdmin || isPM || isSponsor;
 
   const handleUploadPlan = (e) => {
     const file = e.target.files[0];
@@ -101,7 +101,7 @@ const ProjectDeployment = () => {
       const userName = `${user.prenom || ''} ${user.nom || ''}`.trim() || user.role;
       const formattedDate = new Date().toLocaleString('fr-FR');
 
-      // Update project status to Utilisation (Deployment validated) + force 100%
+      
       await updateProject(project.id, {
         status: 'Utilisation',
         deploymentPlanStatus: 'Validé',
@@ -126,7 +126,7 @@ const ProjectDeployment = () => {
 
   return (
     <div className="space-y-6 max-w-5xl">
-      {/* HEADER */}
+      {}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
@@ -150,14 +150,14 @@ const ProjectDeployment = () => {
         </div>
       </div>
 
-      {/* PHASE BANNER ALERT */}
+      {}
       {!isDeploymentPhase && !isCompletedPhase && (
         <div className="bg-amber-50 border border-amber-200 text-amber-900 p-5 rounded-2xl flex gap-3 items-start shadow-sm">
           <AlertTriangle size={24} className="text-amber-600 shrink-0 mt-0.5" />
           <div>
             <p className="font-bold text-base">Projet en phase {project?.status}</p>
             <p className="text-sm text-amber-800 mt-1">
-              Le passage à la phase <strong>Déploiement</strong> s'effectue dès que les cas de test sont validés par le <strong>Chef Testeur</strong>.
+              Le passage à la phase <strong>Déploiement</strong> s'effectue dès que les cas de test sont validés par le <strong>Chef Testeur</strong>, l'<strong>Admin</strong>, le <strong>PM</strong> ou le <strong>Sponsor</strong>.
             </p>
           </div>
         </div>
@@ -177,7 +177,7 @@ const ProjectDeployment = () => {
         </div>
       )}
 
-      {/* UPLOAD & PLAN DE DÉPLOIEMENT CARD */}
+      {}
       <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-slate-100">
           <div>
@@ -210,7 +210,7 @@ const ProjectDeployment = () => {
           )}
         </div>
 
-        {/* DISPLAY CURRENT DEPLOYMENT PLAN */}
+        {}
         {project.deploymentPlanFile ? (
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-4">
@@ -268,7 +268,7 @@ const ProjectDeployment = () => {
         )}
       </div>
 
-      {/* DOCUMENT PREVIEW MODAL */}
+      {}
       {isViewingDoc && (
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xl space-y-4 animate-fadeIn">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -303,7 +303,7 @@ const ProjectDeployment = () => {
         </div>
       )}
 
-      {/* VALIDATE DEPLOYMENT ACTION SECTION - RESPONSABLE INFRA ONLY */}
+      {}
       {isDeploymentPhase && canValidateDeployment && (
         <div className="bg-gradient-to-r from-amber-500 to-orange-600 rounded-3xl p-6 md:p-8 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
           <div>

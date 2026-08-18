@@ -39,7 +39,7 @@ class TaskController {
             const task = await taskService.create({
                 id: taskId,
                 projectId,
-                title: title || objet, // Fallback for backward compatibility
+                title: title || objet, 
                 objet: objet || title,
                 description,
                 priority,

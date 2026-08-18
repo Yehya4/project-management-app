@@ -156,7 +156,7 @@ const Projects = () => {
                   {...wrapperProps}
                   className={`flex flex-col p-5 border border-slate-200/80 rounded-3xl bg-white relative overflow-hidden transition-all duration-300 ${!isRestrictedUser ? 'hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 group cursor-pointer' : 'shadow-sm'}`}
                 >
-                  {/* Header: Icon + Reference & Demandeur + Status */}
+                  {}
                   <div className="flex items-center justify-between gap-3 mb-3">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className={`p-3 rounded-2xl transition-colors shrink-0 ${project.isPending ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'} ${!isRestrictedUser && (project.isPending ? 'group-hover:bg-amber-600 group-hover:text-white' : 'group-hover:bg-blue-600 group-hover:text-white')}`}>
@@ -183,12 +183,12 @@ const Projects = () => {
                     )}
                   </div>
                 
-                  {/* Project Name */}
+                  {}
                   <h3 className={`font-bold text-slate-800 text-base line-clamp-2 leading-snug mb-3 transition-colors ${!isRestrictedUser ? 'group-hover:text-blue-600' : ''}`} title={project.nom}>
                     {project.nom}
                   </h3>
 
-                  {/* Details Container */}
+                  {}
                   <div className="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-100 text-xs space-y-2 mb-4 flex-1">
                     <div className="grid grid-cols-2 gap-2 pb-2 border-b border-slate-200/50">
                       <div>
@@ -224,7 +224,7 @@ const Projects = () => {
                     </div>
                   </div>
 
-                  {/* Progress Footer */}
+                  {}
                   <div className="mt-auto pt-3 border-t border-slate-100">
                     <div className="flex justify-between items-center text-xs font-bold mb-1.5">
                       <span className="text-slate-500 flex items-center gap-1.5 text-[11px]">

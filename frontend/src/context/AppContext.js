@@ -381,7 +381,7 @@ export const DemandeProvider = ({ children }) => {
       return data;
     } catch (err) {
       console.error('Erreur ajout demande', err);
-      throw err; // Repropage pour que l'UI puisse afficher l'erreur
+      throw err; 
     }
   };
 
@@ -1162,11 +1162,15 @@ export const TeamProvider = ({ children }) => {
     if (!users || users.length === 0) return manualMembers;
 
     const autoMembers = users
-      .filter(u => ['Project Manager', 'Sponsor', 'Admin'].includes(u.role))
+      .filter(u => ['Project Manager', 'Sponsor', 'Admin', 'Chef Testeur', 'Responsable Infra'].includes(u.role))
       .map(u => ({
         userId: u.id,
         user: u,
-        role: u.role === 'Project Manager' ? 'Chef de Projet' : u.role === 'Admin' ? 'Admin' : 'Sponsor',
+        role: u.role === 'Project Manager' ? 'Chef de Projet' 
+              : u.role === 'Admin' ? 'Admin' 
+              : u.role === 'Sponsor' ? 'Sponsor'
+              : u.role === 'Chef Testeur' ? 'Chef Testeur'
+              : 'Responsable Infra',
         isAuto: true
       }));
 

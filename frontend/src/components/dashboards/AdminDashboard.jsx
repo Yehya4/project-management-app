@@ -15,7 +15,7 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [popup, setPopup] = React.useState({ isOpen: false, title: '', message: '', type: 'success' });
 
-  // Tasks & Tests Stats
+  
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter(t => t.status === 'Fait' || t.status === 'Done').length;
   const taskCompletionRate = totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0;
@@ -120,7 +120,7 @@ const AdminDashboard = () => {
     return false;
   }).length;
 
-  // Project Stages Breakdown
+  
   const initiationCount = projects.filter(p => p.status === 'Initiation' || p.status === 'En Préparation').length;
   const devCount = projects.filter(p => ['Développement', 'En cours', 'In Progress'].includes(p.status)).length;
   const testingCount = projects.filter(p => ['Testing', 'Fait'].includes(p.status)).length;
@@ -158,7 +158,7 @@ const AdminDashboard = () => {
 
   return (
     <div className="space-y-8 pb-8">
-      {/* Banner */}
+      {}
       <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 rounded-3xl p-6 md:p-8 text-white shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center">
         <div>
           <div className="flex items-center gap-2.5 mb-2">
@@ -182,7 +182,7 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Main KPI Cards Row */}
+      {}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div onClick={() => navigate('/demande-si')} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:border-amber-500 hover:shadow-md transition-all cursor-pointer group">
           <div className="flex justify-between items-start mb-3">
@@ -248,7 +248,7 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Notifications */}
+      {}
       {myChartersPendingAction.length > 0 && (
         <div className="bg-white rounded-3xl shadow-sm border border-indigo-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-indigo-100 bg-indigo-50 flex items-center gap-3">
@@ -271,9 +271,9 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {/* Visual Statistics Sections */}
+      {}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Demandes SI Approval Stats */}
+        {}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div>
             <h3 className="font-bold text-slate-800 text-base mb-1 flex items-center gap-2">
@@ -318,7 +318,7 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Project Stage Distribution - SVG Donut Chart */}
+        {}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div>
             <h3 className="font-bold text-slate-800 text-base mb-1 flex items-center gap-2">
@@ -327,12 +327,12 @@ const AdminDashboard = () => {
             </h3>
             <p className="text-xs text-slate-400 mb-4">Statistiques d'avancement du portefeuille</p>
 
-            {/* Donut Chart Container */}
+            {}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-5 my-2">
-              {/* SVG Donut */}
+              {}
               <div className="relative w-40 h-40 shrink-0 flex items-center justify-center">
                 <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 100 100">
-                  {/* Background Track */}
+                  {}
                   <circle
                     cx="50"
                     cy="50"
@@ -341,7 +341,7 @@ const AdminDashboard = () => {
                     stroke="#f1f5f9"
                     strokeWidth="12"
                   />
-                  {/* Phase Slices */}
+                  {}
                   {projects.length > 0 && donutSlices.map((slice, idx) => slice.count > 0 && (
                     <circle
                       key={idx}
@@ -357,14 +357,14 @@ const AdminDashboard = () => {
                     />
                   ))}
                 </svg>
-                {/* Center Text */}
+                {}
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
                   <span className="text-2xl font-black text-slate-800 tracking-tight">{projects.length}</span>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Projets</span>
                 </div>
               </div>
 
-              {/* Legend & Stats */}
+              {}
               <div className="w-full space-y-1.5 text-xs">
                 {phasesData.map(phase => {
                   const pct = projects.length ? Math.round((phase.count / projects.length) * 100) : 0;
@@ -393,7 +393,7 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Tasks & Tests Overview */}
+        {}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div>
             <h3 className="font-bold text-slate-800 text-base mb-1 flex items-center gap-2">
@@ -403,7 +403,7 @@ const AdminDashboard = () => {
             <p className="text-xs text-slate-400 mb-5">Vue globale sur les tâches et les tests (Dev & QA)</p>
 
             <div className="space-y-4">
-              {/* Tasks Progress */}
+              {}
               <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
                 <div className="flex justify-between items-center text-xs mb-2">
                   <span className="font-bold text-slate-700">Tâches Terminées</span>
@@ -418,7 +418,7 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              {/* Tests Progress */}
+              {}
               <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
                 <div className="flex justify-between items-center text-xs mb-2">
                   <span className="font-bold text-slate-700">Tests Réussis (Passed)</span>
@@ -443,9 +443,9 @@ const AdminDashboard = () => {
       </div>
 
 
-      {/* Portefeuille par Domaines, Catégories et Services */}
+      {}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Projets par Domaines */}
+        {}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-300 hover:border-slate-300">
           <div>
             <div className="flex items-center gap-3 mb-3">
@@ -494,7 +494,7 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Projets par Catégories */}
+        {}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-300 hover:border-slate-300">
           <div>
             <div className="flex items-center gap-3 mb-3">
@@ -543,7 +543,7 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Projets par Services */}
+        {}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-300 hover:border-slate-300">
           <div>
             <div className="flex items-center gap-3 mb-3">

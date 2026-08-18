@@ -117,7 +117,7 @@ const PMDashboard = () => {
   const pendingTests = totalTests - passedTests - failedTests;
   const testSuccessRate = totalTests ? Math.round((passedTests / totalTests) * 100) : 0;
 
-  // Donut chart calculations
+  
   const phasesData = [
     { name: 'Initiation', count: initiationCount, color: '#3b82f6' },
     { name: 'Développement', count: devCount, color: '#6366f1' },
@@ -147,7 +147,7 @@ const PMDashboard = () => {
 
   return (
     <div className="space-y-8">
-      {/* Strategic Header Banner */}
+      {}
       <div className="bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 rounded-3xl p-6 md:p-8 text-white shadow-xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
         <div className="relative z-10">
@@ -162,7 +162,7 @@ const PMDashboard = () => {
           </p>
         </div>
 
-        {/* Header Stats Pill */}
+        {}
         <div className="flex items-center gap-4 bg-white/10 backdrop-blur-md p-3 px-5 rounded-2xl border border-white/10 shrink-0 relative z-10">
           <div className="text-center">
             <p className="text-2xl font-black text-indigo-400">{activeProjects}</p>
@@ -181,7 +181,7 @@ const PMDashboard = () => {
         </div>
       </div>
 
-      {/* Action Notification Box */}
+      {}
       {myChartersPendingAction.length > 0 && (
         <div className="bg-white rounded-3xl shadow-sm border border-indigo-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-indigo-100 bg-indigo-50 flex items-center justify-between">
@@ -222,7 +222,7 @@ const PMDashboard = () => {
         </div>
       )}
 
-      {/* Main KPI Cards Grid (4 Columns) */}
+      {}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <div 
           onClick={() => navigate('/projects')}
@@ -302,9 +302,9 @@ const PMDashboard = () => {
         </div>
       </div>
 
-      {/* Visual Analytics Section */}
+      {}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* SVG Donut Chart Card */}
+        {}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div>
             <h3 className="font-bold text-slate-800 text-base mb-1 flex items-center gap-2">
@@ -314,7 +314,7 @@ const PMDashboard = () => {
             <p className="text-xs text-slate-400 mb-4">Répartition des projets par étape de développement</p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-5 my-2">
-              {/* Donut SVG */}
+              {}
               <div className="relative w-40 h-40 shrink-0 flex items-center justify-center">
                 <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 100 100">
                   <circle cx="50" cy="50" r="42" fill="transparent" stroke="#f1f5f9" strokeWidth="12" />
@@ -339,7 +339,7 @@ const PMDashboard = () => {
                 </div>
               </div>
 
-              {/* Legend & Percentages */}
+              {}
               <div className="w-full space-y-1.5 text-xs">
                 {phasesData.map(phase => {
                   const pct = projects.length ? Math.round((phase.count / projects.length) * 100) : 0;
@@ -368,7 +368,7 @@ const PMDashboard = () => {
           </div>
         </div>
 
-        {/* Tasks & Tests Stats Grid */}
+        {}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div>
             <h3 className="font-bold text-slate-800 text-base mb-1 flex items-center gap-2">
@@ -414,7 +414,7 @@ const PMDashboard = () => {
         </div>
       </div>
 
-      {/* New Category and Services Stats Section */}
+      {}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8 mt-8">
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-300 hover:border-slate-300">
           <div>
@@ -513,7 +513,7 @@ const PMDashboard = () => {
         </div>
       </div>
       
-      {/* Projects Overview List */}
+      {}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden transition-all hover:shadow-md">
         <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
           <div className="flex items-center gap-3">

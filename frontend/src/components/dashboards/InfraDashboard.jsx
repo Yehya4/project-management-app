@@ -8,17 +8,17 @@ const InfraDashboard = () => {
   const { projects } = useProjects();
   const navigate = useNavigate();
 
-  // Metrics
+  
   const totalProjects = projects.length;
   const inDeployment = projects.filter(p => p.status === 'Déploiement').length;
   const inProduction = projects.filter(p => p.status === 'Terminé' || p.status === 'Utilisation').length;
   
-  // Projects pending infra action
+  
   const pendingDeploymentProjects = projects.filter(p => p.status === 'Déploiement');
 
   return (
     <div className="space-y-8 pb-8">
-      {/* Banner */}
+      {}
       <div className="bg-gradient-to-r from-slate-900 via-indigo-900 to-slate-900 rounded-3xl p-6 md:p-8 text-white shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none" />
         <div className="relative z-10">
@@ -36,7 +36,7 @@ const InfraDashboard = () => {
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:border-indigo-500 hover:shadow-md transition-all group cursor-default">
           <div className="flex justify-between items-start mb-3">
@@ -78,7 +78,7 @@ const InfraDashboard = () => {
         </div>
       </div>
 
-      {/* Actionable List */}
+      {}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
         <div className="p-6 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-3">

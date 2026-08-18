@@ -58,7 +58,7 @@ const ProjectWorkspaceLayout = () => {
 
 
     const privilegedUsers = users.filter(u =>
-      ['Project Manager', 'Sponsor', 'Admin'].includes(u.role)
+      ['Project Manager', 'Sponsor', 'Admin', 'Chef Testeur', 'Responsable Infra'].includes(u.role)
     );
 
     privilegedUsers.forEach(u => {
@@ -156,7 +156,17 @@ const ProjectWorkspaceLayout = () => {
     { path: `/projects/${id}/team`, name: 'Équipe', icon: <Users size={20} /> }
   ];
 
-  const links = (user?.role === 'Developer' || user?.role === 'Tester') ? devLinks : defaultLinks;
+  const userLinks = [
+    { path: `/projects/${id}/dashboard`, name: 'Vue d\'ensemble', icon: <LayoutDashboard size={20} /> },
+    { path: `/projects/${id}/charter`, name: 'Fiche de Projet', icon: <ScrollText size={20} /> }
+  ];
+
+  let links = defaultLinks;
+  if (user?.role === 'Developer' || user?.role === 'Tester') {
+    links = devLinks;
+  } else if (user?.role === 'User') {
+    links = userLinks;
+  }
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">

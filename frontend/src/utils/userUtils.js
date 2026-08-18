@@ -20,7 +20,7 @@ export const formatUserDisplayName = (userOrName, role, usersList = []) => {
     return '-';
   }
 
-  // 1. If passed an actual user object
+  
   if (typeof userOrName === 'object' && userOrName !== null) {
     const prenom = userOrName.prenom || '';
     const nom = userOrName.nom || '';
@@ -34,7 +34,7 @@ export const formatUserDisplayName = (userOrName, role, usersList = []) => {
   const rawStr = userOrName.toString().trim();
   if (!rawStr || rawStr === '-') return '-';
 
-  // Determine role context
+  
   const isPMRole = role === 'PM' || role === 'Project Manager' ||
                    rawStr.toLowerCase().includes('project manager') ||
                    rawStr.toLowerCase().includes('chef de projet') ||
@@ -42,9 +42,9 @@ export const formatUserDisplayName = (userOrName, role, usersList = []) => {
 
   const isSponsorRole = role === 'Sponsor' || rawStr.toLowerCase().includes('sponsor') || /\(Sponsor\)$/i.test(rawStr);
 
-  // 2. Lookup in usersList (configured dynamically by Admin in Users Management)
+  
   if (usersList && usersList.length > 0) {
-    // First: Match exact user by prenom/nom
+    
     const cleanRaw = rawStr.replace(/\s*\([A-Za-z0-9\s]+\)$/, '').trim().toLowerCase();
     const matchedUser = usersList.find(u => {
       const full1 = `${u.prenom || ''} ${u.nom || ''}`.trim().toLowerCase();
@@ -67,7 +67,7 @@ export const formatUserDisplayName = (userOrName, role, usersList = []) => {
       }
     }
 
-    // Third: If it's a Sponsor field/string, map to Sponsor user from Administration
+    
     if (isSponsorRole) {
       const sponsorUser = usersList.find(u => u.role === 'Sponsor');
       if (sponsorUser) {
@@ -77,7 +77,7 @@ export const formatUserDisplayName = (userOrName, role, usersList = []) => {
     }
   }
 
-  // 3. Fallback if usersList not passed or no user found
+  
   if (/\([A-Za-z0-9\s]+\)$/.test(rawStr)) {
     return rawStr;
   }

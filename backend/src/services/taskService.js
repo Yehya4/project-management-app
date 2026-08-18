@@ -25,7 +25,7 @@ class TaskService {
             db.query("SELECT MAX(CAST(SUBSTRING(reference, 5) AS UNSIGNED)) as max_ref FROM tasks WHERE reference REGEXP '^TSK-[0-9]{1,6}$'", (err, results) => {
                 if (err) {
                     console.error("Error getting next reference:", err);
-                    return resolve(`TSK-${Date.now()}`); // Fallback
+                    return resolve(`TSK-${Date.now()}`); 
                 }
                 const max = results[0].max_ref || 0;
                 const nextNum = max + 1;
