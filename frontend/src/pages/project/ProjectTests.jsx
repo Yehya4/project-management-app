@@ -114,6 +114,8 @@ const ProjectTests = () => {
   const canRunTest = isAssignedTester || isAdmin || isPM || isSponsor || isProjectChef || isChefTesteur;
 
   const canValidateTestingPhase = isChefTesteur || isAdmin || isPM || isSponsor || isProjectChef;
+  const isDeployedOrPast = ['Déploiement', 'Utilisation', 'Clôture', 'Clôturée', 'Archive', 'Archivée', 'Terminé'].includes(project?.status);
+  const showValidateForDeployment = canValidateTestingPhase && !isDeployedOrPast;
 
   const allTestsPassed = testCases.length > 0 && testCases.every(t => t.status === 'Réussite');
 
@@ -473,7 +475,7 @@ const ProjectTests = () => {
             onChange={handleImportExcel}
             className="hidden"
           />
-          {canValidateTestingPhase && (
+          {showValidateForDeployment && (
             <button
               onClick={handleValidateForDeployment}
               className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all shadow-sm shrink-0"
@@ -513,7 +515,7 @@ const ProjectTests = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
 
         { }
-        {canValidateTestingPhase && (
+        {showValidateForDeployment && (
           <div className="md:col-span-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
             <div className="flex items-center gap-3 w-full md:w-auto">
               <div className="p-2 bg-emerald-500 text-white rounded-xl shrink-0"><CheckCircle2 size={20} /></div>
@@ -534,6 +536,26 @@ const ProjectTests = () => {
             >
               <CheckCircle2 size={18} />
               Valider pour Déploiement
+            </button>
+          </div>
+        )}
+
+        {isDeployedOrPast && (
+          <div className="md:col-span-4 bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200 p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="p-2 bg-teal-600 text-white rounded-xl shrink-0"><CheckCircle2 size={20} /></div>
+              <div>
+                <p className="text-teal-950 font-bold">Phase de Test Validée ✓</p>
+                <p className="text-teal-700 text-sm">
+                  La phase de test a été validée. Le projet est actuellement en phase <strong>{project?.status}</strong>.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate(`/projects/${project.id}/deployment`)}
+              className="w-full md:w-auto px-5 py-2.5 bg-teal-700 text-white rounded-xl hover:bg-teal-800 transition-colors font-bold shadow-sm whitespace-nowrap flex items-center justify-center gap-2"
+            >
+              Accéder au Déploiement
             </button>
           </div>
         )}

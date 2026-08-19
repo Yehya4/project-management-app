@@ -154,28 +154,12 @@ class ProjectService {
 
                 const clampedProgress = Math.min(maxVal, Math.max(minVal, parseInt(manualProgress)));
 
-                
-                this.getSystemProgress(id, statut).then(sysProgress => {
-                    const finalProgress = sysProgress != null
-                        ? Math.max(clampedProgress, sysProgress)
-                        : clampedProgress;
-                    const finalManual = Math.min(maxVal, Math.max(minVal, finalProgress));
-
-                    db.query('UPDATE projects SET manualProgress = ? WHERE id = ?', [finalManual, id], (err) => {
-                        if (err) return reject(err);
-                        this.getById(id).then(updated => {
-                            if (io && updated) io.emit('project_updated', updated);
-                            resolve(updated);
-                        }).catch(reject);
-                    });
-                }).catch(() => {
-                    db.query('UPDATE projects SET manualProgress = ? WHERE id = ?', [clampedProgress, id], (err) => {
-                        if (err) return reject(err);
-                        this.getById(id).then(updated => {
-                            if (io && updated) io.emit('project_updated', updated);
-                            resolve(updated);
-                        }).catch(reject);
-                    });
+                db.query('UPDATE projects SET manualProgress = ? WHERE id = ?', [clampedProgress, id], (err) => {
+                    if (err) return reject(err);
+                    this.getById(id).then(updated => {
+                        if (io && updated) io.emit('project_updated', updated);
+                        resolve(updated);
+                    }).catch(reject);
                 });
             }).catch(reject);
         });
@@ -242,6 +226,10 @@ class ProjectService {
             if (data.deploymentValidatedAt !== undefined) {
                 updates.push('deploymentValidatedAt = ?');
                 values.push(data.deploymentValidatedAt);
+            }
+            if (data.progress !== undefined) {
+                updates.push('manualProgress = ?');
+                values.push(data.progress);
             }
             if (data.manualProgress !== undefined) {
                 updates.push('manualProgress = ?');

@@ -26,8 +26,11 @@ const ProjectInfo = () => {
   
   const charter = getCharterByDemandeId(project.demandeId);
   
-  const isEditable = user && ['Project Manager', 'Sponsor', 'Admin'].includes(user.role);
-  const canControlProgress = user && ['Project Manager', 'Sponsor', 'Admin'].includes(user.role);
+  const isProjectChef = project?.chefProjet &&
+    (`${user?.prenom || ''} ${user?.nom || ''}`.trim() === project.chefProjet);
+  
+  const isEditable = user && (['Project Manager', 'Sponsor', 'Admin', 'PM', 'Chef de Projet'].includes(user.role) || isProjectChef);
+  const canControlProgress = user && (['Project Manager', 'Sponsor', 'Admin', 'PM', 'Chef de Projet'].includes(user.role) || isProjectChef);
   const navigate = useNavigate();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -153,8 +156,8 @@ const ProjectInfo = () => {
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
                 {phaseConfig
-                  ? `Ajustez la progression manuellement (${phaseConfig.min}% – ${phaseConfig.max}%). La valeur système est prise en compte automatiquement.`
-                  : `La progression est gérée automatiquement en phase ${project.status}.`
+                  ? `Ajustez la progression manuellement (${phaseConfig.min}% – ${phaseConfig.max}%). Ce score est contrôlé exclusivement par le PM, Sponsor et Admin.`
+                  : `La progression est contrôlée manuellement en phase ${project.status}.`
                 }
               </p>
             </div>
@@ -197,7 +200,7 @@ const ProjectInfo = () => {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Sliders size={16} style={{ color: phaseConfig.color }} />
-                  <span className="text-sm font-bold text-slate-700">Ajustement manuel</span>
+                  <span className="text-sm font-bold text-slate-700">Ajustement manuel du score</span>
                 </div>
                 <span
                   className="text-sm font-black tabular-nums px-3 py-1 rounded-full"
@@ -231,7 +234,7 @@ const ProjectInfo = () => {
               {}
               <p className="text-xs text-slate-500 mb-4 flex items-center gap-1.5">
                 <Info size={12} className="text-blue-400 shrink-0" />
-                La progression affichée est le maximum entre votre saisie et le calcul automatique du système (tâches/tests complétés).
+                La progression du projet est contrôlée exclusivement de façon manuelle par le Project Manager, Sponsor et Admin.
               </p>
 
               {}
