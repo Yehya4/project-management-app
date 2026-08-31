@@ -72,7 +72,7 @@ const Login = () => {
               </div>
 
               <h1 className="text-3xl md:text-4xl font-black text-slate-800 tracking-tight leading-tight mb-2">
-                Bienvenue sur Auto Project Workspace
+                Bienvenue sur Auto Projects Workspace
               </h1>
               <p className="mt-4 max-w-md text-sm leading-6 text-slate-600">
                 Une interface claire, sécurisée et moderne pour accéder rapidement à votre espace de travail.
@@ -105,7 +105,7 @@ const Login = () => {
                   <span className="text-2xl font-black tracking-tight">AP</span>
                 </div>
                 <h1 className="text-3xl font-black tracking-tight text-slate-900">
-                  Auto Project
+                  Auto Projects
                 </h1>
                 <p className="mt-1 text-sm uppercase tracking-[0.2em] text-slate-400">
                   Workspace

@@ -107,7 +107,7 @@ const Sidebar = () => {
           </div>
           <div className={`flex flex-col whitespace-nowrap transition-all duration-300 ${isOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 pointer-events-none'}`}>
             <div className="flex items-center gap-1.5">
-              <h1 className="text-white font-extrabold text-lg tracking-tight">Auto Project</h1>
+              <h1 className="text-white font-extrabold text-lg tracking-tight">Auto Projects</h1>
             </div>
             <span className="text-[10px] font-bold tracking-widest text-blue-400 uppercase">Enterprise Workspace</span>
           </div>
