@@ -15,7 +15,7 @@ services:
       - "3307:3306"
     volumes:
       - db_data:/var/lib/mysql
-      - ./backend/auto_project.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./auto_project.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "appuser", "--password=${DB_PASSWORD:-Aut0Pr0ject@S3cur3!2024}"]
       interval: 10s

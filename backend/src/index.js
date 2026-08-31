@@ -171,8 +171,8 @@ const loginLimiter = rateLimit({
     skipSuccessfulRequests: true, // Ne compte pas les connexions réussies
 });
 
-app.use('/api', globalLimiter);
-app.use('/api/auth/login', loginLimiter);
+// app.use('/api', globalLimiter);
+// app.use('/api/auth/login', loginLimiter);
 
 // ─── Logger des requêtes HTTP ────────────────────────────────────────────────
 app.use((req, res, next) => {
